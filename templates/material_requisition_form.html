@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
+    .choices__input { background-color: transparent !important; color: var(--bs-body-color); }
+    .choices[data-type*="select-one"]::after { border-color: var(--bs-body-color) transparent transparent; }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form id="material-requisition-form" novalidate>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Request Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" name="request_date" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Required Delivery Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" name="required_delivery_date" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Project Code <span class="text-danger">*</span></label>
+                    <select class="form-select" name="project_id" required>
+                        <option value="">Select a project...</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}">{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Requested By <span class="text-danger">*</span></label>
+                    <select class="form-select" name="requested_by_id" required>
+                        <option value="">Select a person...</option>
+                        {% for s in supervisors %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Material Type <span class="text-danger">*</span></label>
+                    <select class="form-select" name="material_type" required>
+                        <option value="">Select type...</option>
+                        {% for type in material_types %}
+                        <option value="{{ type }}">{{ type }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Urgency <span class="text-danger">*</span></label>
+                    <select class="form-select" name="urgency" required>
+                        <option value="">Select urgency...</option>
+                        {% for level in urgency_levels %}
+                        <option value="{{ level }}">{{ level }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Material with Quantity <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="material_with_quantity" rows="4" placeholder="e.g., Cement Bags - 50 nos&#10;12mm Steel Rebar - 10 tons" required></textarea>
+                </div>
+            </div>
+
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Submit Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const formSelects = document.querySelectorAll('#material-requisition-form select');
+    formSelects.forEach(select => {
+        new Choices(select, { searchEnabled: true, removeItemButton: false, itemSelectText: '' });
+    });
+
+    const form = document.getElementById('material-requisition-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    document.querySelector('input[name="request_date"]').valueAsDate = new Date();
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(form);
+        try {
+            const response = await fetch('/material-requisitions/', { method: 'POST', body: formData });
+            const result = await response.json();
+            
+            const toastBody = document.getElementById('toast-body');
+            const toastTitle = document.getElementById('toast-title');
+            toastElement.classList.remove('bg-danger', 'bg-success');
+
+            if (response.ok) {
+                toastElement.classList.add('bg-success', 'text-white');
+                toastTitle.innerText = 'Success!';
+                toastBody.innerText = result.message;
+                form.reset();
+                form.classList.remove('was-validated');
+                document.querySelector('input[name="request_date"]').valueAsDate = new Date();
+                // We need to re-initialize Choices.js after a form reset
+                formSelects.forEach(select => select.dispatchEvent(new Event('change')));
+
+            } else {
+                throw new Error(result.message || 'An unknown error occurred.');
+            }
+        } catch (error) {
+            toastElement.classList.add('bg-danger', 'text-white');
+            toastTitle.innerText = 'Error!';
+            toastBody.innerText = error.message;
+        } finally {
+            toast.show();
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

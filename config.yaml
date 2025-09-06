@@ -1,0 +1,82 @@
+# Configuration for fixed dropdown values
+
+# --- General ---
+site_locations:
+  - Dubai
+  - Abu Dhabi
+  - RAK
+  - Sharjah
+  - Al Ain
+
+units:
+  - SQM
+  - LM
+  - RM
+  - NOS
+  - TON
+  - UNIT
+  - Cu.Meter
+  - NUMBERS
+  - GALLON
+
+assigned_crew_options:
+  - Internal
+  - External Vendor
+  - External Skilled Labor
+
+# --- Form B Specific ---
+equipment_conditions:
+  - Good
+  - Normal
+  - Required Maintenance
+  - Others
+sub_contractor_coordinations:
+  - Good
+  - Delays
+  - Issues
+  - Not Applicable
+delivery_statuses:
+  - Accepted
+  - Rejected
+  - Not Required
+sop_statuses:
+  - Yes
+  - "No"
+  - Help Required
+
+# --- Form C Specific ---
+subcontractor_coordination_c:
+  - Good
+  - Delayed
+  - Issues
+site_condition_options:
+  - Good
+  - Needs Improvement
+  - Unsafe
+  - Others
+overall_site_health_options:
+  - Good
+  - Needs Improvement
+  - Critical
+yes_no_help_options:
+  - "Yes"
+  - "No"
+  - Help Required
+
+# --- Material Requisition Form Specific (NEW) ---
+material_types:
+  - Civil
+  - MEP
+urgency_levels:
+  - Normal
+  - Urgent
+  - Critical
+
+# --- Procurement Workflow Specific (NEW) ---
+approval_statuses:
+  - Approved
+  - Not Approved
+  - Pending
+requisition_statuses:
+  - Delivered
+  - Pending

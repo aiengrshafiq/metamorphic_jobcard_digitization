@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Pending Material Requisitions</h5>
+        <!-- We can add filters here later if needed -->
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Req ID</th>
+                        <th>MR Number</th>
+                        <th>Request Date</th>
+                        <th>Project</th>
+                        <th>Requested By</th>
+                        <th>Urgency</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requisitions %}
+                    <tr>
+                        <td>{{ req.id }}</td>
+                        <td>
+                            {% if req.mr_number %}
+                                <span class="badge bg-secondary">{{ req.mr_number }}</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Not Assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ req.request_date.strftime('%d-%b-%Y') }}</td>
+                        <td>{{ req.project.name }}</td>
+                        <td>{{ req.requested_by.name }}</td>
+                        <td>
+                            {% if req.urgency == 'Critical' %}
+                                <span class="badge bg-danger">{{ req.urgency }}</span>
+                            {% elif req.urgency == 'Urgent' %}
+                                <span class="badge bg-warning text-dark">{{ req.urgency }}</span>
+                            {% else %}
+                                <span class="badge bg-info">{{ req.urgency }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="/procurement/material-requisition/{{ req.id }}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-pencil-square me-1"></i> Process
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No pending material requisitions found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

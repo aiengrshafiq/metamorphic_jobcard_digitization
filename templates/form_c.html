@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
+    .choices__input { background-color: transparent !important; color: var(--bs-body-color); }
+    .choices[data-type*="select-one"]::after { border-color: var(--bs-body-color) transparent transparent; }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
+    .accordion-button:not(.collapsed) {
+        color: var(--bs-primary-color-rgb);
+        background-color: var(--bs-primary-bg-subtle);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form id="site-officer-form" novalidate>
+            <div class="accordion" id="formCAccordion">
+
+                <!-- Section 1: General Info -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                            Section 1: General Information
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#formCAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label">Date <span class="text-danger">*</span></label><input type="date" class="form-control" name="date" required></div>
+                                <div class="col-md-6"><label class="form-label">Site Location <span class="text-danger">*</span></label><select class="form-select" name="site_location" required><option value="">Select...</option>{% for loc in site_locations %}<option value="{{ loc }}">{{ loc }}</option>{% endfor %}</select></div>
+                                <div class="col-md-6"><label class="form-label">Name of Site Officer <span class="text-danger">*</span></label><select class="form-select" name="site_officer_id" required><option value="">Select...</option>{% for so in supervisors %}<option value="{{ so.id }}">{{ so.name }}</option>{% endfor %}</select></div>
+                                <div class="col-md-6"><label class="form-label">Name of Duty Officer/Foreman <span class="text-danger">*</span></label><select class="form-select" name="duty_officer_id" required><option value="">Select...</option>{% for f in foremen %}<option value="{{ f.id }}">{{ f.name }}</option>{% endfor %}</select></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Toolbox Talk -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingTwo"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">Section 2: Toolbox Talk</button></h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#formCAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-12"><label class="form-label">Attendance (Names)</label><input type="text" class="form-control" name="tbt_attendance"></div>
+                                <div class="col-12"><label class="form-label">Topic Discussed</label><input type="text" class="form-control" name="tbt_topic_discussed"></div>
+                                <div class="col-12"><label class="form-label">Key Points</label><textarea class="form-control" name="tbt_key_points" rows="3"></textarea></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Job Card Mapping -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingThree"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">Section 3: Job Card Mapping</button></h2>
+                    <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#formCAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-12"><label class="form-label">Select Job Card <span class="text-danger">*</span></label><select class="form-select" name="job_card_id" required><option value="">Select...</option>{% for jc in job_cards %}<option value="{{ jc.id }}">{{ jc.job_card_no }} ({{ jc.project.name }})</option>{% endfor %}</select></div>
+                                <div class="col-md-6"><label class="form-label">Have you ensured all duty officers completed Form B?</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="form_b_completed_check" value="true"></div></div>
+                                <div class="col-md-6"><label class="form-label">Are progress pictures submitted by WhatsApp?</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="progress_pictures_check" value="true"></div></div>
+                                <div class="col-12"><label class="form-label">Any dependency mark (with Job Card number)</label><input type="text" class="form-control" name="dependency_notes"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Site Management -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingFour"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">Section 4: Site Management</button></h2>
+                    <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#formCAccordion">
+                        <div class="accordion-body">
+                           <div class="row g-3">
+                                <div class="col-12"><label class="form-label">Manpower Availability (With Meta codes)</label><textarea class="form-control" name="sm_manpower_availability" rows="2"></textarea></div>
+                                <div class="col-md-6"><label class="form-label">Subcontractor Coordination</label><select class="form-select" name="sm_subcontractor_coordination"><option value="">Select...</option>{% for opt in subcontractor_coordination_c %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-6"><label class="form-label">If Have Issue Please Mention</label><input type="text" class="form-control" name="sm_coordination_issues"></div>
+                                <div class="col-12"><label class="form-label">Other Notes (If Any)</label><textarea class="form-control" name="sm_other_notes" rows="2"></textarea></div>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section 5: Material Requisition Checks -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingFive"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">Section 5: Material Requisition Checks</button></h2>
+                    <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#formCAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-md-8"><label class="form-label">Which Material Requested are submitted? (As per Form A)</label><select class="form-select" name="material_requisition_project_id"><option value="">Select Project...</option>{% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></div>
+                                <div class="col-md-4"><label class="form-label">Check for deliveries with Asst. Manager Commercial?</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="commercial_delivery_check" value="true"></div></div>
+                                <div class="col-12"><label class="form-label">Any Comment related planned deliveries?</label><input type="text" class="form-control" name="delivery_comments"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 6: Quality Control -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingSix"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix" aria-expanded="false" aria-controls="collapseSix">Section 6: Quality Control</button></h2>
+                    <div id="collapseSix" class="accordion-collapse collapse" aria-labelledby="headingSix" data-bs-parent="#formCAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-md-4"><label class="form-label">Steps Explained to Duty Officers?</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="qc_steps_explained" value="true"></div></div>
+                                <div class="col-md-8"><label class="form-label">Please Explain the steps</label><input type="text" class="form-control" name="qc_steps_details"></div>
+                                <div class="col-12"><label class="form-label">Drawing mismatches escalated to PM or Engr</label><input type="text" class="form-control" name="qc_drawing_mismatches"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 7: Risks & Escalations -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingSeven"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSeven" aria-expanded="false" aria-controls="collapseSeven">Section 7: Risks & Escalations</button></h2>
+                    <div id="collapseSeven" class="accordion-collapse collapse" aria-labelledby="headingSeven" data-bs-parent="#formCAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-12"><label class="form-label">Delays flagged (reason)</label><textarea class="form-control" name="re_delays_flagged_reason" rows="2"></textarea></div>
+                                <div class="col-12"><label class="form-label">Support needed from Engineer/PM</label><textarea class="form-control" name="re_support_needed" rows="2"></textarea></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section 8: Housekeeping & Safety -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingEight"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEight" aria-expanded="false" aria-controls="collapseEight">Section 8: Housekeeping & Safety</button></h2>
+                    <div id="collapseEight" class="accordion-collapse collapse" aria-labelledby="headingEight" data-bs-parent="#formCAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label">Site Waste Management</label><select class="form-select" name="hs_waste_management"><option value="">Select...</option>{% for opt in site_condition_options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-6"><label class="form-label">Waste Management Comments</label><input type="text" class="form-control" name="hs_waste_management_comments"></div>
+                                <div class="col-md-6"><label class="form-label">Walkways & Access Routes clear?</label><select class="form-select" name="hs_walkways_clear"><option value="">Select...</option>{% for opt in site_condition_options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-6"><label class="form-label">Material Storage</label><select class="form-select" name="hs_material_storage"><option value="">Select...</option>{% for opt in site_condition_options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-6"><label class="form-label">PPE Compliance</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="hs_ppe_compliance" value="true"></div></div>
+                                <div class="col-md-6"><label class="form-label">Incidents / Near Misses</label><input type="text" class="form-control" name="hs_incidents_near_misses"></div>
+                                <div class="col-12"><label class="form-label">Any safety comment</label><input type="text" class="form-control" name="hs_safety_comments"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 9: Summary & Action Points -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingNine"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNine" aria-expanded="false" aria-controls="collapseNine">Section 9: Summary & Action Points</button></h2>
+                    <div id="collapseNine" class="accordion-collapse collapse" aria-labelledby="headingNine" data-bs-parent="#formCAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label">Overall Site Health</label><select class="form-select" name="sa_overall_site_health"><option value="">Select...</option>{% for opt in overall_site_health_options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-md-6"><label class="form-label">Responsible Person</label><input type="text" class="form-control" name="sa_responsible_person"></div>
+                                <div class="col-md-6"><label class="form-label">Immediate Actions Required</label><textarea class="form-control" name="sa_immediate_actions" rows="2"></textarea></div>
+                                <div class="col-md-6"><label class="form-label">Critical Actions Required</label><textarea class="form-control" name="sa_critical_actions" rows="2"></textarea></div>
+                                <div class="col-md-6"><label class="form-label">Deadline for Action</label><input type="date" class="form-control" name="sa_action_deadline"></div>
+                                <div class="col-md-6"><label class="form-label">Approved drawings/NOCs for all projects?</label><select class="form-select" name="sa_approved_drawings_check"><option value="">Select...</option>{% for opt in yes_no_help_options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div>
+                                <div class="col-12"><label class="form-label">If Help Required, Please mention</label><input type="text" class="form-control" name="sa_drawing_help_details"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Submit Daily Report
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Initialize searchable dropdowns for all select elements in the form
+    const formSelects = document.querySelectorAll('#site-officer-form select');
+    formSelects.forEach(select => {
+        new Choices(select, { searchEnabled: true, removeItemButton: false, itemSelectText: '', allowHTML: false });
+    });
+
+    const form = document.getElementById('site-officer-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    // Set today's date
+    document.querySelector('input[name="date"]').valueAsDate = new Date();
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(form);
+        try {
+            const response = await fetch('/site-officer-reports/', { method: 'POST', body: formData });
+            const result = await response.json();
+            
+            const toastBody = document.getElementById('toast-body');
+            const toastTitle = document.getElementById('toast-title');
+            toastElement.classList.remove('bg-danger', 'bg-success');
+
+            if (response.ok) {
+                toastElement.classList.add('bg-success', 'text-white');
+                toastTitle.innerText = 'Success!';
+                toastBody.innerText = result.message;
+                form.reset();
+                form.classList.remove('was-validated');
+                // Re-initialize choices after reset if needed or just reload
+                window.scrollTo(0, 0); 
+                document.querySelector('input[name="date"]').valueAsDate = new Date();
+            } else {
+                throw new Error(result.message || 'An unknown error occurred.');
+            }
+        } catch (error) {
+            toastElement.classList.add('bg-danger', 'text-white');
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            window.scrollTo(0, 0); 
+        } finally {
+            toast.show();
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

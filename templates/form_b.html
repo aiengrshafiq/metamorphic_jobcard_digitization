@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
+    .choices__input { background-color: transparent !important; color: var(--bs-body-color); }
+    #main-form-content { transition: opacity 0.3s ease-in-out; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form id="duty-officer-form" novalidate>
+            <!-- Section 1: Job Card Selection -->
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="job_card_id" class="form-label">Select Job Card <span class="text-danger">*</span></label>
+                    <select id="job_card_id" name="job_card_id" required>
+                        <option value="">Search by Job Card No...</option>
+                        {% for jc in job_cards %}
+                        <option value="{{ jc.id }}">{{ jc.job_card_no }} ({{ jc.project.name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                 <div class="col-md-6 mb-3">
+                    <label for="date_of_work" class="form-label">Date of Work <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="date_of_work" name="date_of_work" required>
+                </div>
+            </div>
+            <hr>
+
+            <!-- This div is hidden until a Job Card is selected -->
+            <div id="main-form-content" style="display: none; opacity: 0;">
+                <div class="accordion" id="form-b-accordion">
+                    <!-- Section: Task Details -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTask">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTask" aria-expanded="true" aria-controls="collapseTask">
+                                <strong>Task Progress Details</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseTask" class="accordion-collapse collapse show" aria-labelledby="headingTask">
+                            <div class="accordion-body">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label for="task_id" class="form-label">Task Description <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="task_id" name="task_id" required>
+                                            <option value="">Select a task...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="actual_output" class="form-label">Actual Output for the Day <span class="text-danger">*</span></label>
+                                        <textarea id="actual_output" name="actual_output" class="form-control" rows="3" required></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="issues_delays" class="form-label">Issues / Delays <span class="text-danger">*</span></label>
+                                        <textarea id="issues_delays" name="issues_delays" class="form-control" rows="2" required></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Section 2: Toolbox Talk -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                Section 2: Toolbox Talk
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo">
+                            <div class="accordion-body">
+                                <div class="row g-3">
+                                    <div class="col-md-12"><label class="form-label">Attendance (Names) <span class="text-danger">*</span></label><input type="text" name="tbt_attendance" class="form-control" required></div>
+                                    <div class="col-md-6"><label class="form-label">Topic Discussed</label><input type="text" name="tbt_topic_discussed" class="form-control"></div>
+                                    <div class="col-md-6"><label class="form-label">Key Points <span class="text-danger">*</span></label><input type="text" name="tbt_key_points" class="form-control" required></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Site Management -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                Section 3: Site Management
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree">
+                            <div class="accordion-body">
+                               <div class="row g-3">
+                                    <div class="col-12"><label class="form-label">Equipment Inventory <span class="text-danger">*</span></label><textarea name="sm_equipment_inventory" class="form-control" rows="2" required></textarea></div>
+                                    <div class="col-md-6"><label class="form-label">Equipment Condition</label><select name="sm_equipment_condition" class="form-select">{% for item in equipment_conditions %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
+                                    <div class="col-md-6"><label class="form-label">Equipment Transfer</label><input type="text" name="sm_equipment_transfer" class="form-control" placeholder="Mention Meta Code & Site Officer"></div>
+                                    <div class="col-md-6"><label class="form-label">Sub-contractor Coordination</label><select name="sm_sub_contractor_coordination" class="form-select">{% for item in sub_contractor_coordinations %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
+                                    <div class="col-md-6"><label class="form-label">If Issues, please mention</label><input type="text" name="sm_coordination_issues" class="form-control"></div>
+                                    <div class="col-md-6"><label class="form-label">Safety Hazards Identified <span class="text-danger">*</span></label><input type="text" name="sm_safety_hazards" class="form-control" required></div>
+                                    <div class="col-md-3"><label class="form-label">PPE Check</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="sm_ppe_check" value="true"></div></div>
+                                    <div class="col-md-3"><label class="form-label">Photos on WhatsApp</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="sm_photos_on_whatsapp" value="true"></div></div>
+                                    <div class="col-12"><label class="form-label">Remarks</label><textarea name="sm_remarks" class="form-control" rows="2"></textarea></div>
+                                    <div class="col-12"><label class="form-label">Foreman Signature (Name) <span class="text-danger">*</span></label><select name="sm_foreman_signature_id" class="form-select" required><option value="">Select Foreman...</option>{% for foreman in foremen %}<option value="{{ foreman.id }}">{{ foreman.name }}</option>{% endfor %}</select></div>
+                               </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Section 4: Material Management -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingFour">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                Section 4: Material Management
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour">
+                            <div class="accordion-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6"><label class="form-label">Deliveries Received <span class="text-danger">*</span></label><select name="mm_deliveries_received" class="form-select" required>{% for item in delivery_statuses %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
+                                    <div class="col-md-6"><label class="form-label">If Rejected, state reason</label><input type="text" name="mm_rejection_reason" class="form-control"></div>
+                                    <div class="col-12"><label class="form-label">Stock Balance (Materials & QTY) <span class="text-danger">*</span></label><textarea name="mm_stock_balance" class="form-control" rows="2" required></textarea></div>
+                                    <div class="col-12"><label class="form-label">Material Transfers Made</label><input type="text" name="mm_material_transfers" class="form-control" placeholder="Project Code & Site Officer Name"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 5: Knowledge and Training -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingFive">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                                Section 5: Knowledge and Training Transfer
+                            </button>
+                        </h2>
+                        <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive">
+                            <div class="accordion-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6"><label class="form-label">SOPs Explained by Site Officer/Engr</label><select name="kt_sops_explained" class="form-select">{% for item in sop_statuses %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
+                                    <div class="col-md-6"><label class="form-label">If help required, mention work</label><input type="text" name="kt_help_required_details" class="form-control"></div>
+                                    <div class="col-12"><label class="form-label">Critical Actions / Materials Required</label><textarea name="kt_critical_actions_required" class="form-control" rows="2"></textarea></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 text-end">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                        Submit Progress Report
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block scripts_extra %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const mainFormContent = document.getElementById('main-form-content');
+    const taskSelect = document.getElementById('task_id');
+    const form = document.getElementById('duty-officer-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    const jobCardChoices = new Choices('#job_card_id', { searchEnabled: true, itemSelectText: '' });
+
+    document.getElementById('job_card_id').addEventListener('change', async function(event) {
+        const jobCardId = event.detail.value;
+        taskSelect.innerHTML = '<option value="">Loading tasks...</option>';
+        
+        if (!jobCardId) {
+            mainFormContent.style.display = 'none';
+            mainFormContent.style.opacity = 0;
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/job-cards/${jobCardId}/tasks`);
+            if (!response.ok) throw new Error('Failed to fetch tasks.');
+            
+            const tasks = await response.json();
+            taskSelect.innerHTML = '<option value="">Select a task...</option>';
+            tasks.forEach(task => {
+                const option = new Option(`${task.task_details.substring(0, 100)}...`, task.id);
+                taskSelect.add(option);
+            });
+            mainFormContent.style.display = 'block';
+            setTimeout(() => { mainFormContent.style.opacity = 1; }, 10);
+        } catch (error) {
+            console.error(error);
+            taskSelect.innerHTML = '<option value="">Could not load tasks</option>';
+        }
+    });
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(form);
+        try {
+            const response = await fetch('/duty-officer-progress/', { method: 'POST', body: formData });
+            const result = await response.json();
+
+            const toastBody = document.getElementById('toast-body');
+            const toastTitle = document.getElementById('toast-title');
+            toastElement.classList.remove('bg-danger', 'bg-success');
+
+            if (response.ok) {
+                toastElement.classList.add('bg-success', 'text-white');
+                toastTitle.innerText = 'Success!';
+                toastBody.innerText = result.message;
+                form.reset();
+                form.classList.remove('was-validated');
+                jobCardChoices.clearStore();
+                jobCardChoices.setChoiceByValue('');
+                mainFormContent.style.display = 'none';
+            } else {
+                throw new Error(result.message || 'An unknown error occurred.');
+            }
+        } catch (error) {
+            toastElement.classList.add('bg-danger', 'text-white');
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+        } finally {
+            toast.show();
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+    
+    document.getElementById('date_of_work').valueAsDate = new Date();
+});
+</script>
+{% endblock %}

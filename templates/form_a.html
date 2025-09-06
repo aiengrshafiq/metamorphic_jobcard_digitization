@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<!-- Choices.js CSS for searchable dropdowns -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    /* Custom styles to make Choices.js look better with Bootstrap */
+    .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
+    .choices__input { background-color: transparent !important; color: var(--bs-body-color); }
+    .choices[data-type*="select-one"]::after { border-color: var(--bs-body-color) transparent transparent; }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
+    .was-validated .choices__inner { border-color: #dc3545 !important; }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <!-- "novalidate" prevents default browser validation, as we handle it with Bootstrap's JS classes -->
+        <form id="job-card-form" novalidate>
+
+            <!-- MASTER JOB CARD DETAILS -->
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="project_id" class="form-label">Project Name <span class="text-danger">*</span></label>
+                    <select class="form-select" id="project_id" name="project_id" required>
+                        <option value="">Select a project...</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="site_location" class="form-label">Site Location <span class="text-danger">*</span></label>
+                    <select class="form-select" id="site_location" name="site_location" required>
+                        <option value="">Select a location...</option>
+                        {% for location in site_locations %}
+                        <option value="{{ location }}" {% if loop.first %}selected{% endif %}>{{ location }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="date_issued" class="form-label">Date Issued <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="date_issued" name="date_issued" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="job_card_no" class="form-label">Job Card No. <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="job_card_no" name="job_card_no" value="{{ initial_job_card_no }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="site_engineer_id" class="form-label">Site Engineer <span class="text-danger">*</span></label>
+                    <select class="form-select" id="site_engineer_id" name="site_engineer_id" required>
+                        <option value="">Select an engineer...</option>
+                        {% for engineer in site_engineers %}
+                        <option value="{{ engineer.id }}">{{ engineer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="supervisor_id" class="form-label">Supervisor / Site Officer <span class="text-danger">*</span></label>
+                    <select class="form-select" id="supervisor_id" name="supervisor_id" required>
+                        <option value="">Select a supervisor...</option>
+                        {% for supervisor in supervisors %}
+                        <option value="{{ supervisor.id }}">{{ supervisor.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="foreman_id" class="form-label">Foreman / Duty Officer <span class="text-danger">*</span></label>
+                    <select class="form-select" id="foreman_id" name="foreman_id" required>
+                        <option value="">Select a foreman...</option>
+                        {% for foreman in foremen %}
+                        <option value="{{ foreman.id }}">{{ foreman.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- DYNAMIC TASKS SECTION -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">Tasks</h4>
+                <button type="button" class="btn btn-success" id="add-task-btn">
+                    <i class="bi bi-plus-circle me-1"></i> Add Task
+                </button>
+            </div>
+            
+            <div id="tasks-container">
+                <!-- Task blocks will be injected here by JavaScript -->
+            </div>
+
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Submit Job Card
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block scripts_extra %}
+<!-- Choices.js for searchable dropdowns -->
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // --- INITIALIZATION ---
+    const choicesConfig = { searchEnabled: true, removeItemButton: false, itemSelectText: '', allowHTML: false };
+    const projectChoices = new Choices('#project_id', choicesConfig);
+    const siteLocationChoices = new Choices('#site_location', { ...choicesConfig, searchEnabled: false });
+    const engineerChoices = new Choices('#site_engineer_id', choicesConfig);
+    const supervisorChoices = new Choices('#supervisor_id', choicesConfig);
+    const foremanChoices = new Choices('#foreman_id', choicesConfig);
+
+    const tasksContainer = document.getElementById('tasks-container');
+    const addTaskBtn = document.getElementById('add-task-btn');
+    const form = document.getElementById('job-card-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    // --- DYNAMIC TASK MANAGEMENT ---
+    const taskTemplate = `
+        <div class="task-block card mb-3 border">
+            <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                <h5 class="mb-0 task-title"></h5>
+                <button type="button" class="btn-close remove-task-btn" aria-label="Close"></button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Task Details <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="task_details" rows="2" required></textarea>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-2"><label class="form-label">QTY</label><input type="number" step="0.01" class="form-control" name="quantity" placeholder="e.g., 100.5"></div>
+                    <div class="col-md-6 col-lg-3"><label class="form-label">Units</label><select class="form-select" name="units"><option value="" selected>Select unit...</option>{% for unit in units %}<option value="{{ unit }}">{{ unit }}</option>{% endfor %}</select></div>
+                    <div class="col-md-12 col-lg-7"><label class="form-label">Task Priority</label><div class="d-flex align-items-center"><span class="me-2 text-danger fw-bold">High</span><input type="range" class="form-range" name="priority" min="1" max="5" value="3" step="1"><span class="ms-2 text-success fw-bold">Low</span></div></div>
+                    <div class="col-md-6"><label class="form-label">Start Date</label><input type="date" class="form-control" name="start_date"></div>
+                    <div class="col-md-6"><label class="form-label">End Date</label><input type="date" class="form-control" name="end_date"></div>
+                    <div class="col-12"><label class="form-label">Assigned Crew / Team</label><select class="form-select" name="assigned_crew"><option value="" selected>Select crew...</option>{% for crew in assigned_crew_options %}<option value="{{ crew }}">{{ crew }}</option>{% endfor %}</select></div>
+                </div>
+            </div>
+        </div>`;
+
+    function updateTaskState() {
+        const blocks = tasksContainer.querySelectorAll('.task-block');
+        blocks.forEach((block, index) => {
+            block.querySelector('.task-title').textContent = `Task ${index + 1}`;
+            block.querySelector('.remove-task-btn').style.display = blocks.length > 1 ? 'block' : 'none';
+        });
+    }
+
+    function addNewTask() {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = taskTemplate.trim();
+        tasksContainer.appendChild(tempDiv.firstChild);
+        updateTaskState();
+    }
+
+    addTaskBtn.addEventListener('click', addNewTask);
+    tasksContainer.addEventListener('click', e => {
+        if (e.target.classList.contains('remove-task-btn')) {
+            e.target.closest('.task-block').remove();
+            updateTaskState();
+        }
+    });
+    
+    // --- DYNAMIC JOB CARD NUMBER ---
+    const jobCardNoInput = document.getElementById('job_card_no');
+    document.getElementById('site_location').addEventListener('change', async function() {
+        if (!this.value) return;
+        try {
+            const response = await fetch(`/api/generate-job-card-no?site_location=${this.value}`);
+            if (!response.ok) throw new Error('Network response was not ok.');
+            const data = await response.json();
+            jobCardNoInput.value = data.job_card_no;
+        } catch (error) {
+            console.error("Failed to fetch new job card number:", error);
+        }
+    });
+
+    // --- FORM SUBMISSION ---
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(form);
+        try {
+            const response = await fetch('/job-cards/', { method: 'POST', body: formData });
+            const result = await response.json();
+            
+            const toastBody = document.getElementById('toast-body');
+            const toastTitle = document.getElementById('toast-title');
+            toastElement.classList.remove('bg-danger', 'bg-success');
+
+            if (response.ok) {
+                toastElement.classList.add('bg-success', 'text-white');
+                toastTitle.innerText = 'Success!';
+                toastBody.innerText = result.message;
+                
+                // Reset form and UI elements
+                form.reset();
+                form.classList.remove('was-validated');
+                projectChoices.clearStore(); projectChoices.setChoiceByValue('');
+                siteLocationChoices.setChoiceByValue("{{ site_locations[0] }}");
+                engineerChoices.clearStore(); engineerChoices.setChoiceByValue('');
+                supervisorChoices.clearStore(); supervisorChoices.setChoiceByValue('');
+                foremanChoices.clearStore(); foremanChoices.setChoiceByValue('');
+                
+                tasksContainer.innerHTML = '';
+                addNewTask();
+                jobCardNoInput.value = result.next_job_card_no;
+                document.getElementById('date_issued').valueAsDate = new Date();
+
+            } else {
+                throw new Error(result.message || 'An unknown error occurred.');
+            }
+        } catch (error) {
+            toastElement.classList.add('bg-danger', 'text-white');
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+        } finally {
+            toast.show();
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+
+    // --- INITIAL PAGE LOAD SETUP ---
+    addNewTask(); // Add the first task block on page load
+    document.getElementById('date_issued').valueAsDate = new Date(); // Set today's date
+});
+</script>
+{% endblock %}
+

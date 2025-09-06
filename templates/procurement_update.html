@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
+    .read-only-bg { background-color: #e9ecef; }
+</style>
+{% endblock %}
+
+{% block content %}
+<form id="procurement-update-form" novalidate>
+    <div class="row">
+        <!-- Left Side: Original Request Details -->
+        <div class="col-lg-5 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Original Requisition Details (Req #{{ req.id }})</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">Request Date:</dt><dd class="col-sm-7">{{ req.request_date.strftime('%d-%b-%Y') }}</dd>
+                        <dt class="col-sm-5">Project:</dt><dd class="col-sm-7">{{ req.project.name }}</dd>
+                        <dt class="col-sm-5">Requested By:</dt><dd class="col-sm-7">{{ req.requested_by.name }}</dd>
+                        <dt class="col-sm-5">Urgency:</dt><dd class="col-sm-7">{{ req.urgency }}</dd>
+                        <dt class="col-sm-5">Required Date:</dt><dd class="col-sm-7">{{ req.required_delivery_date.strftime('%d-%b-%Y') }}</dd>
+                        <dt class="col-sm-5">Material Type:</dt><dd class="col-sm-7">{{ req.material_type }}</dd>
+                        <hr class="my-2">
+                        <dt class="col-12">Materials & Quantity:</dt>
+                        <dd class="col-12"><pre class="mb-0">{{ req.material_with_quantity }}</pre></dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Procurement Update Form -->
+        <div class="col-lg-7 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Procurement Processing</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">MR Number</label>
+                            <input type="text" class="form-control read-only-bg" value="{{ req.mr_number or 'Will be generated on save' }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">LPO Number</label>
+                            <input type="text" class="form-control" name="lpo_number" value="{{ req.lpo_number or '' }}">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Supplier Name <span class="text-danger">*</span></label>
+                            <select class="form-select" name="supplier_id" required>
+                                <option value="">Select a supplier...</option>
+                                {% for s in suppliers %}
+                                <option value="{{ s.id }}" {% if req.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">PM Approval</label>
+                            <select class="form-select" name="pm_approval">
+                                {% for s in approval_statuses %}<option value="{{ s }}" {% if req.pm_approval == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">QS Approval</label>
+                             <select class="form-select" name="qs_approval">
+                                {% for s in approval_statuses %}<option value="{{ s }}" {% if req.qs_approval == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Payment Status</label>
+                            <input type="text" class="form-control" name="payment_status" value="{{ req.payment_status or '' }}">
+                        </div>
+                         <div class="col-12">
+                            <label class="form-label">Remarks</label>
+                            <textarea class="form-control" name="remarks" rows="2">{{ req.remarks or '' }}</textarea>
+                        </div>
+                         <div class="col-12">
+                            <label class="form-label fw-bold">Overall Status</label>
+                             <select class="form-select" name="status">
+                                {% for s in requisition_statuses %}<option value="{{ s }}" {% if req.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                     <a href="/procurement/material-requisitions" class="btn btn-secondary">Cancel</a>
+                     <button type="submit" class="btn btn-success" id="submit-btn">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const formSelects = document.querySelectorAll('#procurement-update-form select');
+    formSelects.forEach(select => { new Choices(select, { searchEnabled: true, removeItemButton: false }); });
+
+    const form = document.getElementById('procurement-update-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(form);
+        const reqId = {{ req.id }};
+        try {
+            const response = await fetch(`/api/material-requisitions/${reqId}`, { method: 'POST', body: formData });
+            const result = await response.json();
+            
+            const toastBody = document.getElementById('toast-body');
+            const toastTitle = document.getElementById('toast-title');
+            toastElement.classList.remove('bg-danger', 'bg-success');
+
+            if (response.ok) {
+                toastElement.classList.add('bg-success', 'text-white');
+                toastTitle.innerText = 'Success!';
+                toastBody.innerText = result.message;
+                // Redirect back to the list after a short delay
+                setTimeout(() => { window.location.href = '/procurement/material-requisitions'; }, 1500);
+            } else { throw new Error(result.message || 'An unknown error occurred.'); }
+        } catch (error) {
+            toastElement.classList.add('bg-danger', 'text-white');
+            toastTitle.innerText = 'Error!';
+            toastBody.innerText = error.message;
+        } finally {
+            toast.show();
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}
+
