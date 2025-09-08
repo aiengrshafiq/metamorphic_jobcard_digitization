@@ -34,11 +34,9 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Point the health check to a dedicated /health endpoint
+# CORRECTED: Use a Python-based health check that doesn't require curl
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+  CMD python -c "import urllib.request, sys; urllib.request.urlopen('http://localhost:8000/health', timeout=3)" || exit 1
 
-# --- THIS IS THE FIX ---
-# Run the application using Gunicorn, adding the --forwarded-allow-ips flag
-# This tells Gunicorn to trust the X-Forwarded-* headers from Azure's proxy.
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--forwarded-allow-ips", "*", "app.main:app", "--bind", "0.0.0.0:8000"]
+# CORRECTED: Add the --proxy-headers flag for Uvicorn workers
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--forwarded-allow-ips", "*", "--proxy-headers", "app.main:app", "--bind", "0.0.0.0:8000"]

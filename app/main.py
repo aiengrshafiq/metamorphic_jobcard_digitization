@@ -17,7 +17,7 @@ import json
 from azure.storage.blob import BlobServiceClient
 
 # --- THIS IS THE NEW IMPORT ---
-from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.core.database import engine, get_db
 from app.core.config import settings
@@ -33,6 +33,13 @@ app = FastAPI(title="Metamorphic Job Card App")
 # and build URLs with https:// when appropriate.
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 templates = Jinja2Templates(directory="templates")
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    resp = await call_next(request)
+    resp.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
+    return resp
 
 @app.get("/job-card-tracking", response_class=HTMLResponse)
 async def job_card_tracking(request: Request, db: Session = Depends(get_db)):
