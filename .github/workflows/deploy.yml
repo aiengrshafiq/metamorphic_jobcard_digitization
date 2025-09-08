@@ -38,8 +38,7 @@ jobs:
         docker push ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
 
     - name: 'Deploy to Azure Container Apps'
-      # UPDATED: Using the latest stable version, which is the fix
-      uses: azure/container-apps-deploy@v3
+      uses: Azure/container-apps-deploy-action@v2
       with:
         resourceGroup: ${{ env.RESOURCE_GROUP }}
         location: ${{ env.LOCATION }}
@@ -48,7 +47,7 @@ jobs:
         containerAppName: ${{ env.CONTAINER_APP_NAME }}
         imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
         targetPort: 8000
-        ingress: 'external'
+        ingress: external
         environmentVariables: |
           DATABASE_URL=${{ secrets.DATABASE_URL }}
           SECRET_KEY=${{ secrets.SECRET_KEY }}
