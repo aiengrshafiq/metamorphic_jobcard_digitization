@@ -4,8 +4,16 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
 <style>
     .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
-    .choices__input { background-color: transparent !important; color: var(--bs-body-color); }
-    #main-form-content { transition: opacity 0.3s ease-in-out; }
+    .choices[data-type*="select-one"]::after { border-color: var(--bs-body-color) transparent transparent; }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
+    #form-b-sections { display: none; }
+    .accordion-button:not(.collapsed) { color: var(--bs-primary-color-rgb); background-color: var(--bs-primary-bg-subtle); }
+    #video-recorder video { max-width: 100%; border-radius: .375rem; background-color: #000; }
+    /* NEW STYLES for Image Uploader */
+    #image-preview-container { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+    .img-preview-wrapper { position: relative; width: 120px; height: 120px; }
+    .img-preview { width: 100%; height: 100%; object-fit: cover; border-radius: .375rem; border: 1px solid #dee2e6; }
+    .upload-progress { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; border-radius: .375rem; }
 </style>
 {% endblock %}
 
@@ -13,133 +21,68 @@
 <div class="card shadow-sm border-0">
     <div class="card-body p-4">
         <form id="duty-officer-form" novalidate>
-            <!-- Section 1: Job Card Selection -->
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="job_card_id" class="form-label">Select Job Card <span class="text-danger">*</span></label>
-                    <select id="job_card_id" name="job_card_id" required>
-                        <option value="">Search by Job Card No...</option>
-                        {% for jc in job_cards %}
-                        <option value="{{ jc.id }}">{{ jc.job_card_no }} ({{ jc.project.name }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                 <div class="col-md-6 mb-3">
-                    <label for="date_of_work" class="form-label">Date of Work <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control" id="date_of_work" name="date_of_work" required>
-                </div>
+            <input type="hidden" name="toolbox_video_id" id="toolbox_video_id">
+            <input type="hidden" name="site_image_ids" id="site_image_ids">
+
+            <div class="mb-3">
+                <label for="job_card_id" class="form-label fs-5">First, select the Job Card you are reporting progress for:</label>
+                <select class="form-select" id="job_card_id" name="job_card_id" required>
+                    <option value="">Search by Job Card No. or Project Name...</option>
+                    {% for jc in job_cards %}
+                    <option value="{{ jc.id }}">{{ jc.job_card_no }} ({{ jc.project.name }})</option>
+                    {% endfor %}
+                </select>
             </div>
-            <hr>
 
-            <!-- This div is hidden until a Job Card is selected -->
-            <div id="main-form-content" style="display: none; opacity: 0;">
-                <div class="accordion" id="form-b-accordion">
-                    <!-- Section: Task Details -->
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="headingTask">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTask" aria-expanded="true" aria-controls="collapseTask">
-                                <strong>Task Progress Details</strong>
-                            </button>
-                        </h2>
-                        <div id="collapseTask" class="accordion-collapse collapse show" aria-labelledby="headingTask">
-                            <div class="accordion-body">
-                                <div class="row g-3">
-                                    <div class="col-12">
-                                        <label for="task_id" class="form-label">Task Description <span class="text-danger">*</span></label>
-                                        <select class="form-select" id="task_id" name="task_id" required>
-                                            <option value="">Select a task...</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-12">
-                                        <label for="actual_output" class="form-label">Actual Output for the Day <span class="text-danger">*</span></label>
-                                        <textarea id="actual_output" name="actual_output" class="form-control" rows="3" required></textarea>
-                                    </div>
-                                    <div class="col-12">
-                                        <label for="issues_delays" class="form-label">Issues / Delays <span class="text-danger">*</span></label>
-                                        <textarea id="issues_delays" name="issues_delays" class="form-control" rows="2" required></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Section 2: Toolbox Talk -->
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="headingTwo">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                                Section 2: Toolbox Talk
-                            </button>
-                        </h2>
-                        <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo">
-                            <div class="accordion-body">
-                                <div class="row g-3">
-                                    <div class="col-md-12"><label class="form-label">Attendance (Names) <span class="text-danger">*</span></label><input type="text" name="tbt_attendance" class="form-control" required></div>
-                                    <div class="col-md-6"><label class="form-label">Topic Discussed</label><input type="text" name="tbt_topic_discussed" class="form-control"></div>
-                                    <div class="col-md-6"><label class="form-label">Key Points <span class="text-danger">*</span></label><input type="text" name="tbt_key_points" class="form-control" required></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div id="form-b-sections">
+                <hr class="my-4">
 
-                    <!-- Section 3: Site Management -->
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="headingThree">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                                Section 3: Site Management
-                            </button>
-                        </h2>
-                        <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree">
-                            <div class="accordion-body">
-                               <div class="row g-3">
-                                    <div class="col-12"><label class="form-label">Equipment Inventory <span class="text-danger">*</span></label><textarea name="sm_equipment_inventory" class="form-control" rows="2" required></textarea></div>
-                                    <div class="col-md-6"><label class="form-label">Equipment Condition</label><select name="sm_equipment_condition" class="form-select">{% for item in equipment_conditions %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
-                                    <div class="col-md-6"><label class="form-label">Equipment Transfer</label><input type="text" name="sm_equipment_transfer" class="form-control" placeholder="Mention Meta Code & Site Officer"></div>
-                                    <div class="col-md-6"><label class="form-label">Sub-contractor Coordination</label><select name="sm_sub_contractor_coordination" class="form-select">{% for item in sub_contractor_coordinations %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
-                                    <div class="col-md-6"><label class="form-label">If Issues, please mention</label><input type="text" name="sm_coordination_issues" class="form-control"></div>
-                                    <div class="col-md-6"><label class="form-label">Safety Hazards Identified <span class="text-danger">*</span></label><input type="text" name="sm_safety_hazards" class="form-control" required></div>
-                                    <div class="col-md-3"><label class="form-label">PPE Check</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="sm_ppe_check" value="true"></div></div>
-                                    <div class="col-md-3"><label class="form-label">Photos on WhatsApp</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="sm_photos_on_whatsapp" value="true"></div></div>
-                                    <div class="col-12"><label class="form-label">Remarks</label><textarea name="sm_remarks" class="form-control" rows="2"></textarea></div>
-                                    <div class="col-12"><label class="form-label">Foreman Signature (Name) <span class="text-danger">*</span></label><select name="sm_foreman_signature_id" class="form-select" required><option value="">Select Foreman...</option>{% for foreman in foremen %}<option value="{{ foreman.id }}">{{ foreman.name }}</option>{% endfor %}</select></div>
-                               </div>
+                <div id="video-recorder" class="mb-4">
+                    <h4 class="mb-3">Toolbox Video (Optional)</h4>
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <video id="video-preview" class="w-100" playsinline autoplay muted></video>
+                            <div id="video-status" class="mt-2 text-muted"></div>
+                            <div id="video-controls" class="mt-3">
+                                <button type="button" class="btn btn-danger" id="record-btn"><i class="bi bi-record-circle me-1"></i> Start Recording</button>
+                                <button type="button" class="btn btn-secondary" id="stop-btn" style="display: none;"><i class="bi bi-stop-circle me-1"></i> Stop Recording</button>
+                                <button type="button" class="btn btn-info text-white" id="retake-btn" style="display: none;"><i class="bi bi-arrow-counterclockwise me-1"></i> Retake</button>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Section 4: Material Management -->
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="headingFour">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
-                                Section 4: Material Management
-                            </button>
-                        </h2>
-                        <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour">
-                            <div class="accordion-body">
-                                <div class="row g-3">
-                                    <div class="col-md-6"><label class="form-label">Deliveries Received <span class="text-danger">*</span></label><select name="mm_deliveries_received" class="form-select" required>{% for item in delivery_statuses %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
-                                    <div class="col-md-6"><label class="form-label">If Rejected, state reason</label><input type="text" name="mm_rejection_reason" class="form-control"></div>
-                                    <div class="col-12"><label class="form-label">Stock Balance (Materials & QTY) <span class="text-danger">*</span></label><textarea name="mm_stock_balance" class="form-control" rows="2" required></textarea></div>
-                                    <div class="col-12"><label class="form-label">Material Transfers Made</label><input type="text" name="mm_material_transfers" class="form-control" placeholder="Project Code & Site Officer Name"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                </div>
 
-                    <!-- Section 5: Knowledge and Training -->
+                <div class="mb-4">
+                    <h4 class="mb-3">Site Images (Optional)</h4>
+                     <div class="card border-0 shadow-sm">
+                         <div class="card-body">
+                             <label for="image-upload-input" class="form-label">Select one or more images to upload:</label>
+                             <input class="form-control" type="file" id="image-upload-input" accept="image/*" multiple>
+                             <div id="image-preview-container"></div>
+                         </div>
+                     </div>
+                </div>
+
+                <div class="accordion" id="formBAccordion">
                     <div class="accordion-item">
-                        <h2 class="accordion-header" id="headingFive">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
-                                Section 5: Knowledge and Training Transfer
-                            </button>
-                        </h2>
-                        <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive">
-                            <div class="accordion-body">
-                                <div class="row g-3">
-                                    <div class="col-md-6"><label class="form-label">SOPs Explained by Site Officer/Engr</label><select name="kt_sops_explained" class="form-select">{% for item in sop_statuses %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
-                                    <div class="col-md-6"><label class="form-label">If help required, mention work</label><input type="text" name="kt_help_required_details" class="form-control"></div>
-                                    <div class="col-12"><label class="form-label">Critical Actions / Materials Required</label><textarea name="kt_critical_actions_required" class="form-control" rows="2"></textarea></div>
-                                </div>
-                            </div>
-                        </div>
+                        <h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">Section 1: Progress Details</button></h2>
+                        <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#formBAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label for="task_id" class="form-label">Task Description <span class="text-danger">*</span></label><select class="form-select" id="task_id" name="task_id" required><option value="">Select a task...</option></select></div><div class="col-md-6"><label for="date_of_work" class="form-label">Date (of work) <span class="text-danger">*</span></label><input type="date" class="form-control" id="date_of_work" name="date_of_work" required></div><div class="col-12"><label for="actual_output" class="form-label">Actual Output for the Day <span class="text-danger">*</span></label><textarea class="form-control" id="actual_output" name="actual_output" rows="3" required></textarea></div><div class="col-12"><label for="issues_delays" class="form-label">Issues / Delays <span class="text-danger">*</span></label><textarea class="form-control" id="issues_delays" name="issues_delays" rows="3" required></textarea></div></div></div></div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTwo"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">Section 2: Toolbox Talk</button></h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#formBAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-12"><label class="form-label">Attendance (Names) <span class="text-danger">*</span></label><input type="text" class="form-control" name="tbt_attendance" required></div><div class="col-md-12"><label class="form-label">Topic Discussed</label><input type="text" class="form-control" name="tbt_topic_discussed"></div><div class="col-md-12"><label class="form-label">Key Points <span class="text-danger">*</span></label><textarea class="form-control" name="tbt_key_points" rows="3" required></textarea></div></div></div></div>
+                    </div>
+                    <div class="accordion-item">
+                         <h2 class="accordion-header" id="headingThree"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">Section 3: Site Management</button></h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#formBAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">Equipment Inventory <span class="text-danger">*</span></label><input type="text" class="form-control" name="sm_equipment_inventory" required></div><div class="col-md-6"><label class="form-label">Equipment Condition</label><select class="form-select" name="sm_equipment_condition"><option value="">Select...</option>{% for opt in equipment_conditions %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div><div class="col-12"><label class="form-label">Equipment Transfer (Mention Meta Code and Site Officer Name)</label><input type="text" class="form-control" name="sm_equipment_transfer"></div><div class="col-12"><label class="form-label">Remarks</label><textarea class="form-control" name="sm_remarks" rows="2"></textarea></div><div class="col-md-6"><label class="form-label">Subcontractor Coordination</label><select class="form-select" name="sm_sub_contractor_coordination"><option value="">Select...</option>{% for opt in sub_contractor_coordinations %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">If Issues, please Mention</label><input type="text" class="form-control" name="sm_coordination_issues"></div><div class="col-md-6"><label class="form-label">Safety Hazards Identified <span class="text-danger">*</span></label><input type="text" class="form-control" name="sm_safety_hazards" required></div><div class="col-md-6"><label class="form-label">Officer and Duty Officer (Signature) <span class="text-danger">*</span></label><select class="form-select" name="sm_foreman_signature_id" required><option value="">Select...</option>{% for f in foremen %}<option value="{{ f.id }}">{{ f.name }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">PPE Check</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="sm_ppe_check" value="true"></div></div><div class="col-md-6"><label class="form-label">Photos / Evidence Submit on WhatsApp</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="sm_photos_on_whatsapp" value="true"></div></div></div></div></div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingFour"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">Section 4: Material Management</button></h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#formBAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">Deliveries Received <span class="text-danger">*</span></label><select class="form-select" name="mm_deliveries_received" required><option value="">Select...</option>{% for opt in delivery_statuses %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">If Rejected, please mention reason</label><input type="text" class="form-control" name="mm_rejection_reason"></div><div class="col-md-6"><label class="form-label">Stock Balance (Materials) Mention Quantity <span class="text-danger">*</span></label><input type="text" class="form-control" name="mm_stock_balance" required></div><div class="col-md-6"><label class="form-label">Material Transfers made (Project Code & Site Officer)</label><input type="text" class="form-control" name="mm_material_transfers"></div></div></div></div>
+                    </div>
+                     <div class="accordion-item">
+                         <h2 class="accordion-header" id="headingFive"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">Section 5: Knowledge and Training Transfer</button></h2>
+                        <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#formBAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">SOPs Explain by Site officers or Engr</label><select class="form-select" name="kt_sops_explained"><option value="">Select...</option>{% for opt in sop_statuses %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">If required, please mention work</label><input type="text" class="form-control" name="kt_help_required_details"></div><div class="col-12"><label class="form-label">Critical actions/ Materials Required</label><input type="text" class="form-control" name="kt_critical_actions_required"></div></div></div></div>
                     </div>
                 </div>
 
@@ -155,79 +98,206 @@
 </div>
 {% endblock %}
 
-
 {% block scripts_extra %}
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const mainFormContent = document.getElementById('main-form-content');
+    // --- VIDEO RECORDER LOGIC (UNCHANGED) ---
+    const recordBtn = document.getElementById('record-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const retakeBtn = document.getElementById('retake-btn');
+    const videoPreview = document.getElementById('video-preview');
+    const videoStatus = document.getElementById('video-status');
+    const hiddenVideoIdInput = document.getElementById('toolbox_video_id');
+    let mediaRecorder;
+    let recordedChunks = [];
+    let videoStream;
+    async function startRecording() {
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
+            videoPreview.srcObject = videoStream;
+            mediaRecorder = new MediaRecorder(videoStream, { mimeType: 'video/webm' });
+            recordedChunks = [];
+            mediaRecorder.ondataavailable = event => { if (event.data.size > 0) recordedChunks.push(event.data); };
+            mediaRecorder.onstop = uploadVideo;
+            mediaRecorder.start();
+            videoStatus.textContent = '🔴 Recording...';
+            recordBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
+            retakeBtn.style.display = 'none';
+        } catch (error) {
+            console.error('Error accessing media devices.', error);
+            videoStatus.textContent = 'Could not access camera/microphone.';
+            alert('Error: Could not access camera or microphone. Please check permissions.');
+        }
+    }
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStatus.textContent = 'Recording stopped. Preparing for upload...';
+            stopBtn.disabled = true;
+        }
+    }
+    async function uploadVideo() {
+        const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+        videoPreview.srcObject = null;
+        videoPreview.src = URL.createObjectURL(videoBlob);
+        videoPreview.muted = false;
+        videoPreview.controls = true;
+        videoStatus.innerHTML = `<div class="progress" role="progressbar"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%">Uploading...</div></div>`;
+        const formData = new FormData();
+        formData.append('video', videoBlob, 'toolbox-talk.webm');
+        try {
+            const response = await fetch('/api/videos/upload', { method: 'POST', body: formData });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Upload failed');
+            hiddenVideoIdInput.value = result.video_id;
+            videoStatus.textContent = `✅ Upload complete!`;
+            recordBtn.style.display = 'none';
+            stopBtn.style.display = 'none';
+            retakeBtn.style.display = 'inline-block';
+        } catch(error) {
+            videoStatus.textContent = `❌ Upload failed: ${error.message}`;
+            retakeBtn.style.display = 'inline-block';
+        } finally {
+            stopBtn.disabled = false;
+        }
+    }
+    function resetVideo() {
+        recordedChunks = [];
+        videoPreview.srcObject = null;
+        videoPreview.src = '';
+        videoPreview.controls = false;
+        videoPreview.muted = true;
+        hiddenVideoIdInput.value = '';
+        videoStatus.textContent = '';
+        recordBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'none';
+        retakeBtn.style.display = 'none';
+    }
+    recordBtn.addEventListener('click', startRecording);
+    stopBtn.addEventListener('click', stopRecording);
+    retakeBtn.addEventListener('click', resetVideo);
+
+    // --- IMAGE UPLOADER LOGIC (NEW) ---
+    const imageUploadInput = document.getElementById('image-upload-input');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const hiddenImageIdsInput = document.getElementById('site_image_ids');
+
+    imageUploadInput.addEventListener('change', function(event) {
+        const files = event.target.files;
+        if (!files.length) return;
+        
+        // Clear previous previews and stored IDs
+        imagePreviewContainer.innerHTML = '';
+        let uploadedImageIds = [];
+
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            
+            const previewWrapper = document.createElement('div');
+            previewWrapper.className = 'img-preview-wrapper';
+            
+            const img = document.createElement('img');
+            img.className = 'img-preview';
+            
+            const progressOverlay = document.createElement('div');
+            progressOverlay.className = 'upload-progress';
+            progressOverlay.innerHTML = `<div class="spinner-border spinner-border-sm text-light" role="status"></div>`;
+
+            previewWrapper.appendChild(img);
+            previewWrapper.appendChild(progressOverlay);
+            imagePreviewContainer.appendChild(previewWrapper);
+
+            reader.onload = function(e) {
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+
+            // Upload the file immediately
+            const formData = new FormData();
+            formData.append('files', file);
+
+            fetch('/api/images/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.image_ids && result.image_ids.length > 0) {
+                    uploadedImageIds.push(result.image_ids[0]);
+                    hiddenImageIdsInput.value = uploadedImageIds.join(',');
+                    progressOverlay.innerHTML = `<i class="bi bi-check-circle-fill text-success fs-4"></i>`;
+                } else {
+                    throw new Error('No image ID returned');
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                progressOverlay.innerHTML = `<i class="bi bi-x-circle-fill text-danger fs-4"></i>`;
+            });
+        });
+    });
+    
+    // --- EXISTING FORM LOGIC (with reset additions) ---
+    const jobCardSelect = document.getElementById('job_card_id');
+    const formBSections = document.getElementById('form-b-sections');
     const taskSelect = document.getElementById('task_id');
+    const jobCardChoices = new Choices(jobCardSelect, { searchEnabled: true, removeItemButton: false, itemSelectText: ''});
+    let taskChoices; 
+    jobCardSelect.addEventListener('change', async function() {
+        const jobCardId = this.value;
+        taskSelect.innerHTML = '<option value="">Loading tasks...</option>';
+        if (taskChoices) { taskChoices.destroy(); }
+
+        if (jobCardId) {
+            formBSections.style.display = 'block';
+            try {
+                const response = await fetch(`/api/job-cards/${jobCardId}/tasks`);
+                const tasks = await response.json();
+                let options = '<option value="">Select a task...</option>';
+                tasks.forEach(task => { options += `<option value="${task.id}">${task.task_details}</option>`; });
+                taskSelect.innerHTML = options;
+            } catch (error) {
+                taskSelect.innerHTML = '<option value="">Could not load tasks</option>';
+            }
+        } else {
+            formBSections.style.display = 'none';
+            taskSelect.innerHTML = '<option value="">Select a task...</option>';
+        }
+        taskChoices = new Choices(taskSelect, { searchEnabled: false });
+    });
     const form = document.getElementById('duty-officer-form');
     const submitBtn = document.getElementById('submit-btn');
     const spinner = submitBtn.querySelector('.spinner-border');
     const toastElement = document.getElementById('responseToast');
     const toast = new bootstrap.Toast(toastElement);
-
-    const jobCardChoices = new Choices('#job_card_id', { searchEnabled: true, itemSelectText: '' });
-
-    document.getElementById('job_card_id').addEventListener('change', async function(event) {
-        const jobCardId = event.detail.value;
-        taskSelect.innerHTML = '<option value="">Loading tasks...</option>';
-        
-        if (!jobCardId) {
-            mainFormContent.style.display = 'none';
-            mainFormContent.style.opacity = 0;
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/job-cards/${jobCardId}/tasks`);
-            if (!response.ok) throw new Error('Failed to fetch tasks.');
-            
-            const tasks = await response.json();
-            taskSelect.innerHTML = '<option value="">Select a task...</option>';
-            tasks.forEach(task => {
-                const option = new Option(`${task.task_details.substring(0, 100)}...`, task.id);
-                taskSelect.add(option);
-            });
-            mainFormContent.style.display = 'block';
-            setTimeout(() => { mainFormContent.style.opacity = 1; }, 10);
-        } catch (error) {
-            console.error(error);
-            taskSelect.innerHTML = '<option value="">Could not load tasks</option>';
-        }
-    });
-
-    form.addEventListener('submit', async function(e) {
+    document.getElementById('date_of_work').valueAsDate = new Date();
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
-        if (!form.checkValidity()) {
-            form.classList.add('was-validated');
-            return;
-        }
+        if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
         spinner.style.display = 'inline-block';
         submitBtn.disabled = true;
-
         const formData = new FormData(form);
         try {
             const response = await fetch('/duty-officer-progress/', { method: 'POST', body: formData });
             const result = await response.json();
-
             const toastBody = document.getElementById('toast-body');
             const toastTitle = document.getElementById('toast-title');
             toastElement.classList.remove('bg-danger', 'bg-success');
-
             if (response.ok) {
                 toastElement.classList.add('bg-success', 'text-white');
                 toastTitle.innerText = 'Success!';
                 toastBody.innerText = result.message;
                 form.reset();
-                form.classList.remove('was-validated');
                 jobCardChoices.clearStore();
                 jobCardChoices.setChoiceByValue('');
-                mainFormContent.style.display = 'none';
-            } else {
-                throw new Error(result.message || 'An unknown error occurred.');
-            }
+                formBSections.style.display = 'none';
+                resetVideo(); // Reset the video recorder
+                imagePreviewContainer.innerHTML = ''; // Clear image previews
+                document.getElementById('date_of_work').valueAsDate = new Date();
+            } else { throw new Error(result.message || 'An unknown error occurred.'); }
         } catch (error) {
             toastElement.classList.add('bg-danger', 'text-white');
             document.getElementById('toast-title').innerText = 'Error!';
@@ -238,8 +308,6 @@ document.addEventListener('DOMContentLoaded', function () {
             submitBtn.disabled = false;
         }
     });
-    
-    document.getElementById('date_of_work').valueAsDate = new Date();
 });
 </script>
 {% endblock %}
