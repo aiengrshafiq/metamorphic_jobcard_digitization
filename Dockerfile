@@ -20,8 +20,9 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory
 WORKDIR /app
 
-# Copy the installed packages from the builder stage
-COPY --from-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+# --- THIS IS THE FIX ---
+# Copy the installed packages from the builder stage using the correct syntax
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy the application code
@@ -34,7 +35,6 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
-# --- THIS IS THE FIX ---
 # Point the health check to a dedicated /health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
