@@ -20,8 +20,7 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory
 WORKDIR /app
 
-# --- THIS IS THE FIX ---
-# Copy the installed packages from the builder stage using the correct syntax
+# Copy the installed packages from the builder stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
@@ -39,5 +38,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the application using Gunicorn, a production-ready web server
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8000"]
+# --- THIS IS THE FIX ---
+# Run the application using Gunicorn, adding the --forwarded-allow-ips flag
+# This tells Gunicorn to trust the X-Forwarded-* headers from Azure's proxy.
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--forwarded-allow-ips", "*", "app.main:app", "--bind", "0.0.0.0:8000"]
