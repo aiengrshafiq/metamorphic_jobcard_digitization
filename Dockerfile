@@ -39,4 +39,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD python -c "import urllib.request, sys; urllib.request.urlopen('http://localhost:8000/health', timeout=3)" || exit 1
 
 # CORRECTED: Add the --proxy-headers flag for Uvicorn workers
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--forwarded-allow-ips", "*", "--proxy-headers", "app.main:app", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn",
+     "-w", "4",
+     "-k", "uvicorn.workers.UvicornWorker",
+     "--forwarded-allow-ips", "*",
+     "app.main:app",
+     "--bind", "0.0.0.0:8000",
+     "--access-logfile", "-"]
