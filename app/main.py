@@ -231,6 +231,13 @@ def process_video_and_update_db(video_id: int, file_contents: bytes):
 
 # --- Main Page Endpoints ---
 # ... (All GET endpoints are unchanged)
+
+# --- THIS IS THE FIX ---
+@app.get("/health")
+async def health_check():
+    """A dedicated health check endpoint for the liveness probe."""
+    return {"status": "ok"}
+    
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request): return templates.TemplateResponse("dashboard.html", {"request": request, "page_title": "Dashboard"})
 @app.get("/job-card-form", response_class=HTMLResponse)
