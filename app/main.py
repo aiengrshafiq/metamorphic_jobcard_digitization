@@ -16,6 +16,9 @@ import openai
 import json
 from azure.storage.blob import BlobServiceClient
 
+# --- THIS IS THE NEW IMPORT ---
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
 from app.core.database import engine, get_db
 from app.core.config import settings
 from app.models import (
@@ -25,6 +28,10 @@ from app.models import (
 
 # --- App and Admin Panel Setup ---
 app = FastAPI(title="Metamorphic Job Card App")
+# --- THIS IS THE FIX ---
+# This middleware tells the app to trust the proxy headers from Azure
+# and build URLs with https:// when appropriate.
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 templates = Jinja2Templates(directory="templates")
 
 @app.get("/job-card-tracking", response_class=HTMLResponse)
