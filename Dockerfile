@@ -34,15 +34,10 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
-# CORRECTED: Use a Python-based health check that doesn't require curl
+# Use a Python-based health check that doesn't require installing extra packages
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD python -c "import urllib.request, sys; urllib.request.urlopen('http://localhost:8000/health', timeout=3)" || exit 1
 
-# CORRECTED: Add the --proxy-headers flag for Uvicorn workers
-CMD ["gunicorn",
-     "-w", "4",
-     "-k", "uvicorn.workers.UvicornWorker",
-     "--forwarded-allow-ips", "*",
-     "app.main:app",
-     "--bind", "0.0.0.0:8000",
-     "--access-logfile", "-"]
+# --- THIS IS THE CORRECTED COMMAND ---
+# We only need --forwarded-allow-ips for Gunicorn. The middleware will handle the rest.
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--forwarded-allow-ips", "*", "app.main:app", "--bind", "0.0.0.0:8000"]
