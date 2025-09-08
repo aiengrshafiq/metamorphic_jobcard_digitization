@@ -1,0 +1,53 @@
+name: Build and Deploy to Azure Container Apps
+
+on:
+  push:
+    branches:
+      - main  # Trigger this workflow on every push to the main branch
+
+env:
+  RESOURCE_GROUP: 'jobcard_rg' # Choose a name for your resource group
+  LOCATION: 'uaenorth'             # Choose the Azure region closest to you
+  ACR_NAME: 'jobcardacr'       # Choose a unique name for your container registry
+  CONTAINER_APP_ENV: 'jobcard-env' # Name for the container app environment
+  CONTAINER_APP_NAME: 'jobcard-app'  # Name for your final application
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: 'Az CLI login'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Build and push image'
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.ACR_NAME }}.azurecr.io
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+    - run: |
+        docker build . -t ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
+        docker push ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
+
+    - name: 'Deploy to Azure Container Apps'
+      uses: azure/container-apps-deploy@v1
+      with:
+        resourceGroup: ${{ env.RESOURCE_GROUP }}
+        location: ${{ env.LOCATION }}
+        acrName: ${{ env.ACR_NAME }}
+        containerAppEnvironment: ${{ env.CONTAINER_APP_ENV }}
+        containerAppName: ${{ env.CONTAINER_APP_NAME }}
+        imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
+        targetPort: 8000
+        ingress: 'external' # Make the app accessible from the internet
+        environmentVariables: |
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}

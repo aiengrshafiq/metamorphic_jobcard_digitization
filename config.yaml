@@ -80,3 +80,8 @@ approval_statuses:
 requisition_statuses:
   - Delivered
   - Pending
+
+task_statuses:
+  - Pending
+  - Processing
+  - Done

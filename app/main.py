@@ -27,6 +27,65 @@ from app.models import (
 app = FastAPI(title="Metamorphic Job Card App")
 templates = Jinja2Templates(directory="templates")
 
+@app.get("/job-card-tracking", response_class=HTMLResponse)
+async def job_card_tracking(request: Request, db: Session = Depends(get_db)):
+    """Serves the Job Card Tracking page."""
+    job_cards = db.query(JobCard).options(
+        joinedload(JobCard.project), 
+        selectinload(JobCard.tasks)
+    ).order_by(JobCard.id.desc()).all()
+
+    context = {
+        "request": request,
+        "page_title": "Job Card Tracking",
+        "job_cards": job_cards,
+        "task_statuses": app_config['task_statuses']
+    }
+    return templates.TemplateResponse("job_card_tracking.html", context)
+
+@app.post("/api/tasks/{task_id}/update-status", response_class=JSONResponse)
+async def update_task_status(task_id: int, db: Session = Depends(get_db), status: str = Form(...)):
+    # Step 1: Find the specific task and its parent job card
+    task = db.query(Task).filter(Task.id == task_id).options(joinedload(Task.job_card)).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Step 2: Update the task's status and save the change
+    task.status = status
+    db.commit()
+
+    # Step 3: After saving, perform a fresh check on the parent job card's tasks
+    job_card = task.job_card
+    
+    # This is the corrected logic:
+    # Count how many of the job card's tasks are NOT "Done" by querying the database directly.
+    pending_or_processing_tasks_count = db.query(Task).filter(
+        Task.job_card_id == job_card.id,
+        Task.status != 'Done'
+    ).count()
+
+    job_card_status_changed = False
+    # If the count of unfinished tasks is zero, all tasks must be done.
+    if pending_or_processing_tasks_count == 0:
+        if job_card.status != 'Done':
+            job_card.status = 'Done'
+            job_card_status_changed = True
+    else:
+        # If any task is not Done, ensure the job card is marked as Pending.
+        if job_card.status == 'Done':
+            job_card.status = 'Pending'
+            job_card_status_changed = True
+    
+    if job_card_status_changed:
+        db.commit()
+        db.refresh(job_card) # Refresh to get the latest state
+
+    return {
+        "message": f"Task {task_id} status updated to {status}",
+        "job_card_id": job_card.id,
+        "job_card_status": job_card.status if job_card_status_changed else None
+    }
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     print("\n--- DETAILED VALIDATION ERROR ---")

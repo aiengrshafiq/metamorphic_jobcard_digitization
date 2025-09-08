@@ -172,6 +172,7 @@ class JobCard(Base):
     __tablename__ = 'job_cards'
     id = Column(Integer, primary_key=True, index=True)
     job_card_no = Column(String, unique=True, nullable=False, index=True)
+    status = Column(String, nullable=False, default='Pending', index=True)
     date_issued = Column(Date, nullable=False)
     site_location = Column(String, nullable=False)
     created_at = Column(DateTime, default=func.now())
@@ -193,6 +194,7 @@ class Task(Base):
     __tablename__ = 'tasks'
     id = Column(Integer, primary_key=True, index=True)
     task_details = Column(String)
+    status = Column(String, nullable=False, default='Pending', index=True)
     quantity = Column(Numeric(10, 2))
     units = Column(String)
     priority = Column(Integer, default=3)
