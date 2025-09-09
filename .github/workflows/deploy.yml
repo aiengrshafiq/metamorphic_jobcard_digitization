@@ -18,17 +18,15 @@ jobs:
 
     steps:
     - name: Checkout code
-      # UPDATED: Using the latest stable version
       uses: actions/checkout@v4
 
     - name: 'Az CLI login'
-      # UPDATED: Using the latest stable version
       uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: 'Build and push image'
-      uses: azure/docker-login@v1 # This action is still commonly on v1
+      uses: azure/docker-login@v1
       with:
         login-server: ${{ env.ACR_NAME }}.azurecr.io
         username: ${{ secrets.ACR_USERNAME }}
@@ -38,18 +36,24 @@ jobs:
         docker push ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
 
     - name: 'Deploy to Azure Container Apps'
-      uses: Azure/container-apps-deploy-action@v2
+      uses: azure/container-apps-deploy@v2
       with:
         resourceGroup: ${{ env.RESOURCE_GROUP }}
-        location: ${{ env.LOCATION }}
-        acrName: ${{ env.ACR_NAME }}
-        containerAppEnvironment: ${{ env.CONTAINER_APP_ENV }}
         containerAppName: ${{ env.CONTAINER_APP_NAME }}
         imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
-        targetPort: 8000
-        ingress: external
+        
+        # Step 1: Securely pass GitHub secrets to create secrets in Azure.
+        # Format is: 'azure-secret-name ${{ secrets.github-secret-name }}'
+        secrets: |
+          database-url ${{ secrets.DATABASE_URL }}
+          secret-key ${{ secrets.SECRET_KEY }}
+          azure-storage-connection-string ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          openai-api-key ${{ secrets.OPENAI_API_KEY }}
+        
+        # Step 2: Tell the container to use those Azure secrets as its environment variables.
+        # Format is: 'ENV_VAR_NAME=secretref:azure-secret-name'
         environmentVariables: |
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          DATABASE_URL=secretref:database-url
+          SECRET_KEY=secretref:secret-key
+          AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string
+          OPENAI_API_KEY=secretref:openai-api-key
