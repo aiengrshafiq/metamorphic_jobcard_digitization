@@ -1,58 +1,25 @@
-name: Build and Deploy to Azure Container Apps
+- name: Deploy to Azure Container Apps
+  uses: Azure/container-apps-deploy-action@v2
+  with:
+    resourceGroup: ${{ env.RESOURCE_GROUP }}
+    location: ${{ env.LOCATION }}
+    acrName: ${{ env.ACR_NAME }}
+    containerAppEnvironment: ${{ env.CONTAINER_APP_ENV }}
+    containerAppName: ${{ env.CONTAINER_APP_NAME }}
+    imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
+    targetPort: 8000
+    ingress: external
 
-on:
-  push:
-    branches:
-      - main  # Trigger this workflow on every push to the main branch
+    # Push values into ACA secrets
+    secrets: |
+      DATABASE_URL=${{ secrets.DATABASE_URL }}
+      SECRET_KEY=${{ secrets.SECRET_KEY }}
+      AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+      OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
 
-env:
-  RESOURCE_GROUP: 'jobcard_rg' 
-  LOCATION: 'uaenorth'
-  ACR_NAME: 'jobcardacr'
-  CONTAINER_APP_ENV: 'jobcard-env'
-  CONTAINER_APP_NAME: 'jobcard-app'
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      # UPDATED: Using the latest stable version
-      uses: actions/checkout@v4
-
-    - name: 'Az CLI login'
-      # UPDATED: Using the latest stable version
-      uses: azure/login@v2
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-    - name: 'Build and push image'
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ env.ACR_NAME }}.azurecr.io
-        username: ${{ secrets.ACR_USERNAME }}
-        password: ${{ secrets.ACR_PASSWORD }}
-    - run: |
-        docker build . -t ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
-        docker push ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
-
-    - name: 'Deploy to Azure Container Apps'
-      # UPDATED: Using the latest stable version, which is the fix
-      uses: azure/container-apps-deploy@v3
-      with:
-        resourceGroup: ${{ env.RESOURCE_GROUP }}
-        containerAppName: ${{ env.CONTAINER_APP_NAME }}
-        imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
-        
-        secrets: |
-          database-url ${{ secrets.DATABASE_URL }}
-          secret-key ${{ secrets.SECRET_KEY }}
-          azure-storage-connection-string ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          openai-api-key ${{ secrets.OPENAI_API_KEY }}
-        
-        environmentVariables: |
-          DATABASE_URL=secretref:database-url
-          SECRET_KEY=secretref:secret-key
-          AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string
-          OPENAI_API_KEY=secretref:openai-api-key
+    # Expose them to the container via secret references
+    environmentVariables: |
+      DATABASE_URL=secretref:DATABASE_URL
+      SECRET_KEY=secretref:SECRET_KEY
+      AZURE_STORAGE_CONNECTION_STRING=secretref:AZURE_STORAGE_CONNECTION_STRING
+      OPENAI_API_KEY=secretref:OPENAI_API_KEY
