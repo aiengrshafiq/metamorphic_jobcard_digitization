@@ -18,9 +18,11 @@ jobs:
 
     steps:
     - name: Checkout code
+      # UPDATED: Using the latest stable version
       uses: actions/checkout@v4
 
     - name: 'Az CLI login'
+      # UPDATED: Using the latest stable version
       uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -36,22 +38,19 @@ jobs:
         docker push ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
 
     - name: 'Deploy to Azure Container Apps'
-      uses: azure/container-apps-deploy@v2
+      # UPDATED: Using the latest stable version, which is the fix
+      uses: azure/container-apps-deploy@v3
       with:
         resourceGroup: ${{ env.RESOURCE_GROUP }}
         containerAppName: ${{ env.CONTAINER_APP_NAME }}
         imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
         
-        # Step 1: Securely pass GitHub secrets to create secrets in Azure.
-        # Format is: 'azure-secret-name ${{ secrets.github-secret-name }}'
         secrets: |
           database-url ${{ secrets.DATABASE_URL }}
           secret-key ${{ secrets.SECRET_KEY }}
           azure-storage-connection-string ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           openai-api-key ${{ secrets.OPENAI_API_KEY }}
         
-        # Step 2: Tell the container to use those Azure secrets as its environment variables.
-        # Format is: 'ENV_VAR_NAME=secretref:azure-secret-name'
         environmentVariables: |
           DATABASE_URL=secretref:database-url
           SECRET_KEY=secretref:secret-key
