@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Depends, Form, HTTPException, UploadFile, 
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.templating import Jinja2Templates
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from sqlalchemy import select, Select, func
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqladmin import Admin, ModelView
