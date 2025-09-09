@@ -36,22 +36,18 @@ jobs:
         docker push ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
 
     - name: 'Deploy to Azure Container Apps'
-      # --- THIS IS THE DEFINITIVE FIX ---
-      # Using the official and correct action name and version
+      # Using the correct action and its supported parameters
       uses: azure/container-apps-deploy-action@v1
       with:
         resourceGroup: ${{ env.RESOURCE_GROUP }}
         containerAppName: ${{ env.CONTAINER_APP_NAME }}
         imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
         
-        secrets: |
-          database-url ${{ secrets.DATABASE_URL }}
-          secret-key ${{ secrets.SECRET_KEY }}
-          azure-storage-connection-string ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          openai-api-key ${{ secrets.OPENAI_API_KEY }}
-        
+        # --- THIS IS THE FIX ---
+        # Reverting to the environmentVariables block, which is the correct
+        # input for this version of the action.
         environmentVariables: |
-          DATABASE_URL=secretref:database-url
-          SECRET_KEY=secretref:secret-key
-          AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string
-          OPENAI_API_KEY=secretref:openai-api-key
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
