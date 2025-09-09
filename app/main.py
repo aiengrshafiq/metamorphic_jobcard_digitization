@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request, Depends, Form, HTTPException, UploadFile, 
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.templating import Jinja2Templates
-from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from sqlalchemy import select, Select, func
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqladmin import Admin, ModelView
@@ -50,8 +49,7 @@ app_config: dict = _load_config()
 # --- App and Admin Panel Setup ---
 app = FastAPI(title="Metamorphic Job Card App")
 
-# CORRECTED: Use a list for trusted_hosts
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
+
 
 templates = Jinja2Templates(directory="templates")
 
@@ -187,6 +185,13 @@ def process_video_and_update_db(video_id: int, file_contents: bytes):
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    resp = await call_next(request)
+    resp.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
+    return resp
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request): return templates.TemplateResponse("dashboard.html", {"request": request, "page_title": "Dashboard"})
 @app.get("/job-card-form", response_class=HTMLResponse)
