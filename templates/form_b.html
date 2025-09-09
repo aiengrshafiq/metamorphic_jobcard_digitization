@@ -43,9 +43,10 @@
                         <div class="card-body text-center">
                             <video id="video-preview" class="w-100" playsinline autoplay muted></video>
                             <div id="video-status" class="mt-2 text-muted"></div>
-                            <div id="video-controls" class="mt-3">
-                                <button type="button" class="btn btn-danger" id="record-btn"><i class="bi bi-record-circle me-1"></i> Start Recording</button>
-                                <button type="button" class="btn btn-secondary" id="stop-btn" style="display: none;"><i class="bi bi-stop-circle me-1"></i> Stop Recording</button>
+                            <div id="video-controls" class="mt-3 d-flex justify-content-center gap-2">
+                                <button type="button" class="btn btn-danger" id="record-btn"><i class="bi bi-record-circle me-1"></i> Start</button>
+                                <button type="button" class="btn btn-secondary" id="stop-btn" style="display: none;"><i class="bi bi-stop-circle me-1"></i> Stop</button>
+                                <button type="button" class="btn btn-outline-secondary" id="switch-camera-btn" style="display: none;" title="Switch Camera"><i class="bi bi-arrow-repeat"></i></button>
                                 <button type="button" class="btn btn-info text-white" id="retake-btn" style="display: none;"><i class="bi bi-arrow-counterclockwise me-1"></i> Retake</button>
                             </div>
                         </div>
@@ -64,7 +65,7 @@
                 </div>
 
                 <div class="accordion" id="formBAccordion">
-                    <div class="accordion-item">
+                     <div class="accordion-item">
                         <h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">Section 1: Progress Details</button></h2>
                         <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#formBAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label for="task_id" class="form-label">Task Description <span class="text-danger">*</span></label><select class="form-select" id="task_id" name="task_id" required><option value="">Select a task...</option></select></div><div class="col-md-6"><label for="date_of_work" class="form-label">Date (of work) <span class="text-danger">*</span></label><input type="date" class="form-control" id="date_of_work" name="date_of_work" required></div><div class="col-12"><label for="actual_output" class="form-label">Actual Output for the Day <span class="text-danger">*</span></label><textarea class="form-control" id="actual_output" name="actual_output" rows="3" required></textarea></div><div class="col-12"><label for="issues_delays" class="form-label">Issues / Delays <span class="text-danger">*</span></label><textarea class="form-control" id="issues_delays" name="issues_delays" rows="3" required></textarea></div></div></div></div>
                     </div>
@@ -102,43 +103,86 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // --- VIDEO RECORDER LOGIC (UNCHANGED) ---
+    // --- UPDATED VIDEO RECORDER LOGIC ---
     const recordBtn = document.getElementById('record-btn');
     const stopBtn = document.getElementById('stop-btn');
     const retakeBtn = document.getElementById('retake-btn');
+    const switchCameraBtn = document.getElementById('switch-camera-btn');
     const videoPreview = document.getElementById('video-preview');
     const videoStatus = document.getElementById('video-status');
     const hiddenVideoIdInput = document.getElementById('toolbox_video_id');
+    
     let mediaRecorder;
     let recordedChunks = [];
     let videoStream;
-    async function startRecording() {
+    let availableVideoDevices = [];
+    let currentVideoDeviceIndex = 0;
+
+    async function getVideoDevices() {
         try {
-            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                console.log("enumerateDevices() not supported.");
+                return;
+            }
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            availableVideoDevices = devices.filter(device => device.kind === 'videoinput');
+            if (availableVideoDevices.length > 1) {
+                switchCameraBtn.style.display = 'inline-block';
+            }
+        } catch (e) {
+            console.error("Could not enumerate devices:", e);
+        }
+    }
+
+    async function startRecording(deviceId) {
+        try {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints = {
+                audio: true,
+                video: {
+                    deviceId: deviceId ? { exact: deviceId } : undefined,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
+
+            videoStream = await navigator.mediaDevices.getUserMedia(constraints);
             videoPreview.srcObject = videoStream;
+            
             mediaRecorder = new MediaRecorder(videoStream, { mimeType: 'video/webm' });
             recordedChunks = [];
             mediaRecorder.ondataavailable = event => { if (event.data.size > 0) recordedChunks.push(event.data); };
             mediaRecorder.onstop = uploadVideo;
             mediaRecorder.start();
+            
             videoStatus.textContent = '🔴 Recording...';
             recordBtn.style.display = 'none';
             stopBtn.style.display = 'inline-block';
             retakeBtn.style.display = 'none';
+            if (availableVideoDevices.length > 1) {
+                switchCameraBtn.style.display = 'inline-block';
+            }
+
         } catch (error) {
             console.error('Error accessing media devices.', error);
             videoStatus.textContent = 'Could not access camera/microphone.';
-            alert('Error: Could not access camera or microphone. Please check permissions.');
+            alert('Error: Could not access camera or microphone. Please check browser permissions.');
         }
     }
+
     function stopRecording() {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
             videoStream.getTracks().forEach(track => track.stop());
             videoStatus.textContent = 'Recording stopped. Preparing for upload...';
             stopBtn.disabled = true;
+            switchCameraBtn.style.display = 'none';
         }
     }
+
     async function uploadVideo() {
         const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
         videoPreview.srcObject = null;
@@ -164,8 +208,12 @@ document.addEventListener('DOMContentLoaded', function () {
             stopBtn.disabled = false;
         }
     }
+
     function resetVideo() {
         recordedChunks = [];
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+        }
         videoPreview.srcObject = null;
         videoPreview.src = '';
         videoPreview.controls = false;
@@ -175,63 +223,61 @@ document.addEventListener('DOMContentLoaded', function () {
         recordBtn.style.display = 'inline-block';
         stopBtn.style.display = 'none';
         retakeBtn.style.display = 'none';
+        if (availableVideoDevices.length > 1) {
+            switchCameraBtn.style.display = 'inline-block';
+        } else {
+            switchCameraBtn.style.display = 'none';
+        }
     }
-    recordBtn.addEventListener('click', startRecording);
+
+    function switchCamera() {
+        currentVideoDeviceIndex = (currentVideoDeviceIndex + 1) % availableVideoDevices.length;
+        const newDeviceId = availableVideoDevices[currentVideoDeviceIndex].deviceId;
+        startRecording(newDeviceId);
+    }
+    
+    recordBtn.addEventListener('click', () => startRecording());
     stopBtn.addEventListener('click', stopRecording);
     retakeBtn.addEventListener('click', resetVideo);
+    switchCameraBtn.addEventListener('click', switchCamera);
+    
+    // Get camera devices on page load
+    getVideoDevices();
 
-    // --- IMAGE UPLOADER LOGIC (NEW) ---
+    // --- IMAGE UPLOADER LOGIC ---
     const imageUploadInput = document.getElementById('image-upload-input');
     const imagePreviewContainer = document.getElementById('image-preview-container');
     const hiddenImageIdsInput = document.getElementById('site_image_ids');
-
     imageUploadInput.addEventListener('change', function(event) {
         const files = event.target.files;
         if (!files.length) return;
-        
-        // Clear previous previews and stored IDs
         imagePreviewContainer.innerHTML = '';
         let uploadedImageIds = [];
-
+        hiddenImageIdsInput.value = '';
         Array.from(files).forEach(file => {
             const reader = new FileReader();
-            
             const previewWrapper = document.createElement('div');
             previewWrapper.className = 'img-preview-wrapper';
-            
             const img = document.createElement('img');
             img.className = 'img-preview';
-            
             const progressOverlay = document.createElement('div');
             progressOverlay.className = 'upload-progress';
             progressOverlay.innerHTML = `<div class="spinner-border spinner-border-sm text-light" role="status"></div>`;
-
             previewWrapper.appendChild(img);
             previewWrapper.appendChild(progressOverlay);
             imagePreviewContainer.appendChild(previewWrapper);
-
-            reader.onload = function(e) {
-                img.src = e.target.result;
-            }
+            reader.onload = e => { img.src = e.target.result; }
             reader.readAsDataURL(file);
-
-            // Upload the file immediately
             const formData = new FormData();
             formData.append('files', file);
-
-            fetch('/api/images/upload', {
-                method: 'POST',
-                body: formData
-            })
+            fetch('/api/images/upload', { method: 'POST', body: formData })
             .then(response => response.json())
             .then(result => {
                 if (result.image_ids && result.image_ids.length > 0) {
                     uploadedImageIds.push(result.image_ids[0]);
                     hiddenImageIdsInput.value = uploadedImageIds.join(',');
                     progressOverlay.innerHTML = `<i class="bi bi-check-circle-fill text-success fs-4"></i>`;
-                } else {
-                    throw new Error('No image ID returned');
-                }
+                } else { throw new Error('No image ID returned'); }
             })
             .catch(error => {
                 console.error('Upload error:', error);
@@ -240,7 +286,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
     
-    // --- EXISTING FORM LOGIC (with reset additions) ---
+    // --- EXISTING FORM LOGIC ---
     const jobCardSelect = document.getElementById('job_card_id');
     const formBSections = document.getElementById('form-b-sections');
     const taskSelect = document.getElementById('task_id');
@@ -250,7 +296,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const jobCardId = this.value;
         taskSelect.innerHTML = '<option value="">Loading tasks...</option>';
         if (taskChoices) { taskChoices.destroy(); }
-
         if (jobCardId) {
             formBSections.style.display = 'block';
             try {
@@ -294,8 +339,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 jobCardChoices.clearStore();
                 jobCardChoices.setChoiceByValue('');
                 formBSections.style.display = 'none';
-                resetVideo(); // Reset the video recorder
-                imagePreviewContainer.innerHTML = ''; // Clear image previews
+                resetVideo();
+                imagePreviewContainer.innerHTML = '';
                 document.getElementById('date_of_work').valueAsDate = new Date();
             } else { throw new Error(result.message || 'An unknown error occurred.'); }
         } catch (error) {
