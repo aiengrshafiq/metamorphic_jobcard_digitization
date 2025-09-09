@@ -6,10 +6,9 @@ on:
       - main  # Trigger this workflow on every push to the main branch
 
 env:
-  RESOURCE_GROUP: 'jobcard_rg' 
-  LOCATION: 'uaenorth'
   ACR_NAME: 'jobcardacr'
-  CONTAINER_APP_ENV: 'jobcard-env'
+  IMAGE_NAME: 'metamorphic-job-card'
+  RESOURCE_GROUP: 'jobcard_rg'
   CONTAINER_APP_NAME: 'jobcard-app'
 
 jobs:
@@ -17,37 +16,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: 'Checkout code'
       uses: actions/checkout@v4
 
-    - name: 'Az CLI login'
-      uses: azure/login@v2
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-    - name: 'Build and push image'
+    - name: 'Login to Azure Container Registry'
       uses: azure/docker-login@v1
       with:
         login-server: ${{ env.ACR_NAME }}.azurecr.io
         username: ${{ secrets.ACR_USERNAME }}
         password: ${{ secrets.ACR_PASSWORD }}
-    - run: |
-        docker build . -t ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
-        docker push ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
 
-    - name: 'Deploy to Azure Container Apps'
-      # Using the correct action and its supported parameters
+    - name: 'Build and Push Docker image'
+      run: |
+        docker build . -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+    - name: 'Azure Login'
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Deploy to Azure Container App'
       uses: azure/container-apps-deploy-action@v1
       with:
-        resourceGroup: ${{ env.RESOURCE_GROUP }}
+        imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
         containerAppName: ${{ env.CONTAINER_APP_NAME }}
-        imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/metamorphic-job-card:${{ github.sha }}
-        
-        # --- THIS IS THE FIX ---
-        # Reverting to the environmentVariables block, which is the correct
-        # input for this version of the action.
-        environmentVariables: |
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        resourceGroup: ${{ env.RESOURCE_GROUP }}
