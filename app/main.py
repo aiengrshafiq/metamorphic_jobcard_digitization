@@ -25,7 +25,6 @@ from app.models import (
     Base, JobCard, Task, Project, SiteEngineer, Supervisor, Foreman, 
     DutyOfficerProgress, SiteOfficerReport, MaterialRequisition, Supplier, ToolboxVideo, SiteImage
 )
-
 # --- App and Admin Panel Setup ---
 app = FastAPI(title="Metamorphic Job Card App")
 # --- THIS IS THE FIX ---
