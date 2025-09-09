@@ -32,6 +32,7 @@ app = FastAPI(title="Metamorphic Job Card App")
 # This middleware tells the app to trust the proxy headers from Azure
 # and build URLs with https:// when appropriate.
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 templates = Jinja2Templates(directory="templates")
 
 
