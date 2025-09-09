@@ -27,6 +27,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy the application code
 COPY . .
 
+# Ensure config.yaml is included
+COPY config.yaml ./config.yaml
+
 # Create a non-root user for security
 RUN useradd -m appuser
 USER appuser
@@ -34,10 +37,9 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Use a Python-based health check that doesn't require curl
+# Use a Python-based health check that doesn't require installing curl
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD python -c "import urllib.request, sys; urllib.request.urlopen('http://localhost:8000/health', timeout=3)" || exit 1
 
-# --- THIS IS THE CORRECTED COMMAND ---
-# Using the most standard and reliable command for Gunicorn + Uvicorn
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8000"]
+# CORRECTED: Use a robust Gunicorn command with better logging
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--access-logfile", "-", "--error-logfile", "-", "app.main:app"]
