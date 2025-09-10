@@ -41,66 +41,102 @@
 
 {% block scripts_extra %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const statusSelects = document.querySelectorAll('.task-status-select');
-    const toastElement = document.getElementById('responseToast');
-    const toast = new bootstrap.Toast(toastElement);
+    // Helper function to read a cookie by name
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
 
-    statusSelects.forEach(select => {
-        select.addEventListener('change', async function(event) {
-            const taskId = this.dataset.taskId;
-            const newStatus = this.value;
+    document.addEventListener('DOMContentLoaded', function () {
+        const statusSelects = document.querySelectorAll('.task-status-select');
+        const toastElement = document.getElementById('responseToast');
+        const toast = new bootstrap.Toast(toastElement);
 
-            try {
-                const response = await fetch(`/api/tasks/${taskId}/update-status`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `status=${newStatus}`
-                });
+        statusSelects.forEach(select => {
+            // Store the original value in case we need to revert
+            let originalValue = select.value;
 
-                const result = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(result.detail || 'Failed to update status.');
+            select.addEventListener('focus', function() {
+                // Update original value when the user clicks the dropdown
+                originalValue = this.value;
+            });
+
+            select.addEventListener('change', async function(event) {
+                const taskId = this.dataset.taskId;
+                const newStatus = this.value;
+                const toastBody = document.getElementById('toast-body');
+                const toastTitle = document.getElementById('toast-title');
+                toastElement.classList.remove('bg-danger', 'bg-success');
+
+                // 1. Get the auth token from the cookie
+                const token = getCookie('access_token');
+                if (!token) {
+                    toastElement.classList.add('bg-danger', 'text-white');
+                    toastTitle.innerText = 'Authentication Error';
+                    toastBody.innerText = 'You are not logged in. Please log in again.';
+                    toast.show();
+                    this.value = originalValue; // Revert dropdown
+                    return;
                 }
-                
-                // Update parent Job Card status badge if it changed
-                if (result.job_card_status) {
-                    const jcStatusBadge = document.getElementById(`jc-status-${result.job_card_id}`);
-                    jcStatusBadge.textContent = result.job_card_status;
-                    if (result.job_card_status === 'Done') {
-                        jcStatusBadge.classList.remove('bg-warning', 'text-dark');
-                        jcStatusBadge.classList.add('bg-success');
-                    } else {
-                        jcStatusBadge.classList.remove('bg-success');
-                        jcStatusBadge.classList.add('bg-warning', 'text-dark');
+
+                try {
+                    // 2. Corrected URL and added Authorization header
+                    const response = await fetch(`/job-cards/api/tasks/${taskId}/update-status`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: `status=${newStatus}`
+                    });
+
+                    const result = await response.json();
+                    
+                    // 3. Handle specific 401 Unauthorized error
+                    if (response.status === 401) {
+                        throw new Error(result.detail || 'Your session has expired. Please log in again.');
                     }
-                }
-                
-                // Show success toast
-                const toastBody = document.getElementById('toast-body');
-                const toastTitle = document.getElementById('toast-title');
-                toastElement.classList.remove('bg-danger');
-                toastElement.classList.add('bg-success', 'text-white');
-                toastTitle.innerText = 'Success!';
-                toastBody.innerText = result.message;
-                toast.show();
+                    
+                    if (!response.ok) {
+                        throw new Error(result.detail || 'Failed to update status.');
+                    }
+                    
+                    // --- Success logic ---
+                    originalValue = newStatus; // Set the new original value on success
 
-            } catch (error) {
-                console.error("Status update error:", error);
-                // Show error toast
-                const toastBody = document.getElementById('toast-body');
-                const toastTitle = document.getElementById('toast-title');
-                toastElement.classList.remove('bg-success');
-                toastElement.classList.add('bg-danger', 'text-white');
-                toastTitle.innerText = 'Error!';
-                toastBody.innerText = error.message;
-                toast.show();
-                // Revert dropdown on failure
-                this.value = this.options[this.selectedIndex - 1]?.value || this.options[0].value;
-            }
+                    // Update parent Job Card status badge if it changed
+                    if (result.job_card_status) {
+                        const jcStatusBadge = document.getElementById(`jc-status-${result.job_card_id}`);
+                        jcStatusBadge.textContent = result.job_card_status;
+                        if (result.job_card_status === 'Done') {
+                            jcStatusBadge.classList.remove('bg-warning', 'text-dark');
+                            jcStatusBadge.classList.add('bg-success');
+                        } else {
+                            jcStatusBadge.classList.remove('bg-success');
+                            jcStatusBadge.classList.add('bg-warning', 'text-dark');
+                        }
+                    }
+                    
+                    // Show success toast
+                    toastElement.classList.add('bg-success', 'text-white');
+                    toastTitle.innerText = 'Success!';
+                    toastBody.innerText = result.message;
+                    toast.show();
+
+                } catch (error) {
+                    console.error("Status update error:", error);
+                    // Show error toast
+                    toastElement.classList.add('bg-danger', 'text-white');
+                    toastTitle.innerText = 'Error!';
+                    toastBody.innerText = error.message;
+                    toast.show();
+                    
+                    // Revert dropdown on failure
+                    this.value = originalValue;
+                }
+            });
         });
     });
-});
 </script>
 {% endblock %}

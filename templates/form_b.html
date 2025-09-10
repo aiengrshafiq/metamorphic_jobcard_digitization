@@ -102,236 +102,281 @@
 {% block scripts_extra %}
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // --- UPDATED VIDEO RECORDER LOGIC ---
-    const recordBtn = document.getElementById('record-btn');
-    const stopBtn = document.getElementById('stop-btn');
-    const retakeBtn = document.getElementById('retake-btn');
-    const switchCameraBtn = document.getElementById('switch-camera-btn');
-    const videoPreview = document.getElementById('video-preview');
-    const videoStatus = document.getElementById('video-status');
-    const hiddenVideoIdInput = document.getElementById('toolbox_video_id');
-    
-    let mediaRecorder;
-    let recordedChunks = [];
-    let videoStream;
-    let availableVideoDevices = [];
-    let currentVideoDeviceIndex = 0;
+    // Helper function to read a cookie by name
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
 
-    async function getVideoDevices() {
-        try {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-                console.log("enumerateDevices() not supported.");
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- VIDEO RECORDER LOGIC ---
+        const recordBtn = document.getElementById('record-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const retakeBtn = document.getElementById('retake-btn');
+        const switchCameraBtn = document.getElementById('switch-camera-btn');
+        const videoPreview = document.getElementById('video-preview');
+        const videoStatus = document.getElementById('video-status');
+        const hiddenVideoIdInput = document.getElementById('toolbox_video_id');
+
+        let mediaRecorder;
+        let recordedChunks = [];
+        let videoStream;
+        let availableVideoDevices = [];
+        let currentVideoDeviceIndex = 0;
+
+        async function getVideoDevices() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) { return; }
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                availableVideoDevices = devices.filter(device => device.kind === 'videoinput');
+                if (availableVideoDevices.length > 1) { switchCameraBtn.style.display = 'inline-block'; }
+            } catch (e) { console.error("Could not enumerate devices:", e); }
+        }
+
+        async function startRecording(deviceId) {
+            try {
+                if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); }
+                const constraints = { audio: true, video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 } } };
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoPreview.srcObject = videoStream;
+                mediaRecorder = new MediaRecorder(videoStream, { mimeType: 'video/webm' });
+                recordedChunks = [];
+                mediaRecorder.ondataavailable = event => { if (event.data.size > 0) recordedChunks.push(event.data); };
+                mediaRecorder.onstop = uploadVideo; // This will now be an authenticated upload
+                mediaRecorder.start();
+                videoStatus.textContent = '🔴 Recording...';
+                recordBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                retakeBtn.style.display = 'none';
+                if (availableVideoDevices.length > 1) { switchCameraBtn.style.display = 'inline-block'; }
+            } catch (error) {
+                console.error('Error accessing media devices.', error);
+                videoStatus.textContent = 'Could not access camera/microphone.';
+                alert('Error: Could not access camera or microphone. Please check browser permissions.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStatus.textContent = 'Recording stopped. Preparing for upload...';
+                stopBtn.disabled = true;
+                switchCameraBtn.style.display = 'none';
+            }
+        }
+
+        async function uploadVideo() {
+            const token = getCookie('access_token');
+            if (!token) {
+                videoStatus.textContent = `❌ Upload failed: Authentication error. Please log in.`;
+                retakeBtn.style.display = 'inline-block';
                 return;
             }
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            availableVideoDevices = devices.filter(device => device.kind === 'videoinput');
-            if (availableVideoDevices.length > 1) {
-                switchCameraBtn.style.display = 'inline-block';
-            }
-        } catch (e) {
-            console.error("Could not enumerate devices:", e);
-        }
-    }
 
-    async function startRecording(deviceId) {
-        try {
-            if (videoStream) {
-                videoStream.getTracks().forEach(track => track.stop());
-            }
-
-            const constraints = {
-                audio: true,
-                video: {
-                    deviceId: deviceId ? { exact: deviceId } : undefined,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            };
-
-            videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-            videoPreview.srcObject = videoStream;
+            const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+            videoPreview.srcObject = null;
+            videoPreview.src = URL.createObjectURL(videoBlob);
+            videoPreview.muted = false;
+            videoPreview.controls = true;
+            videoStatus.innerHTML = `<div class="progress" role="progressbar"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%">Uploading...</div></div>`;
             
-            mediaRecorder = new MediaRecorder(videoStream, { mimeType: 'video/webm' });
-            recordedChunks = [];
-            mediaRecorder.ondataavailable = event => { if (event.data.size > 0) recordedChunks.push(event.data); };
-            mediaRecorder.onstop = uploadVideo;
-            mediaRecorder.start();
-            
-            videoStatus.textContent = '🔴 Recording...';
-            recordBtn.style.display = 'none';
-            stopBtn.style.display = 'inline-block';
-            retakeBtn.style.display = 'none';
-            if (availableVideoDevices.length > 1) {
-                switchCameraBtn.style.display = 'inline-block';
-            }
-
-        } catch (error) {
-            console.error('Error accessing media devices.', error);
-            videoStatus.textContent = 'Could not access camera/microphone.';
-            alert('Error: Could not access camera or microphone. Please check browser permissions.');
-        }
-    }
-
-    function stopRecording() {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-            videoStream.getTracks().forEach(track => track.stop());
-            videoStatus.textContent = 'Recording stopped. Preparing for upload...';
-            stopBtn.disabled = true;
-            switchCameraBtn.style.display = 'none';
-        }
-    }
-
-    async function uploadVideo() {
-        const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-        videoPreview.srcObject = null;
-        videoPreview.src = URL.createObjectURL(videoBlob);
-        videoPreview.muted = false;
-        videoPreview.controls = true;
-        videoStatus.innerHTML = `<div class="progress" role="progressbar"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%">Uploading...</div></div>`;
-        const formData = new FormData();
-        formData.append('video', videoBlob, 'toolbox-talk.webm');
-        try {
-            const response = await fetch('/api/videos/upload', { method: 'POST', body: formData });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.detail || 'Upload failed');
-            hiddenVideoIdInput.value = result.video_id;
-            videoStatus.textContent = `✅ Upload complete!`;
-            recordBtn.style.display = 'none';
-            stopBtn.style.display = 'none';
-            retakeBtn.style.display = 'inline-block';
-        } catch(error) {
-            videoStatus.textContent = `❌ Upload failed: ${error.message}`;
-            retakeBtn.style.display = 'inline-block';
-        } finally {
-            stopBtn.disabled = false;
-        }
-    }
-
-    function resetVideo() {
-        recordedChunks = [];
-        if (videoStream) {
-            videoStream.getTracks().forEach(track => track.stop());
-        }
-        videoPreview.srcObject = null;
-        videoPreview.src = '';
-        videoPreview.controls = false;
-        videoPreview.muted = true;
-        hiddenVideoIdInput.value = '';
-        videoStatus.textContent = '';
-        recordBtn.style.display = 'inline-block';
-        stopBtn.style.display = 'none';
-        retakeBtn.style.display = 'none';
-        if (availableVideoDevices.length > 1) {
-            switchCameraBtn.style.display = 'inline-block';
-        } else {
-            switchCameraBtn.style.display = 'none';
-        }
-    }
-
-    function switchCamera() {
-        currentVideoDeviceIndex = (currentVideoDeviceIndex + 1) % availableVideoDevices.length;
-        const newDeviceId = availableVideoDevices[currentVideoDeviceIndex].deviceId;
-        startRecording(newDeviceId);
-    }
-    
-    recordBtn.addEventListener('click', () => startRecording());
-    stopBtn.addEventListener('click', stopRecording);
-    retakeBtn.addEventListener('click', resetVideo);
-    switchCameraBtn.addEventListener('click', switchCamera);
-    
-    // Get camera devices on page load
-    getVideoDevices();
-
-    // --- IMAGE UPLOADER LOGIC ---
-    const imageUploadInput = document.getElementById('image-upload-input');
-    const imagePreviewContainer = document.getElementById('image-preview-container');
-    const hiddenImageIdsInput = document.getElementById('site_image_ids');
-    imageUploadInput.addEventListener('change', function(event) {
-        const files = event.target.files;
-        if (!files.length) return;
-        imagePreviewContainer.innerHTML = '';
-        let uploadedImageIds = [];
-        hiddenImageIdsInput.value = '';
-        Array.from(files).forEach(file => {
-            const reader = new FileReader();
-            const previewWrapper = document.createElement('div');
-            previewWrapper.className = 'img-preview-wrapper';
-            const img = document.createElement('img');
-            img.className = 'img-preview';
-            const progressOverlay = document.createElement('div');
-            progressOverlay.className = 'upload-progress';
-            progressOverlay.innerHTML = `<div class="spinner-border spinner-border-sm text-light" role="status"></div>`;
-            previewWrapper.appendChild(img);
-            previewWrapper.appendChild(progressOverlay);
-            imagePreviewContainer.appendChild(previewWrapper);
-            reader.onload = e => { img.src = e.target.result; }
-            reader.readAsDataURL(file);
             const formData = new FormData();
-            formData.append('files', file);
-            fetch('/api/images/upload', { method: 'POST', body: formData })
-            .then(response => response.json())
-            .then(result => {
-                if (result.image_ids && result.image_ids.length > 0) {
-                    uploadedImageIds.push(result.image_ids[0]);
-                    hiddenImageIdsInput.value = uploadedImageIds.join(',');
-                    progressOverlay.innerHTML = `<i class="bi bi-check-circle-fill text-success fs-4"></i>`;
-                } else { throw new Error('No image ID returned'); }
-            })
-            .catch(error => {
-                console.error('Upload error:', error);
-                progressOverlay.innerHTML = `<i class="bi bi-x-circle-fill text-danger fs-4"></i>`;
+            formData.append('video', videoBlob, 'toolbox-talk.webm');
+            
+            try {
+                // Corrected URL and added Authorization header
+                const response = await fetch('/uploads/api/videos/upload', { 
+                    method: 'POST', 
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData 
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Upload failed');
+                hiddenVideoIdInput.value = result.video_id;
+                videoStatus.textContent = `✅ Upload complete!`;
+                recordBtn.style.display = 'none';
+                stopBtn.style.display = 'none';
+                retakeBtn.style.display = 'inline-block';
+            } catch (error) {
+                videoStatus.textContent = `❌ Upload failed: ${error.message}`;
+                retakeBtn.style.display = 'inline-block';
+            } finally {
+                stopBtn.disabled = false;
+            }
+        }
+
+        function resetVideo() {
+            recordedChunks = [];
+            if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); }
+            videoPreview.srcObject = null;
+            videoPreview.src = '';
+            videoPreview.controls = false;
+            videoPreview.muted = true;
+            hiddenVideoIdInput.value = '';
+            videoStatus.textContent = '';
+            recordBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+            retakeBtn.style.display = 'none';
+            switchCameraBtn.style.display = availableVideoDevices.length > 1 ? 'inline-block' : 'none';
+        }
+        
+        function switchCamera() {
+            currentVideoDeviceIndex = (currentVideoDeviceIndex + 1) % availableVideoDevices.length;
+            const newDeviceId = availableVideoDevices[currentVideoDeviceIndex].deviceId;
+            startRecording(newDeviceId);
+        }
+
+        recordBtn.addEventListener('click', () => startRecording());
+        stopBtn.addEventListener('click', stopRecording);
+        retakeBtn.addEventListener('click', resetVideo);
+        switchCameraBtn.addEventListener('click', switchCamera);
+        getVideoDevices();
+
+        // --- IMAGE UPLOADER LOGIC ---
+        const imageUploadInput = document.getElementById('image-upload-input');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const hiddenImageIdsInput = document.getElementById('site_image_ids');
+
+        imageUploadInput.addEventListener('change', function(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            
+            const token = getCookie('access_token');
+            if (!token) {
+                alert('Authentication error. Please log in to upload images.');
+                return;
+            }
+
+            imagePreviewContainer.innerHTML = '';
+            let uploadedImageIds = [];
+            hiddenImageIdsInput.value = '';
+            
+            Array.from(files).forEach(file => {
+                const previewWrapper = document.createElement('div');
+                previewWrapper.className = 'img-preview-wrapper';
+                const img = document.createElement('img');
+                img.className = 'img-preview';
+                const progressOverlay = document.createElement('div');
+                progressOverlay.className = 'upload-progress';
+                progressOverlay.innerHTML = `<div class="spinner-border spinner-border-sm text-light" role="status"></div>`;
+                previewWrapper.appendChild(img);
+                previewWrapper.appendChild(progressOverlay);
+                imagePreviewContainer.appendChild(previewWrapper);
+
+                const reader = new FileReader();
+                reader.onload = e => { img.src = e.target.result; }
+                reader.readAsDataURL(file);
+
+                const formData = new FormData();
+                formData.append('files', file);
+                
+                // Corrected URL and added Authorization header
+                fetch('/uploads/api/images/upload', { 
+                    method: 'POST', 
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData 
+                })
+                .then(response => {
+                    if (!response.ok) { return response.json().then(err => { throw new Error(err.detail || 'Upload failed') }); }
+                    return response.json();
+                })
+                .then(result => {
+                    if (result.image_ids && result.image_ids.length > 0) {
+                        uploadedImageIds.push(result.image_ids[0]);
+                        hiddenImageIdsInput.value = uploadedImageIds.join(',');
+                        progressOverlay.innerHTML = `<i class="bi bi-check-circle-fill text-success fs-4"></i>`;
+                    } else { throw new Error('No image ID returned'); }
+                })
+                .catch(error => {
+                    console.error('Upload error:', error);
+                    progressOverlay.innerHTML = `<i class="bi bi-x-circle-fill text-danger fs-4"></i>`;
+                });
             });
         });
-    });
-    
-    // --- EXISTING FORM LOGIC ---
-    const jobCardSelect = document.getElementById('job_card_id');
-    const formBSections = document.getElementById('form-b-sections');
-    const taskSelect = document.getElementById('task_id');
-    const jobCardChoices = new Choices(jobCardSelect, { searchEnabled: true, removeItemButton: false, itemSelectText: ''});
-    let taskChoices; 
-    jobCardSelect.addEventListener('change', async function() {
-        const jobCardId = this.value;
-        taskSelect.innerHTML = '<option value="">Loading tasks...</option>';
-        if (taskChoices) { taskChoices.destroy(); }
-        if (jobCardId) {
-            formBSections.style.display = 'block';
-            try {
-                const response = await fetch(`/api/job-cards/${jobCardId}/tasks`);
-                const tasks = await response.json();
-                let options = '<option value="">Select a task...</option>';
-                tasks.forEach(task => { options += `<option value="${task.id}">${task.task_details}</option>`; });
-                taskSelect.innerHTML = options;
-            } catch (error) {
-                taskSelect.innerHTML = '<option value="">Could not load tasks</option>';
+        
+        // --- EXISTING FORM LOGIC ---
+        const jobCardSelect = document.getElementById('job_card_id');
+        const formBSections = document.getElementById('form-b-sections');
+        const taskSelect = document.getElementById('task_id');
+        const jobCardChoices = new Choices(jobCardSelect, { searchEnabled: true, removeItemButton: false, itemSelectText: '' });
+        let taskChoices;
+
+        jobCardSelect.addEventListener('change', async function() {
+            const jobCardId = this.value;
+            taskSelect.innerHTML = '<option value="">Loading tasks...</option>';
+            if (taskChoices) { taskChoices.destroy(); }
+            
+            if (jobCardId) {
+                formBSections.style.display = 'block';
+                const token = getCookie('access_token');
+                if (!token) {
+                    taskSelect.innerHTML = '<option value="">Authentication error</option>';
+                    return;
+                }
+                try {
+                    // Corrected URL and added Authorization header
+                    const response = await fetch(`/job-cards/api/job-cards/${jobCardId}/tasks`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (!response.ok) throw new Error('Could not fetch tasks.');
+                    const tasks = await response.json();
+                    let options = '<option value="">Select a task...</option>';
+                    tasks.forEach(task => { options += `<option value="${task.id}">${task.task_details}</option>`; });
+                    taskSelect.innerHTML = options;
+                } catch (error) {
+                    taskSelect.innerHTML = '<option value="">Could not load tasks</option>';
+                }
+            } else {
+                formBSections.style.display = 'none';
+                taskSelect.innerHTML = '<option value="">Select a task...</option>';
             }
-        } else {
-            formBSections.style.display = 'none';
-            taskSelect.innerHTML = '<option value="">Select a task...</option>';
-        }
-        taskChoices = new Choices(taskSelect, { searchEnabled: false });
-    });
-    const form = document.getElementById('duty-officer-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const spinner = submitBtn.querySelector('.spinner-border');
-    const toastElement = document.getElementById('responseToast');
-    const toast = new bootstrap.Toast(toastElement);
-    document.getElementById('date_of_work').valueAsDate = new Date();
-    form.addEventListener('submit', async function (e) {
-        e.preventDefault();
-        if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
-        spinner.style.display = 'inline-block';
-        submitBtn.disabled = true;
-        const formData = new FormData(form);
-        try {
-            const response = await fetch('/duty-officer-progress/', { method: 'POST', body: formData });
-            const result = await response.json();
+            taskChoices = new Choices(taskSelect, { searchEnabled: false });
+        });
+
+        const form = document.getElementById('duty-officer-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const spinner = submitBtn.querySelector('.spinner-border');
+        const toastElement = document.getElementById('responseToast');
+        const toast = new bootstrap.Toast(toastElement);
+
+        document.getElementById('date_of_work').valueAsDate = new Date();
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+            spinner.style.display = 'inline-block';
+            submitBtn.disabled = true;
+
             const toastBody = document.getElementById('toast-body');
             const toastTitle = document.getElementById('toast-title');
             toastElement.classList.remove('bg-danger', 'bg-success');
-            if (response.ok) {
+            
+            const token = getCookie('access_token');
+            if (!token) {
+                toastElement.classList.add('bg-danger', 'text-white');
+                toastTitle.innerText = 'Authentication Error';
+                toastBody.innerText = 'You are not logged in. Please log in to submit the form.';
+                toast.show();
+                spinner.style.display = 'none';
+                submitBtn.disabled = false;
+                return;
+            }
+
+            const formData = new FormData(form);
+            try {
+                // Corrected URL and added Authorization header
+                const response = await fetch('/reports/duty-officer-progress/', { 
+                    method: 'POST', 
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData 
+                });
+
+                const result = await response.json();
+                if (response.status === 401) { throw new Error(result.detail || 'Session expired. Please log in again.'); }
+                if (!response.ok) { throw new Error(result.message || result.detail || 'An unknown error occurred.'); }
+                
                 toastElement.classList.add('bg-success', 'text-white');
                 toastTitle.innerText = 'Success!';
                 toastBody.innerText = result.message;
@@ -342,17 +387,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 resetVideo();
                 imagePreviewContainer.innerHTML = '';
                 document.getElementById('date_of_work').valueAsDate = new Date();
-            } else { throw new Error(result.message || 'An unknown error occurred.'); }
-        } catch (error) {
-            toastElement.classList.add('bg-danger', 'text-white');
-            document.getElementById('toast-title').innerText = 'Error!';
-            document.getElementById('toast-body').innerText = error.message;
-        } finally {
-            toast.show();
-            spinner.style.display = 'none';
-            submitBtn.disabled = false;
-        }
+
+            } catch (error) {
+                toastElement.classList.add('bg-danger', 'text-white');
+                toastTitle.innerText = 'Error!';
+                toastBody.innerText = error.message;
+            } finally {
+                toast.show();
+                spinner.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
     });
-});
 </script>
 {% endblock %}

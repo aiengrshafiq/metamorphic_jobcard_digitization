@@ -79,62 +79,98 @@
 {% block scripts_extra %}
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const formSelects = document.querySelectorAll('#material-requisition-form select');
-    formSelects.forEach(select => {
-        new Choices(select, { searchEnabled: true, removeItemButton: false, itemSelectText: '' });
-    });
+    // Helper function to read a cookie by name
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
 
-    const form = document.getElementById('material-requisition-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const spinner = submitBtn.querySelector('.spinner-border');
-    const toastElement = document.getElementById('responseToast');
-    const toast = new bootstrap.Toast(toastElement);
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- Existing Choices.js and variable setup ---
+        const choicesInstances = [];
+        const formSelects = document.querySelectorAll('#material-requisition-form select');
+        formSelects.forEach(select => {
+            choicesInstances.push(new Choices(select, { searchEnabled: true, removeItemButton: false, itemSelectText: '' }));
+        });
 
-    document.querySelector('input[name="request_date"]').valueAsDate = new Date();
+        const form = document.getElementById('material-requisition-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const spinner = submitBtn.querySelector('.spinner-border');
+        const toastElement = document.getElementById('responseToast');
+        const toast = new bootstrap.Toast(toastElement);
 
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        if (!form.checkValidity()) {
-            form.classList.add('was-validated');
-            return;
-        }
+        document.querySelector('input[name="request_date"]').valueAsDate = new Date();
 
-        spinner.style.display = 'inline-block';
-        submitBtn.disabled = true;
+        // --- UPDATED FORM SUBMISSION LOGIC ---
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
 
-        const formData = new FormData(form);
-        try {
-            const response = await fetch('/material-requisitions/', { method: 'POST', body: formData });
-            const result = await response.json();
-            
+            spinner.style.display = 'inline-block';
+            submitBtn.disabled = true;
+
             const toastBody = document.getElementById('toast-body');
             const toastTitle = document.getElementById('toast-title');
             toastElement.classList.remove('bg-danger', 'bg-success');
 
-            if (response.ok) {
-                toastElement.classList.add('bg-success', 'text-white');
-                toastTitle.innerText = 'Success!';
-                toastBody.innerText = result.message;
-                form.reset();
-                form.classList.remove('was-validated');
-                document.querySelector('input[name="request_date"]').valueAsDate = new Date();
-                // We need to re-initialize Choices.js after a form reset
-                formSelects.forEach(select => select.dispatchEvent(new Event('change')));
-
-            } else {
-                throw new Error(result.message || 'An unknown error occurred.');
+            // 1. Get the auth token from the cookie
+            const token = getCookie('access_token');
+            if (!token) {
+                toastElement.classList.add('bg-danger', 'text-white');
+                toastTitle.innerText = 'Authentication Error';
+                toastBody.innerText = 'You are not logged in. Please log in to submit the form.';
+                toast.show();
+                spinner.style.display = 'none';
+                submitBtn.disabled = false;
+                return;
             }
-        } catch (error) {
-            toastElement.classList.add('bg-danger', 'text-white');
-            toastTitle.innerText = 'Error!';
-            toastBody.innerText = error.message;
-        } finally {
-            toast.show();
-            spinner.style.display = 'none';
-            submitBtn.disabled = false;
-        }
+
+            const formData = new FormData(form);
+            try {
+                // 2. Corrected URL and added Authorization header
+                const response = await fetch('/procurement/material-requisitions/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                // 3. Handle specific 401 Unauthorized error
+                if (response.status === 401) {
+                    throw new Error(result.detail || 'Your session has expired. Please log in again.');
+                }
+                
+                if (response.ok) {
+                    toastElement.classList.add('bg-success', 'text-white');
+                    toastTitle.innerText = 'Success!';
+                    toastBody.innerText = result.message;
+                    form.reset();
+                    form.classList.remove('was-validated');
+                    document.querySelector('input[name="request_date"]').valueAsDate = new Date();
+                    
+                    // Reset all Choices.js instances
+                    choicesInstances.forEach(instance => instance.clearStore());
+
+                } else {
+                    throw new Error(result.message || result.detail || 'An unknown error occurred.');
+                }
+            } catch (error) {
+                toastElement.classList.add('bg-danger', 'text-white');
+                toastTitle.innerText = 'Error!';
+                toastBody.innerText = error.message;
+            } finally {
+                toast.show();
+                spinner.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
     });
-});
 </script>
 {% endblock %}
