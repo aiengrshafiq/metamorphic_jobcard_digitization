@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Metamorphic</title>
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --primary-hover: #0b5ed7;
+            --background-color: #f0f2f5;
+            --form-background: #ffffff;
+            --text-color: #333;
+            --border-color: #dee2e6;
+            --error-color: #dc3545;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--background-color);
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 2.5rem;
+            background: var(--form-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin: 1rem;
+        }
+
+        .form-container h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .submit-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .message.error { color: var(--error-color); }
+        .message a { color: var(--primary-color); text-decoration: none; }
+        .message a:hover { text-decoration: underline; }
+
+        @media (max-width: 480px) {
+            .form-container { padding: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Welcome Back</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Email Address</label>
+                <input type="email" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="submit-btn">Login</button>
+        </form>
+        <p id="message-area" class="message error"></p>
+        <p class="message">Don't have an account? <a href="/register">Sign up</a></p>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const messageArea = document.getElementById('message-area');
+            messageArea.textContent = '';
+
+            const formData = new FormData(this);
+
+            try {
+                const response = await fetch('/auth/token', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const expires = new Date(Date.now() + 86400 * 1000).toUTCString();
+                    document.cookie = `access_token=${data.access_token}; path=/; expires=${expires}; SameSite=Lax; Secure`;
+                    window.location.href = '/';
+                } else {
+                    const errorData = await response.json();
+                    messageArea.textContent = errorData.detail || 'Login failed. Please check your credentials.';
+                }
+            } catch (error) {
+                messageArea.textContent = 'An unexpected error occurred. Please try again.';
+            }
+        });
+    </script>
+</body>
+</html>

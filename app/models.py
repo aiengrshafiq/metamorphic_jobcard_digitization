@@ -2,8 +2,60 @@ from sqlalchemy import (
     Column, Integer, String, Date, Numeric, ForeignKey, DateTime, func, Text, Boolean
 )
 from sqlalchemy.orm import relationship, declarative_base
+from passlib.context import CryptContext
+import enum
+from sqlalchemy import Table, Enum as SQLAlchemyEnum
 
 Base = declarative_base()
+
+# Define the user roles
+class UserRole(str, enum.Enum):
+    SUPER_ADMIN = "Super Admin"
+    ADMIN = "Admin"
+    OPERATION_MANAGER = "Operation Mananger"
+    PROJECT_MANAGER = "Project Manager"
+    SITE_ENGINEER = "Site Engineer"
+    SUPERVISOR = "Supervisor/Site Officer"
+    FOREMAN = "Foreman/Duty Officer"
+    PROCUREMENT = "Procurement"
+    USER = "User"
+
+# Association table for the many-to-many relationship between users and roles
+user_role_association = Table(
+    'user_role_association',
+    Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id')),
+    Column('role_id', Integer, ForeignKey('roles.id'))
+)
+
+class Role(Base):
+    __tablename__ = 'roles'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(SQLAlchemyEnum(UserRole), unique=True, nullable=False)
+
+    def __str__(self) -> str:
+        return self.name.value
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+
+    roles = relationship("Role", secondary=user_role_association, backref="users")
+
+    def verify_password(self, plain_password: str) -> bool:
+        return pwd_context.verify(plain_password, self.hashed_password)
+    
+    def set_password(self, plain_password: str):
+        self.hashed_password = pwd_context.hash(plain_password)
+        
+    def __str__(self) -> str:
+        return self.email
 
 # --- NEW Model for Site Images ---
 class SiteImage(Base):

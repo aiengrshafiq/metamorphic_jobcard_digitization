@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Metamorphic</title>
+    <style>
+        :root {
+            --primary-color: #198754;
+            --primary-hover: #157347;
+            --background-color: #f0f2f5;
+            --form-background: #ffffff;
+            --text-color: #333;
+            --border-color: #dee2e6;
+            --error-color: #dc3545;
+            --success-color: #198754;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--background-color);
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 450px;
+            padding: 2.5rem;
+            background: var(--form-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin: 1rem;
+        }
+
+        .form-container h2 { text-align: center; margin-bottom: 2rem; font-weight: 600; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group input { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-group input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.25); }
+        .submit-btn { width: 100%; padding: 0.85rem; border: none; background-color: var(--primary-color); color: white; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: background-color 0.2s; }
+        .submit-btn:hover { background-color: var(--primary-hover); }
+
+        .roles-group { border: 1px solid var(--border-color); border-radius: 6px; padding: 1rem; }
+        .roles-group legend { padding: 0 0.5rem; font-weight: 500; }
+        .role-option { display: flex; align-items: center; margin-bottom: 0.75rem; }
+        .role-option:last-child { margin-bottom: 0; }
+        .role-option input[type="checkbox"] { margin-right: 0.75rem; }
+        .role-option label { margin-bottom: 0; font-weight: normal; }
+
+        .message { text-align: center; margin-top: 1rem; font-size: 0.9rem; }
+        .message.error { color: var(--error-color); }
+        .message.success { color: var(--success-color); }
+        .message a { color: var(--primary-color); text-decoration: none; }
+        .message a:hover { text-decoration: underline; }
+
+        @media (max-width: 480px) { .form-container { padding: 1.5rem; } }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Create an Account</h2>
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <fieldset class="roles-group">
+                    <legend>Select Role(s)</legend>
+                    {% for role in roles %}
+                    <div class="role-option">
+                        <input type="checkbox" id="role-{{ role.name.value }}" name="roles" value="{{ role.name.value }}">
+                        <label for="role-{{ role.name.value }}">{{ role.name.value }}</label>
+                    </div>
+                    {% endfor %}
+                </fieldset>
+            </div>
+            <button type="submit" class="submit-btn">Register</button>
+        </form>
+        <p id="message-area" class="message"></p>
+        <p class="message">Already have an account? <a href="/login">Log in</a></p>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const messageArea = document.getElementById('message-area');
+            messageArea.textContent = '';
+            messageArea.className = 'message';
+
+            const formData = new FormData(this);
+            
+            // Ensure at least one role is selected
+            if (formData.getAll('roles').length === 0) {
+                messageArea.textContent = 'Please select at least one role.';
+                messageArea.classList.add('error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/users/register', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageArea.textContent = data.message;
+                    messageArea.classList.add('success');
+                    document.getElementById('registerForm').reset();
+                } else {
+                    messageArea.textContent = data.detail || 'Registration failed.';
+                    messageArea.classList.add('error');
+                }
+            } catch (error) {
+                messageArea.textContent = 'An unexpected error occurred.';
+                messageArea.classList.add('error');
+            }
+        });
+    </script>
+</body>
+</html>

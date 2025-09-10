@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import date
 from typing import List, Optional
+
+from .models import UserRole # Import the enum
 
 class TaskBase(BaseModel):
     task_details: Optional[str] = None
@@ -24,3 +26,25 @@ class JobCardBase(BaseModel):
 
 class JobCardCreate(JobCardBase):
     tasks: List[TaskCreate]
+
+class UserBase(BaseModel):
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: str
+    roles: List[UserRole]
+
+class User(UserBase):
+    id: int
+    is_active: bool
+    roles: List[str] # Show role names as strings
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: str | None = None
