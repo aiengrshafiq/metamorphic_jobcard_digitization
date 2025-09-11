@@ -146,7 +146,7 @@
         <ul class="nav flex-column mb-2">
           <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> Job Card Tracking</a></li>
           <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
-          {% if 'Project Manager' in user_roles or 'QS' in user_roles %}
+          {% if 'Project Manager' in user_roles or 'QS' in user_roles or 'Admin' in user_roles or 'Super Admin' in user_roles %}
           <li class="nav-item">
             <a class="nav-link {% if page_title == 'My Approvals' %}active{% endif %}" href="/approvals">
               <i class="bi bi-check2-square me-2"></i> My Approvals
