@@ -1,6 +1,6 @@
 # app/api/endpoints/pages.py
-from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Request # <--- MAKE SURE 'Request' IS IMPORTED
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload, selectinload
 import yaml
@@ -11,18 +11,11 @@ from app.api import deps
 from app import models
 from app.utils import generate_job_card_number
 
-
-# Add RedirectResponse here
-from fastapi.responses import HTMLResponse, RedirectResponse
-
-
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 # --- Safe Configuration Loading ---
 def _load_config() -> dict:
-    # Use an absolute path inside the container
-    #path = Path(os.getenv("APP_CONFIG_PATH", "/app/config.yaml"))
     path = Path(os.getenv("APP_CONFIG_PATH", "config.yaml"))
     try:
         with path.open("r", encoding="utf-8") as f:
@@ -33,27 +26,26 @@ def _load_config() -> dict:
 app_config = _load_config()
 # --- End Config Loading ---
 
+# --- Protected Page Routes (Using the new dependency) ---
 
-# @router.get("/", response_class=HTMLResponse, tags=["Pages"])
-# async def dashboard(request: Request):
-#     return templates.TemplateResponse("dashboard.html", {"request": request, "page_title": "Dashboard"})
-
-# NEW protected version:
 @router.get("/", response_class=HTMLResponse, tags=["Pages"])
-async def dashboard(request: Request, current_user: models.User = Depends(deps.get_current_user_from_cookie)):
-    if isinstance(current_user, RedirectResponse):
-        return current_user # If dependency returns a redirect, execute it
+async def dashboard(context: dict = Depends(deps.get_template_context)):
+    if isinstance(context, RedirectResponse):
+        return context
     
-    # If it's a valid user, render the page and pass the user object
-    return templates.TemplateResponse(
-        "dashboard.html", 
-        {"request": request, "page_title": "Dashboard", "user": current_user}
-    )
+    context["page_title"] = "Dashboard"
+    return templates.TemplateResponse("dashboard.html", context)
+
 
 @router.get("/job-card-form", response_class=HTMLResponse, tags=["Pages"])
-async def read_job_card_form(request: Request, db: Session = Depends(deps.get_db)):
-    context = {
-        "request": request,
+async def read_job_card_form(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+
+    context.update({
         "page_title": "Metamorphic • Job Card (Assignment)",
         "projects": db.query(models.Project).order_by(models.Project.name).all(),
         "site_engineers": db.query(models.SiteEngineer).order_by(models.SiteEngineer.name).all(),
@@ -63,13 +55,19 @@ async def read_job_card_form(request: Request, db: Session = Depends(deps.get_db
         "units": app_config.get('units', []),
         "assigned_crew_options": app_config.get('assigned_crew_options', []),
         "initial_job_card_no": generate_job_card_number(db, app_config.get('site_locations', [''])[0])
-    }
+    })
     return templates.TemplateResponse("form_a.html", context)
 
+
 @router.get("/duty-officer-form", response_class=HTMLResponse, tags=["Pages"])
-async def read_duty_officer_form(request: Request, db: Session = Depends(deps.get_db)):
-    context = {
-        "request": request,
+async def read_duty_officer_form(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context.update({
         "page_title": "Metamorphic • Duty Officer Progress",
         "job_cards": db.query(models.JobCard).options(joinedload(models.JobCard.project)).order_by(models.JobCard.id.desc()).all(),
         "foremen": db.query(models.Foreman).order_by(models.Foreman.name).all(),
@@ -77,13 +75,19 @@ async def read_duty_officer_form(request: Request, db: Session = Depends(deps.ge
         "sub_contractor_coordinations": app_config.get('sub_contractor_coordinations', []),
         "delivery_statuses": app_config.get('delivery_statuses', []),
         "sop_statuses": app_config.get('sop_statuses', []),
-    }
+    })
     return templates.TemplateResponse("form_b.html", context)
 
+
 @router.get("/site-officer-form", response_class=HTMLResponse, tags=["Pages"])
-async def read_site_officer_form(request: Request, db: Session = Depends(deps.get_db)):
-    context = {
-        "request": request,
+async def read_site_officer_form(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context.update({
         "page_title": "Metamorphic • Sites Officers Daily Progress Report",
         "site_locations": app_config.get('site_locations', []),
         "supervisors": db.query(models.Supervisor).order_by(models.Supervisor.name).all(),
@@ -94,42 +98,65 @@ async def read_site_officer_form(request: Request, db: Session = Depends(deps.ge
         "site_condition_options": app_config.get('site_condition_options', []),
         "overall_site_health_options": app_config.get('overall_site_health_options', []),
         "yes_no_help_options": app_config.get('yes_no_help_options', []),
-    }
+    })
     return templates.TemplateResponse("form_c.html", context)
 
+
 @router.get("/job-card-tracking", response_class=HTMLResponse, tags=["Pages"])
-async def job_card_tracking(request: Request, db: Session = Depends(deps.get_db)):
+async def job_card_tracking(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
     job_cards = db.query(models.JobCard).options(joinedload(models.JobCard.project), selectinload(models.JobCard.tasks)).order_by(models.JobCard.id.desc()).all()
-    context = {
-        "request": request,
+    context.update({
         "page_title": "Job Card Tracking",
         "job_cards": job_cards,
         "task_statuses": app_config.get('task_statuses', [])
-    }
+    })
     return templates.TemplateResponse("job_card_tracking.html", context)
 
+
 @router.get("/material-requisition-form", response_class=HTMLResponse, tags=["Pages"])
-async def read_material_requisition_form(request: Request, db: Session = Depends(deps.get_db)):
-    context = {
-        "request": request,
+async def read_material_requisition_form(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context.update({
         "page_title": "Material Requisition Form",
         "projects": db.query(models.Project).order_by(models.Project.name).all(),
         "supervisors": db.query(models.Supervisor).order_by(models.Supervisor.name).all(),
         "material_types": app_config.get('material_types', []),
         "urgency_levels": app_config.get('urgency_levels', []),
-    }
+    })
     return templates.TemplateResponse("material_requisition_form.html", context)
 
 
+@router.get("/approvals", response_class=HTMLResponse, tags=["Pages"])
+async def approvals_page(context: dict = Depends(deps.get_template_context)):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context["page_title"] = "My Approvals"
+    return templates.TemplateResponse("approvals.html", context)
+
+
+# --- Public Page Routes (No login required) ---
+
 @router.get("/login", response_class=HTMLResponse, tags=["Pages"])
-async def login_page(request: Request):
+async def login_page(request: Request): # <--- CORRECTED: Was 'dict', now 'Request'
     """Serves the login page."""
     return templates.TemplateResponse("login.html", {"request": request})
 
+
 @router.get("/register", response_class=HTMLResponse, tags=["Pages"])
-async def register_page(request: Request, db: Session = Depends(deps.get_db)):
+async def register_page(request: Request, db: Session = Depends(deps.get_db)): # <--- CORRECTED: Was 'dict', now 'Request'
     """Serves the user registration page and provides a list of roles."""
-    # Fetch all roles except Super Admin, which shouldn't be assignable from a public form
     available_roles = db.query(models.Role).filter(models.Role.name != 'Super Admin').all()
     return templates.TemplateResponse(
         "register.html", 

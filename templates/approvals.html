@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-check2-square me-2"></i>Items Awaiting My Approval</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>MR #</th>
+                            <th>Project</th>
+                            <th>Requested By</th>
+                            <th>Request Date</th>
+                            <th>Urgency</th>
+                            <th>Approval Type</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="approvals-table-body">
+                        </tbody>
+                </table>
+                <p id="loading-state" class="text-center text-muted mt-3">Loading pending approvals...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tableBody = document.getElementById('approvals-table-body');
+    const loadingState = document.getElementById('loading-state');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    async function fetchPendingApprovals() {
+        const token = getCookie('access_token');
+        if (!token) {
+            loadingState.textContent = 'Authentication error. Please log in.';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/approvals/pending', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Failed to load data.');
+            
+            const items = await response.json();
+            
+            if (items.length === 0) {
+                loadingState.textContent = 'You have no items pending approval. Great job!';
+            } else {
+                loadingState.style.display = 'none';
+                tableBody.innerHTML = '';
+                items.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.id = `req-row-${item.id}`;
+                    
+                    let approvalTypeBadge = item.pending_for === 'PM' 
+                        ? `<span class="badge bg-info">PM Approval</span>` 
+                        : `<span class="badge bg-secondary">QS Approval</span>`;
+
+                    // --- THIS IS THE NEW LOGIC ---
+                    let actionCellHtml = '';
+                    if (item.is_actionable) {
+                        // If actionable, show the buttons
+                        actionCellHtml = `
+                            <button class="btn btn-success btn-sm approve-btn" data-req-id="${item.id}" data-type="${item.pending_for.toLowerCase()}">
+                                <i class="bi bi-check-lg"></i> Approve
+                            </button>
+                            <button class="btn btn-danger btn-sm reject-btn" data-req-id="${item.id}" data-type="${item.pending_for.toLowerCase()}">
+                                <i class="bi bi-x-lg"></i> Reject
+                            </button>
+                        `;
+                    } else {
+                        // If not actionable, show a status badge
+                        actionCellHtml = `<span class="badge bg-light text-dark-emphasis">Awaiting PM Approval</span>`;
+                        // Optionally, add a class to fade the row
+                        row.classList.add('opacity-50');
+                    }
+                    // --- END OF NEW LOGIC ---
+
+                    row.innerHTML = `
+                        <td>${item.mr_number || 'N/A'}</td>
+                        <td>${item.project.name}</td>
+                        <td>${item.requested_by ? item.requested_by.name : 'N/A'}</td>
+                        <td>${item.request_date}</td>
+                        <td>${item.urgency}</td>
+                        <td>${approvalTypeBadge}</td>
+                        <td class="text-center">${actionCellHtml}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+        } catch (error) {
+            loadingState.textContent = `Error: ${error.message}`;
+        }
+    }
+
+    async function handleApprovalAction(reqId, approvalType, newStatus) {
+        const token = getCookie('access_token');
+        if (!token) {
+            // Show error toast
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = 'Authentication error. Please log in again.';
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/approvals/${reqId}/status`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    approval_type: approvalType,
+                    new_status: newStatus
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Action failed.');
+
+            // Show success toast
+            document.getElementById('toast-title').innerText = 'Success!';
+            document.getElementById('toast-body').innerText = result.message;
+            toastElement.className = 'toast bg-success text-white';
+            toast.show();
+
+            // Remove the row from the table
+            document.getElementById(`req-row-${reqId}`).remove();
+
+            if (tableBody.children.length === 0) {
+                loadingState.textContent = 'You have no items pending approval. Great job!';
+                loadingState.style.display = 'block';
+            }
+
+        } catch (error) {
+            // Show error toast
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+        }
+    }
+
+    // Add event listener to the table body for delegation
+    tableBody.addEventListener('click', function(event) {
+        const target = event.target.closest('button');
+        if (!target) return;
+        
+        const reqId = target.dataset.reqId;
+        const approvalType = target.dataset.type;
+
+        if (target.classList.contains('approve-btn')) {
+            handleApprovalAction(reqId, approvalType, 'Approved');
+        } else if (target.classList.contains('reject-btn')) {
+            handleApprovalAction(reqId, approvalType, 'Rejected');
+        }
+    });
+
+    // Initial load
+    fetchPendingApprovals();
+});
+</script>
+{% endblock %}

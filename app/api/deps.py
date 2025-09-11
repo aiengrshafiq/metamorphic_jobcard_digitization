@@ -12,6 +12,7 @@ from app.auth.security import ALGORITHM
 
 from fastapi.responses import RedirectResponse
 from starlette.requests import Request
+from fastapi.templating import Jinja2Templates
 
 # This tells FastAPI where to go to get a token.
 # We will create the "/token" endpoint in the next step.
@@ -69,3 +70,22 @@ def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)
         return RedirectResponse(url="/login")
         
     return user
+
+def get_template_context(
+    request: Request, 
+    current_user: models.User = Depends(get_current_user_from_cookie)
+) -> dict | RedirectResponse:
+    """
+    A dependency that prepares the common context dictionary for templates.
+    Returns a RedirectResponse if the user is not logged in.
+    """
+    if isinstance(current_user, RedirectResponse):
+        return current_user
+
+    user_roles = {role.name.value for role in current_user.roles}
+    
+    return {
+        "request": request,
+        "user": current_user,
+        "user_roles": user_roles
+    }

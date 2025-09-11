@@ -18,6 +18,7 @@ class UserRole(str, enum.Enum):
     SUPERVISOR = "Supervisor/Site Officer"
     FOREMAN = "Foreman/Duty Officer"
     PROCUREMENT = "Procurement"
+    QS = "QS"
     USER = "User"
 
 # Association table for the many-to-many relationship between users and roles

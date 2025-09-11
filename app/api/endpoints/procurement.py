@@ -1,11 +1,14 @@
 # app/api/endpoints/procurement.py
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import Optional
 from datetime import date
+import yaml
+from pathlib import Path
+import os
 
 from app.api import deps
 from app import models
@@ -13,24 +16,52 @@ from app import models
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-# Note: The GET endpoints here render pages, so they could also live in `pages.py`.
-# Keeping them here groups them logically with their related POST endpoint.
+# --- Safe Configuration Loading (making this file self-sufficient) ---
+def _load_config() -> dict:
+    path = Path(os.getenv("APP_CONFIG_PATH", "config.yaml"))
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"Warning: Config file at {path} not found.")
+        return {}
+app_config = _load_config()
+# --- End Config Loading ---
+
+
+# --- Page-Rendering GET Routes (Refactored) ---
 
 @router.get("/material-requisitions", response_class=HTMLResponse, tags=["Procurement"])
-async def list_material_requisitions(request: Request, db: Session = Depends(deps.get_db)):
+async def list_material_requisitions(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+
     requisitions = db.query(models.MaterialRequisition).filter(
         models.MaterialRequisition.status == 'Pending'
     ).options(
         joinedload(models.MaterialRequisition.project),
         joinedload(models.MaterialRequisition.requested_by)
     ).order_by(models.MaterialRequisition.request_date).all()
-    return templates.TemplateResponse(
-        "procurement_list.html",
-        {"request": request, "page_title": "Procurement Dashboard", "requisitions": requisitions}
-    )
+    
+    context.update({
+        "page_title": "Procurement Dashboard",
+        "requisitions": requisitions
+    })
+    return templates.TemplateResponse("procurement_list.html", context)
+
 
 @router.get("/material-requisition/{req_id}", response_class=HTMLResponse, tags=["Procurement"])
-async def process_material_requisition_form(req_id: int, request: Request, db: Session = Depends(deps.get_db)):
+async def process_material_requisition_form(
+    req_id: int,
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+
     req = db.query(models.MaterialRequisition).options(
         joinedload(models.MaterialRequisition.project),
         joinedload(models.MaterialRequisition.requested_by)
@@ -39,19 +70,17 @@ async def process_material_requisition_form(req_id: int, request: Request, db: S
     if not req:
         raise HTTPException(status_code=404, detail="Requisition not found")
 
-    # This context data is for the template, so app_config is needed here.
-    # Consider moving app_config loading to a central place if used frequently.
-    from .pages import app_config
-    context = {
-        "request": request,
+    context.update({
         "page_title": f"Process Requisition #{req.id}",
         "req": req,
         "suppliers": db.query(models.Supplier).order_by(models.Supplier.name).all(),
         "approval_statuses": app_config.get('approval_statuses', []),
         "requisition_statuses": app_config.get('requisition_statuses', []),
-    }
+    })
     return templates.TemplateResponse("procurement_update.html", context)
 
+
+# --- API POST Routes (Unchanged - Already Correct) ---
 
 @router.post("/material-requisitions/", response_class=JSONResponse, tags=["Procurement"])
 async def create_material_requisition(
@@ -81,6 +110,7 @@ async def create_material_requisition(
     except Exception as e:
         db.rollback()
         return JSONResponse(status_code=500, content={"message": f"An unexpected error occurred: {e}"})
+
 
 @router.post("/api/material-requisitions/{req_id}", response_class=JSONResponse, tags=["Procurement API"])
 async def update_material_requisition(
