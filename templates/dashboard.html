@@ -2,11 +2,14 @@
 
 {% block content %}
 <div class="container-fluid px-0">
+  {% if is_privileged or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
   <p class="lead mb-4">Select a form to begin the job card process.</p>
 
   <!-- Auto-responsive grid -->
   <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
     <!-- Form A -->
+     
+     {% if is_privileged %}
     <div class="col">
       <div class="card h-100 shadow-sm border-0">
         <div class="card-body d-flex flex-column">
@@ -24,8 +27,9 @@
         </div>
       </div>
     </div>
-
+    {% endif %}
     <!-- Form B -->
+     {% if is_privileged or 'Foreman/Duty Officer' in user_roles %}
     <div class="col">
       <div class="card h-100 shadow-sm border-0">
         <div class="card-body d-flex flex-column">
@@ -43,8 +47,9 @@
         </div>
       </div>
     </div>
-
+    {% endif %}
     <!-- Form C -->
+     {% if is_privileged or 'Supervisor/Site Officer' in user_roles %}
     <div class="col">
       <div class="card h-100 shadow-sm border-0">
         <div class="card-body d-flex flex-column">
@@ -62,6 +67,9 @@
         </div>
       </div>
     </div>
+    {% endif %}
+    
   </div>
+  {% endif %}
 </div>
 {% endblock %}
