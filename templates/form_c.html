@@ -27,7 +27,27 @@
 
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">Section 1: General Information</button></h2>
-                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#formCAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">Date <span class="text-danger">*</span></label><input type="date" class="form-control" name="date" required></div><div class="col-md-6"><label class="form-label">Site Location <span class="text-danger">*</span></label><select class="form-select" name="site_location" required><option value="">Select...</option>{% for loc in site_locations %}<option value="{{ loc }}">{{ loc }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">Name of Site Officer <span class="text-danger">*</span></label><select class="form-select" name="site_officer_id" required><option value="">Select...</option>{% for so in supervisors %}<option value="{{ so.id }}">{{ so.name }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">Name of Duty Officer/Foreman <span class="text-danger">*</span></label><select class="form-select" name="duty_officer_id" required><option value="">Select...</option>{% for f in foremen %}<option value="{{ f.id }}">{{ f.name }}</option>{% endfor %}</select></div></div></div></div>
+                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#formCAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">Date <span class="text-danger">*</span></label><input type="date" class="form-control" name="date" required></div><div class="col-md-6"><label class="form-label">Site Location <span class="text-danger">*</span></label><select class="form-select" name="site_location" required><option value="">Select...</option>{% for loc in site_locations %}<option value="{{ loc }}">{{ loc }}</option>{% endfor %}</select></div>
+                    <div class="col-md-6">
+        <label class="form-label">Name of Site Officer <span class="text-danger">*</span></label>
+        <select class="form-select" name="site_officer_user_id" required>
+            <option value="">Select...</option>
+            {% for so in supervisors %}
+            <option value="{{ so.id }}">{{ so.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label">Name of Duty Officer/Foreman <span class="text-danger">*</span></label>
+        <select class="form-select" name="duty_officer_user_id" required>
+            <option value="">Select...</option>
+            {% for f in foremen %}
+            <option value="{{ f.id }}">{{ f.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+                </div></div></div>
                 </div>
 
                 <div class="accordion-item">

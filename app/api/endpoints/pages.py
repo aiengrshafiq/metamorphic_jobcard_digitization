@@ -75,10 +75,33 @@ async def read_duty_officer_form(
     if isinstance(context, RedirectResponse):
         return context
         
+    # --- V3 DATA FILTERING LOGIC ---
+    # Base query for Job Cards
+    job_cards_query = db.query(models.JobCard).options(joinedload(models.JobCard.project))
+
+    # Check if the user is privileged (can see everything)
+    privileged_roles = {'Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'}
+    is_privileged = bool(privileged_roles.intersection(context["user_roles"]))
+
+    # If the user is NOT privileged, filter the job cards query
+    if not is_privileged:
+        current_user_id = context["user"].id
+        job_cards_query = job_cards_query.filter(
+            # A foreman should only see job cards they are assigned to
+            models.JobCard.foreman_user_id == current_user_id
+        )
+    
+    # Execute the final query
+    job_cards = job_cards_query.order_by(models.JobCard.id.desc()).all()
+
+    # Fetch USERS with the role 'Foreman/Duty Officer' for the signature dropdown
+    foremen = db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.FOREMAN).all()
+    # ------------------------------------
+
     context.update({
         "page_title": "Metamorphic • Duty Officer Progress",
-        "job_cards": db.query(models.JobCard).options(joinedload(models.JobCard.project)).order_by(models.JobCard.id.desc()).all(),
-        "foremen": db.query(models.Foreman).order_by(models.Foreman.name).all(),
+        "job_cards": job_cards, # Pass the potentially filtered list
+        "foremen": foremen,     # Pass the list of users
         "equipment_conditions": app_config.get('equipment_conditions', []),
         "sub_contractor_coordinations": app_config.get('sub_contractor_coordinations', []),
         "delivery_statuses": app_config.get('delivery_statuses', []),
@@ -95,12 +118,33 @@ async def read_site_officer_form(
     if isinstance(context, RedirectResponse):
         return context
         
+    # --- V3 DATA FILTERING LOGIC ---
+    job_cards_query = db.query(models.JobCard).options(joinedload(models.JobCard.project))
+
+    privileged_roles = {'Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'}
+    is_privileged = bool(privileged_roles.intersection(context["user_roles"]))
+
+    # If the user is NOT privileged, filter the job cards to only show their own
+    if not is_privileged:
+        current_user_id = context["user"].id
+        job_cards_query = job_cards_query.filter(
+            # A supervisor should only see job cards they are assigned to
+            models.JobCard.supervisor_user_id == current_user_id
+        )
+    
+    job_cards = job_cards_query.order_by(models.JobCard.id.desc()).all()
+
+    # Fetch USERS for the dropdowns based on their roles
+    supervisors = db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.SUPERVISOR).all()
+    foremen = db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.FOREMAN).all()
+    # ------------------------------------
+
     context.update({
         "page_title": "Metamorphic • Sites Officers Daily Progress Report",
         "site_locations": app_config.get('site_locations', []),
-        "supervisors": db.query(models.Supervisor).order_by(models.Supervisor.name).all(),
-        "foremen": db.query(models.Foreman).order_by(models.Foreman.name).all(),
-        "job_cards": db.query(models.JobCard).options(joinedload(models.JobCard.project)).order_by(models.JobCard.id.desc()).all(),
+        "supervisors": supervisors, # Pass the list of supervisor users
+        "foremen": foremen,         # Pass the list of foreman users
+        "job_cards": job_cards,     # Pass the filtered list of job cards
         "projects": db.query(models.Project).order_by(models.Project.name).all(),
         "subcontractor_coordination_c": app_config.get('subcontractor_coordination_c', []),
         "site_condition_options": app_config.get('site_condition_options', []),
@@ -160,7 +204,7 @@ async def read_material_requisition_form(
     context.update({
         "page_title": "Material Requisition Form",
         "projects": db.query(models.Project).order_by(models.Project.name).all(),
-        "supervisors": db.query(models.Supervisor).order_by(models.Supervisor.name).all(),
+        "supervisors": db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.SUPERVISOR).all(),
         "material_types": app_config.get('material_types', []),
         "urgency_levels": app_config.get('urgency_levels', []),
     })

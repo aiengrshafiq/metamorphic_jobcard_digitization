@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post("/duty-officer-progress/", response_class=JSONResponse, tags=["Reports"])
 async def create_duty_officer_progress(
     db: Session = Depends(deps.get_db),
-    current_user: models.User = Depends(deps.get_current_user),
+    current_user: models.User = Depends(deps.get_current_user), # Captures who is submitting
     toolbox_video_id: Optional[str] = Form(None),
     site_image_ids: Optional[str] = Form(None),
     job_card_id: int = Form(...),
@@ -25,7 +25,7 @@ async def create_duty_officer_progress(
     tbt_key_points: str = Form(...),
     sm_equipment_inventory: str = Form(...),
     sm_safety_hazards: str = Form(...),
-    sm_foreman_signature_id: int = Form(...),
+    foreman_user_id: int = Form(...), # UPDATED: Was sm_foreman_signature_id
     mm_deliveries_received: str = Form(...),
     mm_stock_balance: str = Form(...),
     tbt_topic_discussed: Optional[str] = Form(None),
@@ -44,8 +44,12 @@ async def create_duty_officer_progress(
 ):
     try:
         progress_report = models.DutyOfficerProgress(
+            # --- V3 FIELD UPDATES ---
+            created_by_id=current_user.id,
+            foreman_user_id=foreman_user_id,
+            sm_foreman_signature_id=1, # Placeholder for old required field
+            # --------------------------
             job_card_id=job_card_id, task_id=task_id, date_of_work=date_of_work,
-            # ... (omitting all fields for brevity, they are the same as your original)
             actual_output=actual_output, issues_delays=issues_delays, tbt_attendance=tbt_attendance,
             tbt_topic_discussed=tbt_topic_discussed, tbt_key_points=tbt_key_points,
             sm_equipment_inventory=sm_equipment_inventory, sm_equipment_condition=sm_equipment_condition,
@@ -53,7 +57,7 @@ async def create_duty_officer_progress(
             sm_sub_contractor_coordination=sm_sub_contractor_coordination,
             sm_coordination_issues=sm_coordination_issues, sm_ppe_check=sm_ppe_check,
             sm_safety_hazards=sm_safety_hazards, sm_photos_on_whatsapp=sm_photos_on_whatsapp,
-            sm_foreman_signature_id=sm_foreman_signature_id, mm_deliveries_received=mm_deliveries_received,
+            mm_deliveries_received=mm_deliveries_received,
             mm_rejection_reason=mm_rejection_reason, mm_stock_balance=mm_stock_balance,
             mm_material_transfers=mm_material_transfers, kt_sops_explained=kt_sops_explained,
             kt_help_required_details=kt_help_required_details,
@@ -84,15 +88,16 @@ async def create_duty_officer_progress(
 @router.post("/site-officer-reports/", response_class=JSONResponse, tags=["Reports"])
 async def create_site_officer_report(
     db: Session = Depends(deps.get_db),
-    current_user: models.User = Depends(deps.get_current_user),
+    current_user: models.User = Depends(deps.get_current_user), # Captures who is submitting
     toolbox_video_id: Optional[str] = Form(None),
     site_image_ids: Optional[str] = Form(None),
     date: date = Form(...),
     site_location: str = Form(...),
-    site_officer_id: int = Form(...),
-    duty_officer_id: int = Form(...),
+    # UPDATED: Accept the new user IDs from the form
+    site_officer_user_id: int = Form(...),
+    duty_officer_user_id: int = Form(...),
     job_card_id: int = Form(...),
-    # ... all other optional and required form fields from your original function ...
+    # ... all other form fields remain the same ...
     tbt_attendance: Optional[str] = Form(None), tbt_topic_discussed: Optional[str] = Form(None),
     tbt_key_points: Optional[str] = Form(None), form_b_completed_check: bool = Form(False),
     dependency_notes: Optional[str] = Form(None), progress_pictures_check: bool = Form(False),
@@ -112,9 +117,15 @@ async def create_site_officer_report(
 ):
     try:
         report = models.SiteOfficerReport(
-            date=date, site_location=site_location, site_officer_id=site_officer_id,
-            duty_officer_id=duty_officer_id, job_card_id=job_card_id,
-            # ... (all other fields are the same as your original function)
+            # --- V3 FIELD UPDATES ---
+            created_by_id=current_user.id,
+            site_officer_user_id=site_officer_user_id,
+            duty_officer_user_id=duty_officer_user_id,
+            site_officer_id=1, # Placeholder for old required field
+            duty_officer_id=1,  # Placeholder for old required field
+            # --------------------------
+            date=date, site_location=site_location, job_card_id=job_card_id,
+            # ... all other fields are the same ...
             tbt_attendance=tbt_attendance, tbt_topic_discussed=tbt_topic_discussed,
             tbt_key_points=tbt_key_points, form_b_completed_check=form_b_completed_check,
             dependency_notes=dependency_notes, progress_pictures_check=progress_pictures_check,
