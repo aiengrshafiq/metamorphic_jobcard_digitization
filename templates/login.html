@@ -14,7 +14,6 @@
             --border-color: #dee2e6;
             --error-color: #dc3545;
         }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             display: flex;
@@ -25,7 +24,6 @@
             margin: 0;
             color: var(--text-color);
         }
-
         .form-container {
             width: 100%;
             max-width: 400px;
@@ -35,68 +33,20 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             margin: 1rem;
         }
-
-        .form-container h2 {
-            text-align: center;
-            margin-bottom: 2rem;
-            font-weight: 600;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            box-sizing: border-box;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 0.85rem;
-            border: none;
-            background-color: var(--primary-color);
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-
-        .submit-btn:hover {
-            background-color: var(--primary-hover);
-        }
-
-        .message {
-            text-align: center;
-            margin-top: 1rem;
-            font-size: 0.9rem;
-        }
-        
+        .form-container h2 { text-align: center; margin-bottom: 2rem; font-weight: 600; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group input { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-group input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25); }
+        .submit-btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 0.85rem; border: none; background-color: var(--primary-color); color: white; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: background-color 0.2s; }
+        .submit-btn:hover { background-color: var(--primary-hover); }
+        .submit-btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .spinner-border { width: 1.25em; height: 1.25em; margin-right: 0.75rem;}
+        .message { text-align: center; margin-top: 1rem; font-size: 0.9rem; }
         .message.error { color: var(--error-color); }
         .message a { color: var(--primary-color); text-decoration: none; }
         .message a:hover { text-decoration: underline; }
-
-        @media (max-width: 480px) {
-            .form-container { padding: 1.5rem; }
-        }
+        @media (max-width: 480px) { .form-container { padding: 1.5rem; } }
     </style>
 </head>
 <body>
@@ -111,7 +61,12 @@
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit" class="submit-btn">Login</button>
+            
+            <button type="submit" class="submit-btn" id="loginButton">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                <span class="button-text">Login</span>
+            </button>
+            
         </form>
         <p id="message-area" class="message error"></p>
         <p class="message">Don't have an account? <a href="/register">Sign up</a></p>
@@ -121,7 +76,17 @@
         document.getElementById('loginForm').addEventListener('submit', async function(event) {
             event.preventDefault();
             const messageArea = document.getElementById('message-area');
+            const loginButton = document.getElementById('loginButton');
+            const spinner = loginButton.querySelector('.spinner-border');
+            const buttonText = loginButton.querySelector('.button-text');
+            
             messageArea.textContent = '';
+
+            // --- Set loading state ---
+            loginButton.disabled = true;
+            spinner.style.display = 'inline-block';
+            buttonText.textContent = 'Logging In...';
+            // -------------------------
 
             const formData = new FormData(this);
 
@@ -142,6 +107,12 @@
                 }
             } catch (error) {
                 messageArea.textContent = 'An unexpected error occurred. Please try again.';
+            } finally {
+                // --- Reset button state ---
+                loginButton.disabled = false;
+                spinner.style.display = 'none';
+                buttonText.textContent = 'Login';
+                // --------------------------
             }
         });
     </script>
