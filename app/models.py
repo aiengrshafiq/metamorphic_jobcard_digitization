@@ -43,6 +43,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=True) 
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
@@ -234,6 +235,10 @@ class JobCard(Base):
     site_engineer_id = Column(Integer, ForeignKey('site_engineers.id'), nullable=False)
     supervisor_id = Column(Integer, ForeignKey('supervisors.id'), nullable=False)
     foreman_id = Column(Integer, ForeignKey('foremen.id'), nullable=False)
+    created_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    site_engineer_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    supervisor_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    foreman_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     project = relationship("Project", back_populates="job_cards")
     site_engineer = relationship("SiteEngineer", back_populates="job_cards")
     supervisor = relationship("Supervisor", back_populates="job_cards")

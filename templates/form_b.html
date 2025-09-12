@@ -46,7 +46,7 @@
                             <div id="video-controls" class="mt-3 d-flex justify-content-center gap-2">
                                 <button type="button" class="btn btn-danger" id="record-btn"><i class="bi bi-record-circle me-1"></i> Start</button>
                                 <button type="button" class="btn btn-secondary" id="stop-btn" style="display: none;"><i class="bi bi-stop-circle me-1"></i> Stop</button>
-                                <button type="button" class="btn btn-outline-secondary" id="switch-camera-btn" style="display: none;" title="Switch Camera"><i class="bi bi-arrow-repeat"></i></button>
+                                <button type="button" class="btn btn-outline-secondary" id="switch-camera-btn" style="display: none;" title="Switch Camera"><i class="bi bi-camera-video-reverse"></i>Switch Camera</button>
                                 <button type="button" class="btn btn-info text-white" id="retake-btn" style="display: none;"><i class="bi bi-arrow-counterclockwise me-1"></i> Retake</button>
                             </div>
                         </div>
@@ -110,7 +110,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // --- VIDEO RECORDER LOGIC ---
+        // --- UPDATED VIDEO RECORDER LOGIC with Camera Toggling ---
         const recordBtn = document.getElementById('record-btn');
         const stopBtn = document.getElementById('stop-btn');
         const retakeBtn = document.getElementById('retake-btn');
@@ -122,38 +122,55 @@
         let mediaRecorder;
         let recordedChunks = [];
         let videoStream;
-        let availableVideoDevices = [];
-        let currentVideoDeviceIndex = 0;
+        // NEW: State variable to track the current camera facing mode
+        let currentFacingMode = 'user'; // Start with the front camera
 
-        async function getVideoDevices() {
-            try {
+        async function checkCameraSupport() {
+             try {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) { return; }
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                availableVideoDevices = devices.filter(device => device.kind === 'videoinput');
-                if (availableVideoDevices.length > 1) { switchCameraBtn.style.display = 'inline-block'; }
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                // Show switch button only if there's more than one camera
+                if (videoDevices.length > 1) { 
+                    switchCameraBtn.style.display = 'inline-block'; 
+                }
             } catch (e) { console.error("Could not enumerate devices:", e); }
         }
 
-        async function startRecording(deviceId) {
+        async function startRecording() {
             try {
-                if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); }
-                const constraints = { audio: true, video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 } } };
+                // Stop any existing stream before starting a new one
+                if (videoStream) {
+                    videoStream.getTracks().forEach(track => track.stop());
+                }
+
+                // NEW: Use facingMode to select front/back camera
+                const constraints = { 
+                    audio: true, 
+                    video: { 
+                        facingMode: { exact: currentFacingMode },
+                        width: { ideal: 1280 }, 
+                        height: { ideal: 720 } 
+                    } 
+                };
+
                 videoStream = await navigator.mediaDevices.getUserMedia(constraints);
                 videoPreview.srcObject = videoStream;
                 mediaRecorder = new MediaRecorder(videoStream, { mimeType: 'video/webm' });
                 recordedChunks = [];
                 mediaRecorder.ondataavailable = event => { if (event.data.size > 0) recordedChunks.push(event.data); };
-                mediaRecorder.onstop = uploadVideo; // This will now be an authenticated upload
+                mediaRecorder.onstop = uploadVideo;
                 mediaRecorder.start();
+
                 videoStatus.textContent = '🔴 Recording...';
                 recordBtn.style.display = 'none';
                 stopBtn.style.display = 'inline-block';
                 retakeBtn.style.display = 'none';
-                if (availableVideoDevices.length > 1) { switchCameraBtn.style.display = 'inline-block'; }
+                switchCameraBtn.disabled = false; // Re-enable switch button
             } catch (error) {
                 console.error('Error accessing media devices.', error);
                 videoStatus.textContent = 'Could not access camera/microphone.';
-                alert('Error: Could not access camera or microphone. Please check browser permissions.');
+                alert(`Error: Could not access camera (${currentFacingMode} view). Please check browser permissions or try switching cameras.`);
             }
         }
 
@@ -163,7 +180,7 @@
                 videoStream.getTracks().forEach(track => track.stop());
                 videoStatus.textContent = 'Recording stopped. Preparing for upload...';
                 stopBtn.disabled = true;
-                switchCameraBtn.style.display = 'none';
+                switchCameraBtn.disabled = true; // Disable during upload
             }
         }
 
@@ -186,7 +203,6 @@
             formData.append('video', videoBlob, 'toolbox-talk.webm');
             
             try {
-                // Corrected URL and added Authorization header
                 const response = await fetch('/uploads/api/videos/upload', { 
                     method: 'POST', 
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -198,6 +214,7 @@
                 videoStatus.textContent = `✅ Upload complete!`;
                 recordBtn.style.display = 'none';
                 stopBtn.style.display = 'none';
+                switchCameraBtn.style.display = 'none';
                 retakeBtn.style.display = 'inline-block';
             } catch (error) {
                 videoStatus.textContent = `❌ Upload failed: ${error.message}`;
@@ -219,22 +236,24 @@
             recordBtn.style.display = 'inline-block';
             stopBtn.style.display = 'none';
             retakeBtn.style.display = 'none';
-            switchCameraBtn.style.display = availableVideoDevices.length > 1 ? 'inline-block' : 'none';
+            checkCameraSupport(); // Re-check to show switch button if available
         }
         
+        // NEW: Rewritten switchCamera function
         function switchCamera() {
-            currentVideoDeviceIndex = (currentVideoDeviceIndex + 1) % availableVideoDevices.length;
-            const newDeviceId = availableVideoDevices[currentVideoDeviceIndex].deviceId;
-            startRecording(newDeviceId);
+            // Toggle between 'user' (front) and 'environment' (back)
+            currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+            // Restart the recording with the new facing mode
+            startRecording();
         }
 
         recordBtn.addEventListener('click', () => startRecording());
         stopBtn.addEventListener('click', stopRecording);
         retakeBtn.addEventListener('click', resetVideo);
         switchCameraBtn.addEventListener('click', switchCamera);
-        getVideoDevices();
+        checkCameraSupport(); // Check for cameras on page load
 
-        // --- IMAGE UPLOADER LOGIC ---
+        // --- IMAGE UPLOADER LOGIC (Unchanged) ---
         const imageUploadInput = document.getElementById('image-upload-input');
         const imagePreviewContainer = document.getElementById('image-preview-container');
         const hiddenImageIdsInput = document.getElementById('site_image_ids');
@@ -242,17 +261,14 @@
         imageUploadInput.addEventListener('change', function(event) {
             const files = event.target.files;
             if (!files.length) return;
-            
             const token = getCookie('access_token');
             if (!token) {
                 alert('Authentication error. Please log in to upload images.');
                 return;
             }
-
             imagePreviewContainer.innerHTML = '';
             let uploadedImageIds = [];
             hiddenImageIdsInput.value = '';
-            
             Array.from(files).forEach(file => {
                 const previewWrapper = document.createElement('div');
                 previewWrapper.className = 'img-preview-wrapper';
@@ -264,15 +280,11 @@
                 previewWrapper.appendChild(img);
                 previewWrapper.appendChild(progressOverlay);
                 imagePreviewContainer.appendChild(previewWrapper);
-
                 const reader = new FileReader();
                 reader.onload = e => { img.src = e.target.result; }
                 reader.readAsDataURL(file);
-
                 const formData = new FormData();
                 formData.append('files', file);
-                
-                // Corrected URL and added Authorization header
                 fetch('/uploads/api/images/upload', { 
                     method: 'POST', 
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -296,7 +308,7 @@
             });
         });
         
-        // --- EXISTING FORM LOGIC ---
+        // --- MAIN FORM LOGIC (Unchanged) ---
         const jobCardSelect = document.getElementById('job_card_id');
         const formBSections = document.getElementById('form-b-sections');
         const taskSelect = document.getElementById('task_id');
@@ -316,7 +328,6 @@
                     return;
                 }
                 try {
-                    // Corrected URL and added Authorization header
                     const response = await fetch(`/job-cards/api/job-cards/${jobCardId}/tasks`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
@@ -357,7 +368,7 @@
             if (!token) {
                 toastElement.classList.add('bg-danger', 'text-white');
                 toastTitle.innerText = 'Authentication Error';
-                toastBody.innerText = 'You are not logged in. Please log in to submit the form.';
+                toastBody.innerText = 'You are not logged in to submit the form.';
                 toast.show();
                 spinner.style.display = 'none';
                 submitBtn.disabled = false;
@@ -366,7 +377,6 @@
 
             const formData = new FormData(form);
             try {
-                // Corrected URL and added Authorization header
                 const response = await fetch('/reports/duty-officer-progress/', { 
                     method: 'POST', 
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -374,7 +384,7 @@
                 });
 
                 const result = await response.json();
-                if (response.status === 401) { throw new Error(result.detail || 'Session expired. Please log in again.'); }
+                if (response.status === 401) { throw new Error(result.detail || 'Session expired.'); }
                 if (!response.ok) { throw new Error(result.message || result.detail || 'An unknown error occurred.'); }
                 
                 toastElement.classList.add('bg-success', 'text-white');

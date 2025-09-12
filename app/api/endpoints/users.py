@@ -13,6 +13,7 @@ router = APIRouter()
 @router.post("/register", response_class=JSONResponse, tags=["Users"])
 async def register_new_user(
     db: Session = Depends(deps.get_db),
+    name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
     roles: List[str] = Form(...) # The form will submit a list of role names
@@ -39,6 +40,7 @@ async def register_new_user(
     # Create the new user
     hashed_password = get_password_hash(password)
     new_user = models.User(
+        name=name,
         email=email,
         hashed_password=hashed_password,
         is_active=True, # You might want to default this to False and have an email verification step

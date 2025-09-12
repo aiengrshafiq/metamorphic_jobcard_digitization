@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 import yaml
 from pathlib import Path
 import os
+from sqlalchemy import or_
 
 from app.api import deps
 from app import models
@@ -45,12 +46,19 @@ async def read_job_card_form(
     if isinstance(context, RedirectResponse):
         return context
 
+    # --- MODIFIED QUERIES ---
+    # Fetch USERS with the role 'Site Engineer' instead of the old SiteEngineer table
+    site_engineers = db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.SITE_ENGINEER).all()
+    supervisors = db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.SUPERVISOR).all()
+    foremen = db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.FOREMAN).all()
+    # ------------------------
+
     context.update({
         "page_title": "Metamorphic • Job Card (Assignment)",
         "projects": db.query(models.Project).order_by(models.Project.name).all(),
-        "site_engineers": db.query(models.SiteEngineer).order_by(models.SiteEngineer.name).all(),
-        "supervisors": db.query(models.Supervisor).order_by(models.Supervisor.name).all(),
-        "foremen": db.query(models.Foreman).order_by(models.Foreman.name).all(),
+        "site_engineers": site_engineers,
+        "supervisors": supervisors,
+        "foremen": foremen,
         "site_locations": app_config.get('site_locations', []),
         "units": app_config.get('units', []),
         "assigned_crew_options": app_config.get('assigned_crew_options', []),
@@ -109,10 +117,32 @@ async def job_card_tracking(
 ):
     if isinstance(context, RedirectResponse):
         return context
-        
-    job_cards = db.query(models.JobCard).options(joinedload(models.JobCard.project), selectinload(models.JobCard.tasks)).order_by(models.JobCard.id.desc()).all()
+    
+    # Base query
+    query = db.query(models.JobCard).options(
+        joinedload(models.JobCard.project), 
+        selectinload(models.JobCard.tasks)
+    )
+
+    # Check if the user is privileged (can see everything)
+    privileged_roles = {'Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'}
+    is_privileged = bool(privileged_roles.intersection(context["user_roles"]))
+
+    # If the user is NOT privileged, filter the query
+    if not is_privileged:
+        current_user_id = context["user"].id
+        query = query.filter(
+            or_(
+                models.JobCard.site_engineer_user_id == current_user_id,
+                models.JobCard.supervisor_user_id == current_user_id,
+                models.JobCard.foreman_user_id == current_user_id
+            )
+        )
+    
+    job_cards = query.order_by(models.JobCard.id.desc()).all()
+    
     context.update({
-        "page_title": "Job Card Tracking",
+        "page_title": "My Job Cards", # Renamed for clarity
         "job_cards": job_cards,
         "task_statuses": app_config.get('task_statuses', [])
     })

@@ -29,8 +29,10 @@ class JobCardCreate(JobCardBase):
 
 class UserBase(BaseModel):
     email: EmailStr
+    name: Optional[str] = None
 
 class UserCreate(UserBase):
+    name: str
     password: str
     roles: List[UserRole]
 

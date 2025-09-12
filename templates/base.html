@@ -1,197 +1,180 @@
 <!doctype html>
 <html lang="en" data-bs-theme="light">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ page_title }} | Metamorphic</title>
-
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-  <style>
-    html, body { height: 100%; }
-    body { background-color: #f8f9fa; overflow-x: hidden; }
-
-    /* Desktop sidebar (visible on large screens and up) */
-    .sidebar-desktop {
-      height: calc(100vh - 56px); /* 56px = navbar height */
-      position: sticky;
-      top: 56px;
-      box-shadow: inset -1px 0 0 rgba(0,0,0,.05);
-      background-color: #fff;
-    }
-
-    .sidebar-nav .nav-link {
-      padding: .5rem 1rem;
-      color: #495057;
-    }
-    .sidebar-nav .nav-link:hover { background: rgba(0,0,0,.03); }
-    .sidebar-nav .nav-link.active {
-      font-weight: 600;
-      background: rgba(13,110,253,.08);
-      color: #0d6efd;
-    }
-
-    .sidebar-heading {
-      font-size: .75rem;
-      letter-spacing: .08em;
-    }
-  </style>
-
-  {% block head_extra %}{% endblock %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }} | Metamorphic</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        html, body { height: 100%; }
+        body { background-color: #f8f9fa; overflow-x: hidden; }
+        .sidebar-desktop { height: calc(100vh - 56px); position: sticky; top: 56px; box-shadow: inset -1px 0 0 rgba(0,0,0,.05); background-color: #fff; }
+        .sidebar-nav .nav-link { padding: .5rem 1rem; color: #495057; }
+        .sidebar-nav .nav-link:hover { background: rgba(0,0,0,.03); }
+        .sidebar-nav .nav-link.active { font-weight: 600; background: rgba(13,110,253,.08); color: #0d6efd; }
+        .sidebar-heading { font-size: .75rem; letter-spacing: .08em; }
+    </style>
+    {% block head_extra %}{% endblock %}
 </head>
 <body>
-  <!-- Top navbar -->
-  <nav class="navbar navbar-dark bg-dark sticky-top">
-    <div class="container-fluid">
-      <!-- Hamburger menu for mobile, triggers the offcanvas sidebar -->
-      <button class="navbar-toggler me-2 d-lg-none" type="button"
-              data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas"
-              aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <a class="navbar-brand text-truncate" href="/">Metamorphic Contracting</a>
-    </div>
-  </nav>
-
-  <div class="container-fluid">
-    <div class="row g-0">
-      <!-- Desktop sidebar -->
-      <aside class="col-lg-2 d-none d-lg-block sidebar-desktop">
-        <nav class="sidebar-nav py-3">
-          <ul class="nav flex-column">
-            <li class="nav-item">
-              <a class="nav-link {% if page_title == 'Dashboard' %}active{% endif %}" href="/">
-                <i class="bi bi-speedometer2 me-2"></i> Dashboard
-              </a>
-            </li>
-            <li class="nav-item mt-2 border-top pt-2">
-            <a class="nav-link logout-link" href="#">
-              <i class="bi bi-box-arrow-right me-2"></i> Logout
-            </a>
-          </li>
-          </ul>
-
-          <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
-            <span>Forms</span>
-          </h6>
-          <ul class="nav flex-column mb-2">
-            <li class="nav-item"><a class="nav-link" href="/job-card-form"><i class="bi bi-card-list me-2"></i> Form A: Job Card</a></li>
-            <li class="nav-item"><a class="nav-link" href="/duty-officer-form"><i class="bi bi-person-workspace me-2"></i> Form B: Duty Officer</a></li>
-            <li class="nav-item"><a class="nav-link" href="/site-officer-form"><i class="bi bi-clipboard2-data me-2"></i> Form C: Daily Report</a></li>
-            <li class="nav-item"><a class="nav-link" href="/material-requisition-form"><i class="bi bi-box-seam me-2"></i> Material Requisition</a></li>
-          </ul>
-
-          <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
-            <span>Workflows</span>
-          </h6>
-          <ul class="nav flex-column mb-2">
-            <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> Job Card Tracking</a></li>
-            <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
-            {% if 'Project Manager' in user_roles or 'QS' in user_roles %}
-          <li class="nav-item">
-            <a class="nav-link {% if page_title == 'My Approvals' %}active{% endif %}" href="/approvals">
-              <i class="bi bi-check2-square me-2"></i> My Approvals
-            </a>
-          </li>
-          {% endif %}
-          </ul>
-        </nav>
-      </aside>
-
-      <!-- Main content -->
-      <main class="col-12 col-lg-10 p-3 p-md-4">
-        <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-          <h1 class="h2 mb-0 text-truncate">{{ page_title }}</h1>
+    <nav class="navbar navbar-dark bg-dark sticky-top">
+        <div class="container-fluid">
+            <button class="navbar-toggler me-2 d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <a class="navbar-brand text-truncate" href="/">Metamorphic Contracting</a>
+            {% if user %}
+            <span class="navbar-text text-white-50 d-none d-sm-block">
+                Welcome, {{ user.name or user.email }}
+            </span>
+            {% endif %}
         </div>
-        {% block content %}{% endblock %}
-      </main>
+    </nav>
+
+    {% set privileged_roles = ['Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'] %}
+    {% set is_privileged = user_roles | select('in', privileged_roles) | list | length > 0 %}
+
+    <div class="container-fluid">
+        <div class="row g-0">
+            <aside class="col-lg-2 d-none d-lg-block sidebar-desktop">
+                <nav class="sidebar-nav py-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {% if page_title == 'Dashboard' %}active{% endif %}" href="/"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+                        </li>
+                        <li class="nav-item mt-2 border-top pt-2">
+                            <a class="nav-link logout-link" href="#"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
+                        </li>
+                    </ul>
+
+                    {% if is_privileged or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                        <span>Forms</span>
+                    </h6>
+                    <ul class="nav flex-column mb-2">
+                        {% if is_privileged %}
+                            <li class="nav-item"><a class="nav-link" href="/job-card-form"><i class="bi bi-card-list me-2"></i> Form A: Job Card</a></li>
+                        {% endif %}
+                        {% if is_privileged or 'Foreman/Duty Officer' in user_roles %}
+                            <li class="nav-item"><a class="nav-link" href="/duty-officer-form"><i class="bi bi-person-workspace me-2"></i> Form B: Duty Officer</a></li>
+                        {% endif %}
+                        {% if is_privileged or 'Supervisor/Site Officer' in user_roles %}
+                            <li class="nav-item"><a class="nav-link" href="/site-officer-form"><i class="bi bi-clipboard2-data me-2"></i> Form C: Daily Report</a></li>
+                        {% endif %}
+                        {% if is_privileged %}
+                            <li class="nav-item"><a class="nav-link" href="/material-requisition-form"><i class="bi bi-box-seam me-2"></i> Material Requisition</a></li>
+                        {% endif %}
+                    </ul>
+                    {% endif %}
+
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                        <span>Workflows</span>
+                    </h6>
+                    <ul class="nav flex-column mb-2">
+                        {% if is_privileged or 'Site Engineer' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
+                           <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
+                        {% endif %}
+                        {% if is_privileged or 'Procurement' in user_roles %}
+                           <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
+                        {% endif %}
+                        {% if is_privileged or 'QS' in user_roles %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if page_title == 'My Approvals' %}active{% endif %}" href="/approvals"><i class="bi bi-check2-square me-2"></i> My Approvals</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </aside>
+
+            <main class="col-12 col-lg-10 p-3 p-md-4">
+                <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 mb-0 text-truncate">{{ page_title }}</h1>
+                </div>
+                {% block content %}{% endblock %}
+            </main>
+        </div>
     </div>
-  </div>
 
-  <!-- Mobile offcanvas sidebar -->
-  <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel">
-    <div class="offcanvas-header">
-      <h5 class="offcanvas-title" id="sidebarOffcanvasLabel">Menu</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="sidebarOffcanvasLabel">Menu</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+             <nav class="sidebar-nav py-3">
+                 <ul class="nav flex-column">
+                     <li class="nav-item">
+                         <a class="nav-link {% if page_title == 'Dashboard' %}active{% endif %}" href="/"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+                     </li>
+                     <li class="nav-item mt-2 border-top pt-2">
+                         <a class="nav-link logout-link" href="#"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
+                     </li>
+                 </ul>
+
+                 {% if is_privileged or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
+                 <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                     <span>Forms</span>
+                 </h6>
+                 <ul class="nav flex-column mb-2">
+                     {% if is_privileged %}
+                         <li class="nav-item"><a class="nav-link" href="/job-card-form"><i class="bi bi-card-list me-2"></i> Form A: Job Card</a></li>
+                     {% endif %}
+                     {% if is_privileged or 'Foreman/Duty Officer' in user_roles %}
+                         <li class="nav-item"><a class="nav-link" href="/duty-officer-form"><i class="bi bi-person-workspace me-2"></i> Form B: Duty Officer</a></li>
+                     {% endif %}
+                     {% if is_privileged or 'Supervisor/Site Officer' in user_roles %}
+                         <li class="nav-item"><a class="nav-link" href="/site-officer-form"><i class="bi bi-clipboard2-data me-2"></i> Form C: Daily Report</a></li>
+                     {% endif %}
+                     {% if is_privileged or 'Supervisor/Site Officer' in user_roles %}
+                         <li class="nav-item"><a class="nav-link" href="/material-requisition-form"><i class="bi bi-box-seam me-2"></i> Material Requisition</a></li>
+                     {% endif %}
+                 </ul>
+                 {% endif %}
+
+                 <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                     <span>Workflows</span>
+                 </h6>
+                 <ul class="nav flex-column mb-2">
+                     {% if is_privileged or 'Site Engineer' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
+                        <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
+                     {% endif %}
+                     {% if is_privileged or 'Procurement' in user_roles %}
+                        <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
+                     {% endif %}
+                     {% if is_privileged or 'QS' in user_roles %}
+                     <li class="nav-item">
+                         <a class="nav-link {% if page_title == 'My Approvals' %}active{% endif %}" href="/approvals"><i class="bi bi-check2-square me-2"></i> My Approvals</a>
+                     </li>
+                     {% endif %}
+                 </ul>
+             </nav>
+        </div>
     </div>
-    <div class="offcanvas-body p-0">
-      <nav class="sidebar-nav py-2">
-        <ul class="nav flex-column">
-          <li class="nav-item">
-            <a class="nav-link {% if page_title == 'Dashboard' %}active{% endif %}" href="/">
-              <i class="bi bi-speedometer2 me-2"></i> Dashboard
-            </a>
-          </li>
-           <li class="nav-item mt-2 border-top pt-2">
-          <a class="nav-link logout-link" href="#">
-            <i class="bi bi-box-arrow-right me-2"></i> Logout
-          </a>
-        </li>
-        </ul>
 
-        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-3 mb-1 text-muted text-uppercase">
-          <span>Forms</span>
-        </h6>
-        <ul class="nav flex-column mb-2">
-          <li class="nav-item"><a class="nav-link" href="/job-card-form"><i class="bi bi-card-list me-2"></i> Form A: Job Card</a></li>
-          <li class="nav-item"><a class="nav-link" href="/duty-officer-form"><i class="bi bi-person-workspace me-2"></i> Form B: Duty Officer</a></li>
-          <li class="nav-item"><a class="nav-link" href="/site-officer-form"><i class="bi bi-clipboard2-data me-2"></i> Form C: Daily Report</a></li>
-          <li class="nav-item"><a class="nav-link" href="/material-requisition-form"><i class="bi bi-box-seam me-2"></i> Material Requisition</a></li>
-        </ul>
-
-        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-3 mb-1 text-muted text-uppercase">
-          <span>Workflows</span>
-        </h6>
-        <ul class="nav flex-column mb-2">
-          <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> Job Card Tracking</a></li>
-          <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
-          {% if 'Project Manager' in user_roles or 'QS' in user_roles or 'Admin' in user_roles or 'Super Admin' in user_roles %}
-          <li class="nav-item">
-            <a class="nav-link {% if page_title == 'My Approvals' %}active{% endif %}" href="/approvals">
-              <i class="bi bi-check2-square me-2"></i> My Approvals
-            </a>
-          </li>
-          {% endif %}
-        </ul>
-      </nav>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="responseToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header"><strong class="me-auto" id="toast-title"></strong><button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button></div>
+            <div class="toast-body" id="toast-body"></div>
+        </div>
     </div>
-  </div>
 
-  <!-- Toast -->
-  <div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div id="responseToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="toast-header">
-        <strong class="me-auto" id="toast-title"></strong>
-        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-      <div class="toast-body" id="toast-body"></div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Find all elements with the 'logout-link' class
-      const logoutLinks = document.querySelectorAll('.logout-link');
-
-      // Define the logout function
-      function logout() {
-        // To log out, we delete the cookie by setting its expiration date to the past
-        document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure';
-        // Redirect to the login page
-        window.location.href = '/login';
-      }
-
-      // Add a click event listener to each logout link
-      logoutLinks.forEach(link => {
-        link.addEventListener('click', function(event) {
-          event.preventDefault(); // Prevent the link from navigating to '#'
-          logout();
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutLinks = document.querySelectorAll('.logout-link');
+            function logout() {
+                document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure';
+                window.location.href = '/login';
+            }
+            logoutLinks.forEach(link => {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    logout();
+                });
+            });
         });
-      });
-    });
-  </script>
-  {% block scripts_extra %}{% endblock %}
+    </script>
+    {% block scripts_extra %}{% endblock %}
 </body>
 </html>

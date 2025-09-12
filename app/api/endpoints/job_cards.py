@@ -28,7 +28,10 @@ async def create_job_card(
     priority: List[Optional[int]] = Form(...),
     start_date: List[Optional[date]] = Form(...),
     end_date: List[Optional[date]] = Form(...),
-    assigned_crew: List[Optional[str]] = Form(...)
+    assigned_crew: List[Optional[str]] = Form(...),
+    site_engineer_user_id: int = Form(...),
+    supervisor_user_id: int = Form(...),
+    foreman_user_id: int = Form(...)
 ):
     if db.query(models.JobCard).filter(models.JobCard.job_card_no == job_card_no).first():
         return JSONResponse(status_code=400, content={"message": f"Job Card No '{job_card_no}' already exists."})
@@ -38,9 +41,13 @@ async def create_job_card(
             job_card_no=job_card_no,
             date_issued=date_issued,
             site_location=site_location,
-            site_engineer_id=site_engineer_id,
-            supervisor_id=supervisor_id,
-            foreman_id=foreman_id
+            created_by_id=current_user.id, # Automatically set the creator
+            site_engineer_user_id=site_engineer_user_id,
+            supervisor_user_id=supervisor_user_id,
+            foreman_user_id=foreman_user_id,
+            site_engineer_id=1,
+            supervisor_id=1,
+            foreman_id=1
         )
         db.add(new_job_card)
         db.flush()
