@@ -208,6 +208,7 @@ async def read_material_requisition_form(
         "material_types": app_config.get('material_types', []),
         "urgency_levels": app_config.get('urgency_levels', []),
     })
+    
     return templates.TemplateResponse("material_requisition_form.html", context)
 
 

@@ -18,11 +18,9 @@ class MyAuthBackend(AuthenticationBackend):
 
         db = SessionLocal()
         try:
-            # --- THIS IS THE MODIFIED QUERY ---
             user = db.query(User).options(
-                joinedload(User.roles) # Eagerly load the roles relationship
+                joinedload(User.roles)
             ).filter(User.email == email).first()
-            # ------------------------------------
 
             if user and user.is_active and verify_password(password, user.hashed_password):
                 user_roles = {role.name for role in user.roles}
@@ -38,16 +36,9 @@ class MyAuthBackend(AuthenticationBackend):
                     request.session.update({"user_email": user.email})
                     return True
         finally:
-            db.close() # Now we close the session at the end
+            db.close()
                 
         return False
-
-    async def logout(self, request: Request) -> bool:
-        request.session.clear()
-        return True
-
-    async def authenticate(self, request: Request) -> bool:
-        return "user_email" in request.session
 
     async def logout(self, request: Request) -> bool:
         request.session.clear()
@@ -59,8 +50,10 @@ class MyAuthBackend(AuthenticationBackend):
 # --- Define all your ModelViews here ---
 
 class UserAdmin(ModelView, model=User):
-    column_list = [User.id, User.email, User.is_active, User.roles]
-    form_columns = [User.email, User.is_active, User.roles, User.hashed_password]
+    column_list = [User.id, User.name, User.email, User.is_active, User.roles]
+    # Add the new 'material_requisitions' relationship here for viewing
+    column_details_list = [User.id, User.name, User.email, User.is_active, User.roles, User.material_requisitions]
+    form_columns = [User.name, User.email, User.is_active, User.roles]
     name_plural = "Users"
 
 class RoleAdmin(ModelView, model=Role):
@@ -96,8 +89,9 @@ class JobCardAdmin(ModelView, model=JobCard):
     name_plural = "Job Cards (Form A)"
 
 class MaterialRequisitionAdmin(ModelView, model=MaterialRequisition):
-    column_list = [MaterialRequisition.id, MaterialRequisition.mr_number, MaterialRequisition.request_date, "project", "status"]
-    column_formatters = {"project": lambda m, a: m.project.name if m.project else ""}
+    # Updated to show the user's name
+    column_list = [MaterialRequisition.id, MaterialRequisition.mr_number, "requested_by", "project", "status"]
+    column_formatters = {"project": lambda m, a: m.project.name if m.project else "", "requested_by": lambda m, a: m.requested_by.name if m.requested_by else ""}
     name_plural = "Material Requisitions"
 
 class SupplierAdmin(ModelView, model=Supplier):
@@ -110,7 +104,10 @@ class ProjectAdmin(ModelView, model=Project):
 
 class SupervisorAdmin(ModelView, model=Supervisor):
     column_list = [Supervisor.id, Supervisor.name]
-    column_details_list = [Supervisor.id, Supervisor.name, Supervisor.job_cards, Supervisor.site_officer_reports, Supervisor.material_requisitions]
+    # --- THIS IS THE FIX ---
+    # Removed Supervisor.material_requisitions because it no longer exists on the model
+    column_details_list = [Supervisor.id, Supervisor.name, Supervisor.job_cards, Supervisor.site_officer_reports]
+    # -----------------------
 
 class ForemanAdmin(ModelView, model=Foreman):
     column_list = [Foreman.id, Foreman.name]

@@ -49,6 +49,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
 
     roles = relationship("Role", secondary=user_role_association, backref="users")
+    material_requisitions = relationship("MaterialRequisition", back_populates="requested_by")
 
     def verify_password(self, plain_password: str) -> bool:
         return pwd_context.verify(plain_password, self.hashed_password)
@@ -83,6 +84,8 @@ class DutyOfficerProgress(Base):
     __tablename__ = 'duty_officer_progress'
     # ... (all existing columns are the same)
     id = Column(Integer, primary_key=True, index=True)
+    created_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    foreman_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     job_card_id = Column(Integer, ForeignKey('job_cards.id'), nullable=False)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     date_of_work = Column(Date, nullable=False)
@@ -124,6 +127,11 @@ class SiteOfficerReport(Base):
     __tablename__ = 'site_officer_reports'
     # ... (all existing columns are the same)
     id = Column(Integer, primary_key=True, index=True)
+    created_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    # --- ADD THESE TWO LINES ---
+    site_officer_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    duty_officer_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    # --------------------------
     date = Column(Date, nullable=False)
     site_location = Column(String, nullable=False)
     site_officer_id = Column(Integer, ForeignKey('supervisors.id'), nullable=False)
@@ -210,7 +218,7 @@ class Supervisor(Base):
     name = Column(String, unique=True, nullable=False)
     job_cards = relationship("JobCard", back_populates="supervisor")
     site_officer_reports = relationship("SiteOfficerReport", back_populates="site_officer")
-    material_requisitions = relationship("MaterialRequisition", back_populates="requested_by")
+    
     def __str__(self) -> str: return self.name
 
 class Foreman(Base):
@@ -270,7 +278,7 @@ class MaterialRequisition(Base):
     id = Column(Integer, primary_key=True, index=True)
     request_date = Column(Date, nullable=False, default=func.current_date())
     project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
-    requested_by_id = Column(Integer, ForeignKey('supervisors.id'), nullable=False)
+    requested_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     material_type = Column(String, nullable=False)
     material_with_quantity = Column(Text, nullable=False)
     urgency = Column(String, nullable=False)
@@ -286,7 +294,7 @@ class MaterialRequisition(Base):
     payment_status = Column(String, nullable=True)
     remarks = Column(Text, nullable=True)
     project = relationship("Project", back_populates="material_requisitions")
-    requested_by = relationship("Supervisor", back_populates="material_requisitions")
+    requested_by = relationship("User", back_populates="material_requisitions")
     supplier = relationship("Supplier", back_populates="requisitions")
     def __str__(self) -> str:
         p_name = self.project.name if self.project else f"Project ID {self.project_id}"
