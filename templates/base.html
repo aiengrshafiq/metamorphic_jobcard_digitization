@@ -38,6 +38,9 @@
     {% set admin_roles = ['Super Admin', 'Admin'] %}
     {% set is_admin = user_roles | select('in', admin_roles) | list | length > 0 %}
 
+
+    <pre>{{ user_roles | safe }}</pre>
+
     <div class="container-fluid">
         <div class="row g-0">
             <aside class="col-lg-2 d-none d-lg-block sidebar-desktop">
@@ -78,7 +81,7 @@
                         {% if is_privileged or 'Supervisor/Site Officer' in user_roles %}
                             <li class="nav-item"><a class="nav-link" href="/site-officer-form"><i class="bi bi-clipboard2-data me-2"></i> Form C: Daily Report</a></li>
                         {% endif %}
-                        {% if is_privileged %}
+                        {% if is_privileged or 'Supervisor/Site Officer' in user_roles %}
                             <li class="nav-item"><a class="nav-link" href="/material-requisition-form"><i class="bi bi-box-seam me-2"></i> Material Requisition</a></li>
                         {% endif %}
                         
@@ -93,7 +96,7 @@
                         {% if is_privileged or 'Site Engineer' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
                            <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
                         {% endif %}
-                        {% if is_privileged or 'Procurement' in user_roles %}
+                        {% if (is_privileged or 'Procurement' in user_roles) and 'Project Manager' not in user_roles %}
                            <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
                         {% endif %}
                         {% if is_privileged or 'QS' in user_roles %}
@@ -158,13 +161,7 @@
                      {% if is_privileged or 'Supervisor/Site Officer' in user_roles %}
                          <li class="nav-item"><a class="nav-link" href="/material-requisition-form"><i class="bi bi-box-seam me-2"></i> Material Requisition</a></li>
                      {% endif %}
-                      {% if is_privileged or 'User' in user_roles %}
-                     <li class="nav-item">
-                        <a class="nav-link" href="/nanny-log-form">
-                            <i class="bi bi-person-hearts me-2"></i> Daily Nanny Log
-                        </a>
-                    </li>
-                    {% endif %}
+                      
                  </ul>
                  {% endif %}
 
@@ -175,7 +172,7 @@
                      {% if is_privileged or 'Site Engineer' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
                         <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
                      {% endif %}
-                     {% if is_privileged or 'Procurement' in user_roles %}
+                     {% if (is_privileged or 'Procurement' in user_roles) and 'Project Manager' not in user_roles %}
                         <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
                      {% endif %}
                      {% if is_privileged or 'QS' in user_roles %}
