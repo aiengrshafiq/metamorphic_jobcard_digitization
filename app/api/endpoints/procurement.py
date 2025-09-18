@@ -95,7 +95,18 @@ async def create_material_requisition(
     required_delivery_date: date = Form(...)
 ):
     try:
+         # --- NEW: MR Number Generation Logic ---
+        # Find the highest existing MR number
+        last_mr = db.query(func.max(models.MaterialRequisition.mr_number)).scalar()
+        
+        # If none exist, start from 57. Otherwise, increment the last one.
+        next_mr_num = 57 if not last_mr else int(last_mr.split('-')[1]) + 1
+        
+        # Format the new MR number
+        new_mr_number = f"MR-{next_mr_num:06d}"
+        # ------------------------------------
         requisition = models.MaterialRequisition(
+            mr_number=new_mr_number,
             request_date=request_date,
             project_id=project_id,
             requested_by_id=requested_by_id,
@@ -109,6 +120,9 @@ async def create_material_requisition(
         return JSONResponse(status_code=200, content={"message": "Material requisition submitted successfully!"})
     except Exception as e:
         db.rollback()
+        # Provide a more specific error for unique constraint violation
+        if "unique constraint" in str(e).lower():
+            return JSONResponse(status_code=400, content={"message": "A database error occurred. It's possible the MR Number already exists."})
         return JSONResponse(status_code=500, content={"message": f"An unexpected error occurred: {e}"})
 
 
@@ -129,10 +143,7 @@ async def update_material_requisition(
     if not req:
         raise HTTPException(status_code=404, detail="Requisition not found")
     try:
-        if not req.mr_number:
-            last_mr = db.query(func.max(models.MaterialRequisition.mr_number)).scalar()
-            next_mr_num = 56 if not last_mr else int(last_mr.split('-')[1]) + 1
-            req.mr_number = f"MR-{next_mr_num:06d}"
+        
 
         req.supplier_id = supplier_id
         req.lpo_number = lpo_number

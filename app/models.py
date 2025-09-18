@@ -286,7 +286,7 @@ class MaterialRequisition(Base):
     required_delivery_date = Column(Date, nullable=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-    mr_number = Column(String, unique=True, nullable=True)
+    mr_number = Column(String, unique=True, nullable=False)
     status = Column(String, nullable=False, default='Pending')
     supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=True)
     lpo_number = Column(String, nullable=True)
