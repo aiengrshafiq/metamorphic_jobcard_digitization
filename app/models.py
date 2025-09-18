@@ -292,6 +292,7 @@ class MaterialRequisition(Base):
     lpo_number = Column(String, nullable=True)
     pm_approval = Column(String, nullable=True, default='Pending')
     qs_approval = Column(String, nullable=True, default='Pending')
+    mr_approval = Column(String, nullable=True, default='Pending')
     payment_status = Column(String, nullable=True)
     remarks = Column(Text, nullable=True)
     project = relationship("Project", back_populates="material_requisitions")

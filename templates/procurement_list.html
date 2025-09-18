@@ -43,14 +43,32 @@
                                 <span class="badge bg-info">{{ req.urgency }}</span>
                             {% endif %}
                         </td>
-                        <td class="text-end">
+                        <!-- <td class="text-end">
                             <a href="/requisition-details/{{ req.id }}" class="btn btn-outline-secondary btn-sm" title="View Details">
                                 <i class="bi bi-eye-fill"></i>
                             </a>
                             <a href="/procurement/material-requisition/{{ req.id }}" class="btn btn-primary btn-sm">
                                 <i class="bi bi-pencil-square me-1"></i> Process
                             </a>
-                        </td>
+                        </td> -->
+                        <td class="text-end">
+                        <div class="btn-group" role="group" aria-label="Actions">
+                            <a href="/requisition-details/{{ req.id }}" class="btn btn-outline-secondary btn-sm" title="View Details">
+                                <i class="bi bi-eye-fill"></i>
+                            </a>
+                            {% if req.pm_approval == 'Approved' and req.qs_approval == 'Approved' %}
+                            <a href="/procurement/material-requisition/{{ req.id }}" class="btn btn-primary btn-sm" title="Process">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            {% endif %}
+                            <button class="btn btn-success btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Approved" title="Approve">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Rejected" title="Reject">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </td>
                     </tr>
                     {% else %}
                     <tr>
@@ -64,5 +82,76 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tableBody = document.querySelector('tbody');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    async function handleApprovalAction(reqId, newStatus, button) {
+        const token = getCookie('access_token');
+        if (!token) { /* Show error toast */ return; }
+        
+        button.disabled = true;
+
+        try {
+            const response = await fetch(`/api/approvals/${reqId}/status`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    approval_type: 'mr', // This is for MR Approval
+                    new_status: newStatus
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Action failed.');
+
+            // Show success toast
+            document.getElementById('toast-title').innerText = 'Success!';
+            document.getElementById('toast-body').innerText = result.message;
+            toastElement.className = 'toast bg-success text-white';
+            toast.show();
+
+            // Visually disable the buttons in this group
+            const buttonGroup = button.closest('.btn-group');
+            buttonGroup.querySelectorAll('.approval-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
+            });
+
+        } catch (error) {
+            // Show error toast
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+            button.disabled = false; // Re-enable button on error
+        }
+    }
+
+    // Use event delegation for the buttons
+    tableBody.addEventListener('click', function(event) {
+        const target = event.target.closest('.approval-btn');
+        if (!target) return;
+        
+        const reqId = target.dataset.reqId;
+        const status = target.dataset.status;
+
+        handleApprovalAction(reqId, status, target);
+    });
+});
+</script>
 {% endblock %}
 

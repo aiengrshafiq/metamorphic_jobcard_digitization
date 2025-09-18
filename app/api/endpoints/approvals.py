@@ -11,7 +11,7 @@ from app import models
 router = APIRouter()
 
 class ApprovalUpdate(BaseModel):
-    approval_type: Literal['pm', 'qs']
+    approval_type: Literal['pm', 'qs', 'mr']
     new_status: Literal['Approved', 'Rejected']
 
 @router.get("/pending", tags=["Approvals"])
@@ -31,24 +31,28 @@ def get_pending_approvals(
 
     pending_items = []
     
-    # For Project Managers: Show items awaiting PM approval.
+    # For Project Managers: Show items awaiting PM approval THAT ARE MR-APPROVED.
     if models.UserRole.PROJECT_MANAGER in user_roles:
-        pm_pending = query.filter(models.MaterialRequisition.pm_approval == 'Pending').all()
+        pm_pending = query.filter(
+            models.MaterialRequisition.pm_approval == 'Pending',
+            models.MaterialRequisition.mr_approval == 'Approved'  # <-- ADD THIS CONDITION
+        ).all()
         for item in pm_pending:
             item.pending_for = 'PM'
-            # For PMs, their items are always actionable.
             item.is_actionable = True
             pending_items.append(item)
 
-    # For QS: Show items awaiting QS approval, but differentiate them.
+    # For QS: Show items awaiting QS approval THAT ARE MR-APPROVED.
     if models.UserRole.QS in user_roles:
-        # Get everything that is still pending QS approval.
-        qs_pending = query.filter(models.MaterialRequisition.qs_approval == 'Pending').all()
+        qs_pending = query.filter(
+            models.MaterialRequisition.qs_approval == 'Pending',
+            models.MaterialRequisition.mr_approval == 'Approved'  # <-- ADD THIS CONDITION
+        ).all()
         for item in qs_pending:
-            if item not in pending_items: # Avoid duplicates if user has both roles
+            if item not in pending_items:
                 item.pending_for = 'QS'
-                # THIS IS THE NEW LOGIC: An item is only actionable for a QS
-                # if the PM has already approved it.
+                # The logic that an item is only actionable for a QS if the PM 
+                # has also approved it remains correct.
                 item.is_actionable = (item.pm_approval == 'Approved')
                 pending_items.append(item)
 
@@ -79,6 +83,12 @@ def update_approval_status(
         if "QS" not in user_roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for QS approval")
         req.qs_approval = update_data.new_status
+    
+    elif update_data.approval_type == 'mr':
+        if "Procurement" not in user_roles:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for MR approval")
+        req.mr_approval = update_data.new_status
+    # --------------------------
     else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid approval type")
         

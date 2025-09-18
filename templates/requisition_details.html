@@ -74,6 +74,9 @@
                              <dt class="col-sm-5">Required By</dt>
                              <dd class="col-sm-7" id="required-date"></dd>
 
+                             <dt class="col-sm-5">MR Approval</dt>
+                             <dd class="col-sm-7" id="mr-approval"></dd>
+
                              <dt class="col-sm-5">PM Approval</dt>
                              <dd class="col-sm-7" id="pm-approval"></dd>
                              
@@ -181,6 +184,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('required-date').textContent = new Date(data.required_delivery_date).toLocaleDateString();
             document.getElementById('pm-approval').innerHTML = formatApprovalStatus(data.pm_approval);
             document.getElementById('qs-approval').innerHTML = formatApprovalStatus(data.qs_approval);
+            document.getElementById('mr-approval').innerHTML = formatApprovalStatus(data.mr_approval);
             document.getElementById('supplier').textContent = data.supplier ? data.supplier.name : 'Not Assigned';
             document.getElementById('lpo-number').textContent = data.lpo_number || 'N/A';
             document.getElementById('payment-status').textContent = data.payment_status || 'N/A';
