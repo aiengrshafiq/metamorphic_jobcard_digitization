@@ -308,3 +308,55 @@ class Supplier(Base):
     phone = Column(String, nullable=True)
     requisitions = relationship("MaterialRequisition", back_populates="supplier")
     def __str__(self) -> str: return self.name
+
+
+class NannyLog(Base):
+    __tablename__ = 'nanny_logs'
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Foreign key to the user who is the nanny
+    nanny_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    # Foreign key to the user who created the log (can be the same or an admin)
+    created_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    log_date = Column(Date, nullable=False)
+
+    # Hygiene & Safety
+    handwashing_checks = Column(String, nullable=True) # Stored as comma-separated string
+    environment_checks = Column(String, nullable=True) # Stored as comma-separated string
+
+    # Meals & Hydration
+    breakfast_details = Column(Text, nullable=True)
+    breakfast_amount = Column(String, nullable=True)
+    lunch_details = Column(Text, nullable=True)
+    lunch_amount = Column(String, nullable=True)
+    snack_details = Column(Text, nullable=True)
+    snack_amount = Column(String, nullable=True)
+    dinner_details = Column(Text, nullable=True)
+    dinner_amount = Column(String, nullable=True)
+    hydration_morning_cups = Column(String, nullable=True)
+    hydration_afternoon_cups = Column(String, nullable=True)
+    hydration_evening_cups = Column(String, nullable=True)
+    restricted_foods_given = Column(Boolean, default=False)
+    restricted_foods_details = Column(Text, nullable=True)
+
+    # Routine & Rest
+    nap_duration_minutes = Column(Integer, nullable=True)
+    bedtime_by_830pm = Column(Boolean, default=False)
+    total_sleep_hours = Column(String, nullable=True)
+
+    # Play & Activities
+    outdoor_play_completed = Column(Boolean, default=False)
+    outdoor_play_minutes = Column(Integer, nullable=True)
+    screen_time_minutes = Column(Integer, nullable=True)
+
+    # Health & Observation
+    temperature_celsius = Column(Numeric(4, 1), nullable=True)
+    appetite = Column(String, nullable=True)
+    behavior = Column(String, nullable=True)
+    signs_of_illness = Column(Text, nullable=True)
+    nanny_notes = Column(Text, nullable=True)
+
+    # Relationships
+    nanny = relationship("User", foreign_keys=[nanny_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])

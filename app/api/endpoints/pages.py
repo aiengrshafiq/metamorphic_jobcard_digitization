@@ -237,3 +237,21 @@ async def register_page(request: Request, db: Session = Depends(deps.get_db)): #
         "register.html", 
         {"request": request, "roles": available_roles}
     )
+
+@router.get("/nanny-log-form", response_class=HTMLResponse, tags=["Pages"])
+async def nanny_log_form(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+
+    # Fetch all users to populate the "Nanny Name" dropdown.
+    # You could filter this by a 'Nanny' role in the future if you add one.
+    all_users = db.query(models.User).filter(models.User.is_active == True).filter(models.Role.name == models.UserRole.User).order_by(models.User.name).all()
+        
+    context.update({
+        "page_title": "Daily Nanny Log",
+        "nannies": all_users,
+    })
+    return templates.TemplateResponse("nanny_log.html", context)

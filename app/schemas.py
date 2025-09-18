@@ -50,3 +50,34 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: str | None = None
+
+
+class NannyLogCreate(BaseModel):
+    log_date: date
+    nanny_id: int
+    handwashing_checks: Optional[List[str]] = []
+    environment_checks: Optional[List[str]] = []
+    breakfast_details: Optional[str] = None
+    breakfast_amount: Optional[str] = None
+    lunch_details: Optional[str] = None
+    lunch_amount: Optional[str] = None
+    snack_details: Optional[str] = None
+    snack_amount: Optional[str] = None
+    dinner_details: Optional[str] = None
+    dinner_amount: Optional[str] = None
+    hydration_morning_cups: Optional[str] = None
+    hydration_afternoon_cups: Optional[str] = None
+    hydration_evening_cups: Optional[str] = None
+    restricted_foods_given: bool = False
+    restricted_foods_details: Optional[str] = None
+    nap_duration_minutes: Optional[int] = None
+    bedtime_by_830pm: bool = False
+    total_sleep_hours: Optional[str] = None
+    outdoor_play_completed: bool = False
+    outdoor_play_minutes: Optional[int] = None
+    screen_time_minutes: Optional[int] = None
+    temperature_celsius: Optional[float] = None
+    appetite: Optional[str] = None
+    behavior: Optional[str] = None
+    signs_of_illness: Optional[str] = None
+    nanny_notes: Optional[str] = None

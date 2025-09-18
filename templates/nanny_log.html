@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
+    .choices[data-type*="select-one"]::after { border-color: var(--bs-body-color) transparent transparent; }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
+    .form-text { font-size: 0.875em; }
+    .form-check-label { cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form id="nanny-log-form" novalidate>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label for="log_date" class="form-label">Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="log_date" name="log_date" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="nanny_id" class="form-label">Nanny Name <span class="text-danger">*</span></label>
+                    <select class="form-select" id="nanny_id" name="nanny_id" required>
+                        <option value="">Select a nanny...</option>
+                        {% for nanny in nannies %}
+                        <option value="{{ nanny.id }}">{{ nanny.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <h4 class="mb-3">Hygiene & Safety</h4>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Handwashing</label>
+                        <div id="handwashing_checks">
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="handwashing_checks" value="Morning handwash after waking" id="hw1"><label class="form-check-label" for="hw1">Morning handwash after waking</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="handwashing_checks" value="Before breakfast" id="hw2"><label class="form-check-label" for="hw2">Before breakfast</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="handwashing_checks" value="After bathroom use" id="hw3"><label class="form-check-label" for="hw3">After bathroom use</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="handwashing_checks" value="Before lunch" id="hw4"><label class="form-check-label" for="hw4">Before lunch</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="handwashing_checks" value="After outdoor play" id="hw5"><label class="form-check-label" for="hw5">After outdoor play</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="handwashing_checks" value="Before snack" id="hw6"><label class="form-check-label" for="hw6">Before snack</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="handwashing_checks" value="Before dinner" id="hw7"><label class="form-check-label" for="hw7">Before dinner</label></div>
+                        </div>
+                        <div class="form-text">Check all that were completed. Use soap + water for 20s: after waking; before meals; after bathroom; after outdoor play.</div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">Environment & Personal Items — done today?</label>
+                         <div id="environment_checks">
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="environment_checks" value="Daily sanitization" id="ec1"><label class="form-check-label" for="ec1">Daily sanitization (toys, utensils, doorknobs, tables)</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="environment_checks" value="Personal utensils only" id="ec2"><label class="form-check-label" for="ec2">Personal utensils only (glass, plate, spoon)</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="environment_checks" value="Fresh morning clothes" id="ec3"><label class="form-check-label" for="ec3">Fresh morning clothes provided</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="environment_checks" value="Bedtime clothes separate" id="ec4"><label class="form-check-label" for="ec4">Bedtime clothes separate</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" name="environment_checks" value="No contact with sick individuals" id="ec5"><label class="form-check-label" for="ec5">No contact with sick individuals</label></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h4 class="mb-3">Meals & Hydration</h4>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6"><label class="form-label">Breakfast (8:00 AM) — what did Amirah eat?</label><textarea class="form-control" name="breakfast_details" rows="2" placeholder="List foods and portions."></textarea></div>
+                <div class="col-md-6"><label class="form-label">Breakfast — how much?</label>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="breakfast_amount" value="Full serving" id="ba1"><label class="form-check-label" for="ba1">Full serving</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="breakfast_amount" value="Half serving" id="ba2"><label class="form-check-label" for="ba2">Half serving</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="breakfast_amount" value="A few bites" id="ba3"><label class="form-check-label" for="ba3">A few bites</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="breakfast_amount" value="Refused" id="ba4"><label class="form-check-label" for="ba4">Refused</label></div>
+                </div>
+                <div class="col-md-6"><label class="form-label">Lunch (12:30 PM) — what did Amirah eat?</label><textarea class="form-control" name="lunch_details" rows="2" placeholder="List foods and portions."></textarea></div>
+                <div class="col-md-6"><label class="form-label">Lunch — how much?</label>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="lunch_amount" value="Full serving" id="la1"><label class="form-check-label" for="la1">Full serving</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="lunch_amount" value="Half serving" id="la2"><label class="form-check-label" for="la2">Half serving</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="lunch_amount" value="A few bites" id="la3"><label class="form-check-label" for="la3">A few bites</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="lunch_amount" value="Refused" id="la4"><label class="form-check-label" for="la4">Refused</label></div>
+                </div>
+                <div class="col-md-6"><label class="form-label">Snack (3:30 PM) — what did Amirah eat?</label><textarea class="form-control" name="snack_details" rows="2" placeholder="List foods and portions."></textarea></div>
+                <div class="col-md-6"><label class="form-label">Snack — how much?</label>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="snack_amount" value="Full serving" id="sa1"><label class="form-check-label" for="sa1">Full serving</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="snack_amount" value="Half serving" id="sa2"><label class="form-check-label" for="sa2">Half serving</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="snack_amount" value="A few bites" id="sa3"><label class="form-check-label" for="sa3">A few bites</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="snack_amount" value="Refused" id="sa4"><label class="form-check-label" for="sa4">Refused</label></div>
+                </div>
+                <div class="col-md-6"><label class="form-label">Dinner (6:30 PM) — what did Amirah eat?</label><textarea class="form-control" name="dinner_details" rows="2" placeholder="List foods and portions."></textarea></div>
+                <div class="col-md-6"><label class="form-label">Dinner — how much?</label>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="dinner_amount" value="Full serving" id="da1"><label class="form-check-label" for="da1">Full serving</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="dinner_amount" value="Half serving" id="da2"><label class="form-check-label" for="da2">Half serving</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="dinner_amount" value="A few bites" id="da3"><label class="form-check-label" for="da3">A few bites</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="dinner_amount" value="Refused" id="da4"><label class="form-check-label" for="da4">Refused</label></div>
+                </div>
+                <div class="col-12"><label class="form-label">Hydration — water intake (cups)</label></div>
+                 <div class="col-md-4"><input type="text" class="form-control" name="hydration_morning_cups" placeholder="Morning cups"></div>
+                 <div class="col-md-4"><input type="text" class="form-control" name="hydration_afternoon_cups" placeholder="Afternoon cups"></div>
+                 <div class="col-md-4"><input type="text" class="form-control" name="hydration_evening_cups" placeholder="Evening cups"></div>
+                 <div class="col-md-6"><label class="form-label">Any restricted foods (junk/processed/excess sugar) given?</label>
+                     <div class="form-check"><input class="form-check-input" type="radio" name="restricted_foods_given" value="true" id="rf-yes"><label class="form-check-label" for="rf-yes">Yes</label></div>
+                     <div class="form-check"><input class="form-check-input" type="radio" name="restricted_foods_given" value="false" id="rf-no" checked><label class="form-check-label" for="rf-no">No</label></div>
+                 </div>
+                 <div class="col-md-6"><label class="form-label">If "Yes", please explain</label><input type="text" class="form-control" name="restricted_foods_details"></div>
+            </div>
+
+            <h4 class="mb-3">Routine & Rest</h4>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4"><label class="form-label">Nap duration (minutes)</label><input type="number" class="form-control" name="nap_duration_minutes"></div>
+                <div class="col-md-4"><label class="form-label">Was bedtime by 8:30 PM?</label>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="bedtime_by_830pm" value="true" id="bt-yes"><label class="form-check-label" for="bt-yes">Yes</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="bedtime_by_830pm" value="false" id="bt-no" checked><label class="form-check-label" for="bt-no">No</label></div>
+                </div>
+                <div class="col-md-4"><label class="form-label">Total sleep hours (overnight)</label><input type="text" class="form-control" name="total_sleep_hours"><div class="form-text">Target is 10+ hours.</div></div>
+            </div>
+
+            <h4 class="mb-3">Play & Activities</h4>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6"><label class="form-label">Outdoor play completed (30+ minutes)?</label>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="outdoor_play_completed" value="true" id="op-yes"><label class="form-check-label" for="op-yes">Yes</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="outdoor_play_completed" value="false" id="op-no" checked><label class="form-check-label" for="op-no">No</label></div>
+                </div>
+                <div class="col-md-6"><label class="form-label">If "Yes", how many minutes?</label><input type="number" class="form-control" name="outdoor_play_minutes"></div>
+                <div class="col-12"><label class="form-label">Screen time (minutes, if any)</label><input type="number" class="form-control" name="screen_time_minutes"></div>
+            </div>
+
+            <h4 class="mb-3">Health & Observation</h4>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4"><label class="form-label">Temperature (°C, only if unwell)</label><input type="number" step="0.1" class="form-control" name="temperature_celsius"></div>
+                <div class="col-md-4"><label class="form-label">Appetite</label><select class="form-select" name="appetite"><option value="Normal" selected>Normal</option><option value="Reduced">Reduced</option></select></div>
+                <div class="col-md-4"><label class="form-label">Behavior</label><select class="form-select" name="behavior"><option value="Normal" selected>Normal</option><option value="Unusual">Unusual</option></select></div>
+                <div class="col-12"><label class="form-label">Signs of illness (cough, fatigue, etc.)</label><input type="text" class="form-control" name="signs_of_illness"></div>
+                <div class="col-12"><label class="form-label">Nanny notes / anything else to report?</label><textarea class="form-control" name="nanny_notes" rows="4"></textarea></div>
+            </div>
+
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Submit Nanny Log
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+    // Helper function to read a cookie by name
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        new Choices('#nanny_id', { searchEnabled: true, removeItemButton: false, itemSelectText: '' });
+
+        const form = document.getElementById('nanny-log-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const spinner = submitBtn.querySelector('.spinner-border');
+        const toastElement = document.getElementById('responseToast');
+        const toast = new bootstrap.Toast(toastElement);
+
+        // Set today's date by default
+        document.getElementById('log_date').valueAsDate = new Date();
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            spinner.style.display = 'inline-block';
+            submitBtn.disabled = true;
+
+            const toastBody = document.getElementById('toast-body');
+            const toastTitle = document.getElementById('toast-title');
+            toastElement.classList.remove('bg-danger', 'bg-success');
+            
+            const token = getCookie('access_token');
+            if (!token) {
+                toastElement.classList.add('bg-danger', 'text-white');
+                toastTitle.innerText = 'Authentication Error';
+                toastBody.innerText = 'You are not logged in.';
+                toast.show();
+                spinner.style.display = 'none';
+                submitBtn.disabled = false;
+                return;
+            }
+
+            // Manually handle boolean radio/checkbox values
+            const formData = new FormData(form);
+            formData.set('restricted_foods_given', document.querySelector('input[name="restricted_foods_given"]:checked').value);
+            formData.set('bedtime_by_830pm', document.querySelector('input[name="bedtime_by_830pm"]:checked').value);
+            formData.set('outdoor_play_completed', document.querySelector('input[name="outdoor_play_completed"]:checked').value);
+            
+            try {
+                const response = await fetch('/nanny-log/', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const result = await response.json();
+                if (!response.ok) { throw new Error(result.detail || result.message || 'An error occurred.'); }
+
+                toastElement.classList.add('bg-success', 'text-white');
+                toastTitle.innerText = 'Success!';
+                toastBody.innerText = result.message;
+                form.reset();
+                form.classList.remove('was-validated');
+                document.getElementById('log_date').valueAsDate = new Date();
+
+            } catch (error) {
+                toastElement.classList.add('bg-danger', 'text-white');
+                toastTitle.innerText = 'Error!';
+                toastBody.innerText = error.message;
+            } finally {
+                toast.show();
+                spinner.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+    });
+</script>
+{% endblock %}

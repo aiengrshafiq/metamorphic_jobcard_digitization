@@ -65,6 +65,13 @@
                         {% if is_privileged %}
                             <li class="nav-item"><a class="nav-link" href="/material-requisition-form"><i class="bi bi-box-seam me-2"></i> Material Requisition</a></li>
                         {% endif %}
+                         {% if is_privileged or 'User' in user_roles %}
+                     <li class="nav-item">
+                        <a class="nav-link" href="/nanny-log-form">
+                            <i class="bi bi-person-hearts me-2"></i> Daily Nanny Log
+                        </a>
+                    </li>
+                    {% endif %}
                     </ul>
                     {% endif %}
 
@@ -129,6 +136,13 @@
                      {% if is_privileged or 'Supervisor/Site Officer' in user_roles %}
                          <li class="nav-item"><a class="nav-link" href="/material-requisition-form"><i class="bi bi-box-seam me-2"></i> Material Requisition</a></li>
                      {% endif %}
+                      {% if is_privileged or 'User' in user_roles %}
+                     <li class="nav-item">
+                        <a class="nav-link" href="/nanny-log-form">
+                            <i class="bi bi-person-hearts me-2"></i> Daily Nanny Log
+                        </a>
+                    </li>
+                    {% endif %}
                  </ul>
                  {% endif %}
 
