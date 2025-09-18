@@ -259,3 +259,17 @@ async def nanny_log_form(
         "nannies": all_users,
     })
     return templates.TemplateResponse("nanny_log.html", context)
+
+    
+
+@router.get("/requisition-details/{req_id}", response_class=HTMLResponse, tags=["Pages"])
+async def requisition_details_page(
+    req_id: int,
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context["page_title"] = f"Requisition Details #{req_id}"
+    context["req_id"] = req_id # Pass the ID to the template
+    return templates.TemplateResponse("requisition_details.html", context)

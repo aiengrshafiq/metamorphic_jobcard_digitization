@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.admin import MyAuthBackend, create_admin_views
 
 # Import all the routers
-from app.api.endpoints import pages, job_cards, reports, procurement, uploads, users, approvals, nanny_log
+from app.api.endpoints import pages, job_cards, reports, procurement, uploads, users, approvals, nanny_log, requisition_details
 from app.auth.router import router as auth_router
 
 
@@ -53,6 +53,7 @@ app.include_router(uploads.router, prefix="/uploads", tags=["Uploads"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(approvals.router, prefix="/api/approvals", tags=["Approvals"])
 app.include_router(nanny_log.router, prefix="/nanny-log", tags=["Nanny Log"])
+app.include_router(requisition_details.router, prefix="/api/requisition-details", tags=["Requisition Details"])
 # -------------------------------
 
 @app.get("/health", tags=["System"])

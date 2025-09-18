@@ -75,8 +75,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     // --- THIS IS THE NEW LOGIC ---
                     let actionCellHtml = '';
                     if (item.is_actionable) {
-                        // If actionable, show the buttons
                         actionCellHtml = `
+                            <a href="/requisition-details/${item.id}" class="btn btn-outline-secondary btn-sm" title="View Details"><i class="bi bi-eye-fill"></i></a>
                             <button class="btn btn-success btn-sm approve-btn" data-req-id="${item.id}" data-type="${item.pending_for.toLowerCase()}">
                                 <i class="bi bi-check-lg"></i> Approve
                             </button>
@@ -85,9 +85,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             </button>
                         `;
                     } else {
-                        // If not actionable, show a status badge
-                        actionCellHtml = `<span class="badge bg-light text-dark-emphasis">Awaiting PM Approval</span>`;
-                        // Optionally, add a class to fade the row
+                        actionCellHtml = `
+                            <a href="/requisition-details/${item.id}" class="btn btn-outline-secondary btn-sm" title="View Details"><i class="bi bi-eye-fill"></i></a>
+                            <span class="badge bg-light text-dark-emphasis ms-2">Awaiting PM Approval</span>
+                        `;
                         row.classList.add('opacity-50');
                     }
                     // --- END OF NEW LOGIC ---

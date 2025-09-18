@@ -39,7 +39,7 @@
     {% set is_admin = user_roles | select('in', admin_roles) | list | length > 0 %}
 
 
-    <pre>{{ user_roles | safe }}</pre>
+    <!-- <pre>{{ user_roles | safe }}</pre> -->
 
     <div class="container-fluid">
         <div class="row g-0">

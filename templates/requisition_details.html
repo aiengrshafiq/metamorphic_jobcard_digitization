@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div id="loading-state" class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading requisition details...</p>
+    </div>
+
+    <div id="content-container" style="display: none;">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-3">MR Number</dt>
+                            <dd class="col-sm-9" id="mr-number"></dd>
+                            
+                            <dt class="col-sm-3">Status</dt>
+                            <dd class="col-sm-9" id="status"></dd>
+                            
+                            <hr class="my-3">
+                            
+                            <dt class="col-sm-3">Project</dt>
+                            <dd class="col-sm-9" id="project"></dd>
+                            
+                            <dt class="col-sm-3">Requested By</dt>
+                            <dd class="col-sm-9" id="requested-by"></dd>
+                            
+                            <dt class="col-sm-3">Request Date</dt>
+                            <dd class="col-sm-9" id="request-date"></dd>
+                            
+                            <hr class="my-3">
+
+                            <dt class="col-sm-3">Material Type</dt>
+                            <dd class="col-sm-9" id="material-type"></dd>
+                            
+                            <dt class="col-sm-3">Materials & Quantity</dt>
+                            <dd class="col-sm-9"><pre class="mb-0" id="material-quantity" style="white-space: pre-wrap; font-family: inherit;"></pre></dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-chat-dots-fill me-2"></i>Comments</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="comment-list" class="mb-3">
+                            </div>
+                        <form id="comment-form">
+                            <div class="mb-3">
+                                <label for="comment-text" class="form-label">Add a new comment</label>
+                                <textarea class="form-control" id="comment-text" rows="3" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="submit-comment-btn">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                                Post Comment
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header"><h5 class="mb-0">Approval & Logistics</h5></div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                             <dt class="col-sm-5">Urgency</dt>
+                             <dd class="col-sm-7" id="urgency"></dd>
+                             
+                             <dt class="col-sm-5">Required By</dt>
+                             <dd class="col-sm-7" id="required-date"></dd>
+
+                             <dt class="col-sm-5">PM Approval</dt>
+                             <dd class="col-sm-7" id="pm-approval"></dd>
+                             
+                             <dt class="col-sm-5">QS Approval</dt>
+                             <dd class="col-sm-7" id="qs-approval"></dd>
+
+                             <hr class="my-3">
+                             
+                             <dt class="col-sm-5">Supplier</dt>
+                             <dd class="col-sm-7" id="supplier"></dd>
+
+                             <dt class="col-sm-5">LPO Number</dt>
+                             <dd class="col-sm-7" id="lpo-number"></dd>
+                             
+                             <dt class="col-sm-5">Payment Status</dt>
+                             <dd class="col-sm-7" id="payment-status"></dd>
+
+                             <hr class="my-3">
+
+                             <dt class="col-12">Remarks</dt>
+                             <dd class="col-12 mt-1"><p id="remarks" class="text-muted"></p></dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const reqId = {{ req_id }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+    const commentList = document.getElementById('comment-list');
+    const commentForm = document.getElementById('comment-form');
+    const commentText = document.getElementById('comment-text');
+    const submitCommentBtn = document.getElementById('submit-comment-btn');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    
+    function formatApprovalStatus(status) {
+        if (status === 'Approved') return `<span class="badge bg-success">${status}</span>`;
+        if (status === 'Rejected') return `<span class="badge bg-danger">${status}</span>`;
+        return `<span class="badge bg-warning text-dark">${status || 'Pending'}</span>`;
+    }
+    
+    function renderComments(comments) {
+        commentList.innerHTML = '';
+        if (comments && comments.length > 0) {
+            comments.forEach(comment => {
+                const commentEl = document.createElement('div');
+                commentEl.className = 'd-flex mb-3 border-bottom pb-2';
+                const commentDate = new Date(comment.created_at).toLocaleString();
+                commentEl.innerHTML = `
+                    <div class="flex-shrink-0 me-3">
+                        <i class="bi bi-person-circle fs-3 text-secondary"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mt-0 mb-1">${comment.comment_by.name}</h6>
+                        <p class="mb-1">${comment.comment_text}</p>
+                        <small class="text-muted">${commentDate}</small>
+                    </div>
+                `;
+                commentList.appendChild(commentEl);
+            });
+        } else {
+            commentList.innerHTML = '<p class="text-muted text-center">No comments yet.</p>';
+        }
+    }
+
+    async function fetchRequisitionDetails() {
+        const token = getCookie('access_token');
+        if (!token) {
+            loadingState.innerHTML = '<p class="text-danger">Authentication Error. Please log in.</p>';
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/requisition-details/${reqId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Could not load requisition details.');
+            
+            const data = await response.json();
+            
+            // Populate fields
+            document.getElementById('mr-number').textContent = data.mr_number || 'N/A';
+            document.getElementById('status').innerHTML = `<span class="badge bg-primary">${data.status}</span>`;
+            document.getElementById('project').textContent = data.project ? data.project.name : 'N/A';
+            document.getElementById('requested-by').textContent = data.requested_by ? data.requested_by.name : 'N/A';
+            document.getElementById('request-date').textContent = new Date(data.request_date).toLocaleDateString();
+            document.getElementById('material-type').textContent = data.material_type;
+            document.getElementById('material-quantity').textContent = data.material_with_quantity;
+            
+            document.getElementById('urgency').textContent = data.urgency;
+            document.getElementById('required-date').textContent = new Date(data.required_delivery_date).toLocaleDateString();
+            document.getElementById('pm-approval').innerHTML = formatApprovalStatus(data.pm_approval);
+            document.getElementById('qs-approval').innerHTML = formatApprovalStatus(data.qs_approval);
+            document.getElementById('supplier').textContent = data.supplier ? data.supplier.name : 'Not Assigned';
+            document.getElementById('lpo-number').textContent = data.lpo_number || 'N/A';
+            document.getElementById('payment-status').textContent = data.payment_status || 'N/A';
+            document.getElementById('remarks').textContent = data.remarks || 'No remarks.';
+            
+            renderComments(data.comments);
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+    
+    commentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const token = getCookie('access_token');
+        if (!token) { /* handle error */ return; }
+        
+        const spinner = submitCommentBtn.querySelector('.spinner-border');
+        submitCommentBtn.disabled = true;
+        spinner.style.display = 'inline-block';
+
+        const formData = new FormData();
+        formData.append('comment_text', commentText.value);
+
+        try {
+            const response = await fetch(`/api/requisition-details/${reqId}/comments`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            const newComment = await response.json();
+            if (!response.ok) throw new Error(newComment.detail || 'Failed to post comment.');
+            
+            // Optimistically add the new comment to the list
+            fetchRequisitionDetails(); // Or just append the new comment for better performance
+            commentText.value = ''; // Clear input
+
+        } catch (error) {
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+        } finally {
+            submitCommentBtn.disabled = false;
+            spinner.style.display = 'none';
+        }
+    });
+
+    fetchRequisitionDetails();
+});
+</script>
+{% endblock %}

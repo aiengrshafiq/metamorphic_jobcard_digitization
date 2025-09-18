@@ -50,6 +50,7 @@ class User(Base):
 
     roles = relationship("Role", secondary=user_role_association, backref="users")
     material_requisitions = relationship("MaterialRequisition", back_populates="requested_by")
+    mr_comments = relationship("MaterialRequisitionComment", back_populates="comment_by")
 
     def verify_password(self, plain_password: str) -> bool:
         return pwd_context.verify(plain_password, self.hashed_password)
@@ -296,6 +297,7 @@ class MaterialRequisition(Base):
     project = relationship("Project", back_populates="material_requisitions")
     requested_by = relationship("User", back_populates="material_requisitions")
     supplier = relationship("Supplier", back_populates="requisitions")
+    comments = relationship("MaterialRequisitionComment", back_populates="requisition", cascade="all, delete-orphan")
     def __str__(self) -> str:
         p_name = self.project.name if self.project else f"Project ID {self.project_id}"
         return f"Req #{self.id} ({self.mr_number or 'N/A'}) for {p_name}"
@@ -360,3 +362,16 @@ class NannyLog(Base):
     # Relationships
     nanny = relationship("User", foreign_keys=[nanny_id])
     created_by = relationship("User", foreign_keys=[created_by_id])
+
+
+class MaterialRequisitionComment(Base):
+    __tablename__ = 'mr_comments'
+    id = Column(Integer, primary_key=True, index=True)
+    comment_text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+
+    requisition_id = Column(Integer, ForeignKey('material_requisitions.id'), nullable=False)
+    comment_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    requisition = relationship("MaterialRequisition", back_populates="comments")
+    comment_by = relationship("User", back_populates="mr_comments")
