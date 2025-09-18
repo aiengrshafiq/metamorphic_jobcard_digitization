@@ -10,6 +10,8 @@ from app import models, schemas
 
 router = APIRouter()
 
+# In app/api/endpoints/nanny_log.py
+
 @router.post("/", response_class=JSONResponse, tags=["Nanny Log"])
 async def create_nanny_log(
     db: Session = Depends(deps.get_db),
@@ -35,22 +37,33 @@ async def create_nanny_log(
     hydration_evening_cups: Optional[str] = Form(None),
     restricted_foods_given: bool = Form(False),
     restricted_foods_details: Optional[str] = Form(None),
+    
+    # --- FIX: Accept optional numbers as strings to handle empty values ---
+    nap_duration_minutes_str: Optional[str] = Form(None, alias="nap_duration_minutes"),
+    outdoor_play_minutes_str: Optional[str] = Form(None, alias="outdoor_play_minutes"),
+    screen_time_minutes_str: Optional[str] = Form(None, alias="screen_time_minutes"),
+    temperature_celsius_str: Optional[str] = Form(None, alias="temperature_celsius"),
+    # -----------------------------------------------------------------
+
     # Routine
-    nap_duration_minutes: Optional[int] = Form(None),
     bedtime_by_830pm: bool = Form(False),
     total_sleep_hours: Optional[str] = Form(None),
     # Activities
     outdoor_play_completed: bool = Form(False),
-    outdoor_play_minutes: Optional[int] = Form(None),
-    screen_time_minutes: Optional[int] = Form(None),
     # Health
-    temperature_celsius: Optional[float] = Form(None),
     appetite: Optional[str] = Form(None),
     behavior: Optional[str] = Form(None),
     signs_of_illness: Optional[str] = Form(None),
     nanny_notes: Optional[str] = Form(None),
 ):
     try:
+        # --- FIX: Convert the optional string values to integers or None ---
+        nap_duration_minutes = int(nap_duration_minutes_str) if nap_duration_minutes_str else None
+        outdoor_play_minutes = int(outdoor_play_minutes_str) if outdoor_play_minutes_str else None
+        screen_time_minutes = int(screen_time_minutes_str) if screen_time_minutes_str else None
+        temperature_celsius = float(temperature_celsius_str) if temperature_celsius_str else None
+        # --------------------------------------------------------------
+
         new_log = models.NannyLog(
             created_by_id=current_user.id,
             log_date=log_date,

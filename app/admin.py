@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 
 from app.models import (
     User, Role, UserRole, JobCard, Task, Project, SiteEngineer, Supervisor, Foreman,
-    DutyOfficerProgress, SiteOfficerReport, MaterialRequisition, Supplier, ToolboxVideo, SiteImage
+    DutyOfficerProgress, SiteOfficerReport, MaterialRequisition, Supplier, ToolboxVideo, SiteImage, NannyLog
 )
 from app.auth.security import verify_password
 from app.core.database import SessionLocal
@@ -117,6 +117,10 @@ class SiteEngineerAdmin(ModelView, model=SiteEngineer):
     column_list = [SiteEngineer.id, SiteEngineer.name]
     column_details_list = [SiteEngineer.id, SiteEngineer.name, SiteEngineer.job_cards]
 
+class NannyLogAdmin(ModelView, model=NannyLog):
+    column_list = [NannyLog.id, NannyLog.nanny_id, NannyLog.log_date, NannyLog.created_by]
+    column_details_list = [NannyLog.id, NannyLog.nanny_id, NannyLog.log_date, NannyLog.created_by]
+
 # --- Function to add all views to the admin instance ---
 def create_admin_views(admin: Admin):
     admin.add_view(UserAdmin)
@@ -132,3 +136,4 @@ def create_admin_views(admin: Admin):
     admin.add_view(SiteEngineerAdmin)
     admin.add_view(SupervisorAdmin)
     admin.add_view(ForemanAdmin)
+    admin.add_view(NannyLogAdmin)

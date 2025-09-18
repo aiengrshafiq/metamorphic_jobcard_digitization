@@ -246,9 +246,13 @@ async def nanny_log_form(
     if isinstance(context, RedirectResponse):
         return context
 
-    # Fetch all users to populate the "Nanny Name" dropdown.
-    # You could filter this by a 'Nanny' role in the future if you add one.
-    all_users = db.query(models.User).filter(models.User.is_active == True).filter(models.Role.name == models.UserRole.User).order_by(models.User.name).all()
+    # --- THIS IS THE CORRECTED QUERY ---
+    # We add .join(models.User.roles) to link the User and Role tables before filtering.
+    all_users = db.query(models.User).join(models.User.roles).filter(
+        models.Role.name == models.UserRole.USER,
+        models.User.is_active == True
+    ).order_by(models.User.name).all()
+    # ------------------------------------
         
     context.update({
         "page_title": "Daily Nanny Log",
