@@ -101,8 +101,22 @@
                         </dl>
                     </div>
                 </div>
+                <div class="col-lg-12">
+                <div class="card shadow-sm">
+                    </div>
+
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header"><h5 class="mb-0"><i class="bi bi-box-arrow-in-down me-2"></i>Material Receipts</h5></div>
+                    <div class="card-body">
+                        <div id="receipts-container">
+                            </div>
+                    </div>
+                </div>
+                </div>
             </div>
+           
         </div>
+        
     </div>
 </div>
 {% endblock %}
@@ -117,6 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const commentForm = document.getElementById('comment-form');
     const commentText = document.getElementById('comment-text');
     const submitCommentBtn = document.getElementById('submit-comment-btn');
+    const receiptsContainer = document.getElementById('receipts-container'); // Get the new container
     const toastElement = document.getElementById('responseToast');
     const toast = new bootstrap.Toast(toastElement);
 
@@ -140,19 +155,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 commentEl.className = 'd-flex mb-3 border-bottom pb-2';
                 const commentDate = new Date(comment.created_at).toLocaleString();
                 commentEl.innerHTML = `
-                    <div class="flex-shrink-0 me-3">
-                        <i class="bi bi-person-circle fs-3 text-secondary"></i>
-                    </div>
+                    <div class="flex-shrink-0 me-3"><i class="bi bi-person-circle fs-3 text-secondary"></i></div>
                     <div class="flex-grow-1">
                         <h6 class="mt-0 mb-1">${comment.comment_by.name}</h6>
-                        <p class="mb-1">${comment.comment_text}</p>
+                        <p class="mb-1" style="white-space: pre-wrap;">${comment.comment_text}</p>
                         <small class="text-muted">${commentDate}</small>
-                    </div>
-                `;
+                    </div>`;
                 commentList.appendChild(commentEl);
             });
         } else {
             commentList.innerHTML = '<p class="text-muted text-center">No comments yet.</p>';
+        }
+    }
+
+    // --- NEW FUNCTION TO RENDER RECEIPTS ---
+    function renderReceipts(receipts) {
+        receiptsContainer.innerHTML = '';
+        if (receipts && receipts.length > 0) {
+            receipts.forEach((receipt, index) => {
+                const receiptDate = new Date(receipt.created_at).toLocaleString();
+                let imagesHtml = '';
+                if (receipt.images && receipt.images.length > 0) {
+                    imagesHtml += '<div class="d-flex flex-wrap gap-2 mt-2">';
+                    receipt.images.forEach(img => {
+                        imagesHtml += `<a href="${img.blob_url}" target="_blank" title="${img.file_name}"><img src="${img.blob_url}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;"></a>`;
+                    });
+                    imagesHtml += '</div>';
+                }
+
+                const receiptEl = document.createElement('div');
+                receiptEl.className = 'border-bottom pb-2 mb-2';
+                receiptEl.innerHTML = `
+                    <h6>Delivery Status: <span class="badge bg-info">${receipt.delivery_status}</span></h6>
+                    <small class="text-muted">Received by <strong>${receipt.received_by.name}</strong> on ${receiptDate}</small>
+                    ${receipt.notes ? `<p class="mb-1 mt-2 fst-italic">"${receipt.notes}"</p>` : ''}
+                    ${imagesHtml}
+                `;
+                receiptsContainer.appendChild(receiptEl);
+            });
+        } else {
+            receiptsContainer.innerHTML = '<p class="text-muted">No receipts have been recorded yet.</p>';
         }
     }
 
@@ -171,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const data = await response.json();
             
-            // Populate fields
+            // Populate main fields
             document.getElementById('mr-number').textContent = data.mr_number || 'N/A';
             document.getElementById('status').innerHTML = `<span class="badge bg-primary">${data.status}</span>`;
             document.getElementById('project').textContent = data.project ? data.project.name : 'N/A';
@@ -180,17 +222,20 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('material-type').textContent = data.material_type;
             document.getElementById('material-quantity').textContent = data.material_with_quantity;
             
+            // Populate sidebar fields
             document.getElementById('urgency').textContent = data.urgency;
             document.getElementById('required-date').textContent = new Date(data.required_delivery_date).toLocaleDateString();
+            document.getElementById('mr-approval').innerHTML = formatApprovalStatus(data.mr_approval);
             document.getElementById('pm-approval').innerHTML = formatApprovalStatus(data.pm_approval);
             document.getElementById('qs-approval').innerHTML = formatApprovalStatus(data.qs_approval);
-            document.getElementById('mr-approval').innerHTML = formatApprovalStatus(data.mr_approval);
             document.getElementById('supplier').textContent = data.supplier ? data.supplier.name : 'Not Assigned';
             document.getElementById('lpo-number').textContent = data.lpo_number || 'N/A';
             document.getElementById('payment-status').textContent = data.payment_status || 'N/A';
             document.getElementById('remarks').textContent = data.remarks || 'No remarks.';
             
+            // Render dynamic sections
             renderComments(data.comments);
+            renderReceipts(data.receipts); // <-- CALL THE NEW FUNCTION
 
             loadingState.style.display = 'none';
             contentContainer.style.display = 'block';
@@ -221,9 +266,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const newComment = await response.json();
             if (!response.ok) throw new Error(newComment.detail || 'Failed to post comment.');
             
-            // Optimistically add the new comment to the list
-            fetchRequisitionDetails(); // Or just append the new comment for better performance
-            commentText.value = ''; // Clear input
+            fetchRequisitionDetails(); // Re-fetch all data to ensure sync
+            commentText.value = '';
 
         } catch (error) {
             document.getElementById('toast-title').innerText = 'Error!';

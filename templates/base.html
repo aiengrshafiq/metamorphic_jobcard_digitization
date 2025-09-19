@@ -96,12 +96,22 @@
                         {% if is_privileged or 'Site Engineer' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
                            <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
                         {% endif %}
-                        {% if (is_privileged or 'Procurement' in user_roles) and 'Project Manager' not in user_roles %}
+                        {% if (is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles) and 'Project Manager' not in user_roles %}
                            <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
+                        {% endif %}
+                        {% if is_privileged or 'Procurement' in user_roles %}
+                        <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions-delivered"><i class="bi bi-cart-check me-2"></i> Delivered Procurement</a></li>
                         {% endif %}
                         {% if is_privileged or 'QS' in user_roles %}
                         <li class="nav-item">
                             <a class="nav-link {% if page_title == 'My Approvals' %}active{% endif %}" href="/approvals"><i class="bi bi-check2-square me-2"></i> My Approvals</a>
+                        </li>
+                        {% endif %}
+                        {% if is_privileged or 'Foreman/Duty Officer' in user_roles %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/receive-mr-form">
+                                <i class="bi bi-box-arrow-in-down me-2"></i> Receive MR
+                            </a>
                         </li>
                         {% endif %}
                     </ul>
@@ -172,14 +182,24 @@
                      {% if is_privileged or 'Site Engineer' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
                         <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
                      {% endif %}
-                     {% if (is_privileged or 'Procurement' in user_roles) and 'Project Manager' not in user_roles %}
+                     {% if (is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles) and 'Project Manager' not in user_roles %}
                         <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
+                     {% endif %}
+                     {% if is_privileged or 'Procurement' in user_roles %}
+                        <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions-delivered"><i class="bi bi-cart-check me-2"></i> Delivered Procurement</a></li>
                      {% endif %}
                      {% if is_privileged or 'QS' in user_roles %}
                      <li class="nav-item">
                          <a class="nav-link {% if page_title == 'My Approvals' %}active{% endif %}" href="/approvals"><i class="bi bi-check2-square me-2"></i> My Approvals</a>
                      </li>
                      {% endif %}
+                     {% if is_privileged or 'Foreman/Duty Officer' in user_roles %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/receive-mr-form">
+                                <i class="bi bi-box-arrow-in-down me-2"></i> Receive MR
+                            </a>
+                        </li>
+                        {% endif %}
                  </ul>
              </nav>
         </div>

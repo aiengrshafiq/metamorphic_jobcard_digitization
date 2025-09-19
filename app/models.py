@@ -51,6 +51,7 @@ class User(Base):
     roles = relationship("Role", secondary=user_role_association, backref="users")
     material_requisitions = relationship("MaterialRequisition", back_populates="requested_by")
     mr_comments = relationship("MaterialRequisitionComment", back_populates="comment_by")
+    material_receipts = relationship("MaterialReceipt", back_populates="received_by")
 
     def verify_password(self, plain_password: str) -> bool:
         return pwd_context.verify(plain_password, self.hashed_password)
@@ -299,6 +300,7 @@ class MaterialRequisition(Base):
     requested_by = relationship("User", back_populates="material_requisitions")
     supplier = relationship("Supplier", back_populates="requisitions")
     comments = relationship("MaterialRequisitionComment", back_populates="requisition", cascade="all, delete-orphan")
+    receipts = relationship("MaterialReceipt", back_populates="requisition")
     def __str__(self) -> str:
         p_name = self.project.name if self.project else f"Project ID {self.project_id}"
         return f"Req #{self.id} ({self.mr_number or 'N/A'}) for {p_name}"
@@ -376,3 +378,29 @@ class MaterialRequisitionComment(Base):
 
     requisition = relationship("MaterialRequisition", back_populates="comments")
     comment_by = relationship("User", back_populates="mr_comments")
+
+
+class MaterialReceipt(Base):
+    __tablename__ = 'material_receipts'
+    id = Column(Integer, primary_key=True, index=True)
+    delivery_status = Column(String, nullable=False)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+
+    requisition_id = Column(Integer, ForeignKey('material_requisitions.id'), nullable=False)
+    received_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    requisition = relationship("MaterialRequisition", back_populates="receipts")
+    received_by = relationship("User", back_populates="material_receipts")
+    images = relationship("MaterialReceiptImage", back_populates="receipt", cascade="all, delete-orphan")
+
+class MaterialReceiptImage(Base):
+    __tablename__ = 'material_receipt_images'
+    id = Column(Integer, primary_key=True, index=True)
+    blob_url = Column(String, nullable=False)
+    file_name = Column(String, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+
+    receipt_id = Column(Integer, ForeignKey('material_receipts.id'), nullable=True)
+
+    receipt = relationship("MaterialReceipt", back_populates="images")

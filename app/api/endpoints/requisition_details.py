@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
+from app.utils import generate_sas_url
 
 from app.api import deps
 from app import models
@@ -21,11 +22,21 @@ def get_requisition_details(
         joinedload(models.MaterialRequisition.project),
         joinedload(models.MaterialRequisition.requested_by),
         joinedload(models.MaterialRequisition.supplier),
-        joinedload(models.MaterialRequisition.comments).joinedload(models.MaterialRequisitionComment.comment_by)
+        joinedload(models.MaterialRequisition.comments).joinedload(models.MaterialRequisitionComment.comment_by),
+        # --- ADD THESE TWO LINES TO FETCH RECEIPT DATA ---
+        joinedload(models.MaterialRequisition.receipts).joinedload(models.MaterialReceipt.received_by),
+        joinedload(models.MaterialRequisition.receipts).joinedload(models.MaterialReceipt.images)
+        # --------------------------------------------------
     ).filter(models.MaterialRequisition.id == req_id).first()
 
     if not requisition:
         raise HTTPException(status_code=404, detail="Requisition not found")
+
+    # --- NEW: Generate SAS URLs for all receipt images ---
+    for receipt in requisition.receipts:
+        for image in receipt.images:
+            image.blob_url = generate_sas_url(image.blob_url)
+    # ---------------------------------------------------
         
     return requisition
 

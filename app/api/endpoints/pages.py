@@ -273,3 +273,18 @@ async def requisition_details_page(
     context["page_title"] = f"Requisition Details #{req_id}"
     context["req_id"] = req_id # Pass the ID to the template
     return templates.TemplateResponse("requisition_details.html", context)
+
+
+@router.get("/receive-mr-form", response_class=HTMLResponse, tags=["Pages"])
+async def receive_mr_form(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context.update({
+        "page_title": "Receive Material Requisition",
+        "projects": db.query(models.Project).order_by(models.Project.name).all(),
+    })
+    return templates.TemplateResponse("receive_mr.html", context)

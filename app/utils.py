@@ -2,6 +2,10 @@
 from datetime import date
 from sqlalchemy.orm import Session
 from app.models import JobCard
+from azure.storage.blob import generate_blob_sas, BlobSasPermissions
+from datetime import datetime, timedelta
+from urllib.parse import urlparse
+from app.core.config import settings
 
 def generate_job_card_number(db: Session, site_location: str) -> str:
     """Generates a new, sequential job card number for a given site and date."""
@@ -21,3 +25,40 @@ def generate_job_card_number(db: Session, site_location: str) -> str:
         new_seq = 1
 
     return f"{site_code}-{date_str}-{new_seq:03d}"
+
+
+# Then, add this new function to the bottom of utils.py
+def generate_sas_url(blob_url: str) -> str:
+    """
+    Generates a SAS token for a given Azure Blob URL to grant temporary access.
+    """
+    if not blob_url or not settings.AZURE_STORAGE_CONNECTION_STRING:
+        return blob_url # Return original URL if config is missing
+
+    try:
+        # Parse the connection string to get the account key
+        conn_parts = {part.split('=', 1)[0]: part.split('=', 1)[1] for part in settings.AZURE_STORAGE_CONNECTION_STRING.split(';')}
+        account_key = conn_parts.get('AccountKey')
+
+        # Parse the blob URL to get its components
+        url_parts = urlparse(blob_url)
+        account_name = url_parts.netloc.split('.')[0]
+        container_name, blob_name = url_parts.path.strip('/').split('/', 1)
+
+        if not all([account_key, account_name, container_name, blob_name]):
+            return blob_url # Return original if parsing fails
+
+        # Generate a SAS token that is valid for 1 hour
+        sas_token = generate_blob_sas(
+            account_name=account_name,
+            container_name=container_name,
+            blob_name=blob_name,
+            account_key=account_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=datetime.utcnow() + timedelta(hours=1)
+        )
+        
+        return f"{blob_url}?{sas_token}"
+    except Exception as e:
+        print(f"Error generating SAS URL: {e}")
+        return blob_url # Fallback to the original URL on error

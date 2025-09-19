@@ -43,39 +43,20 @@
                                 <span class="badge bg-info">{{ req.urgency }}</span>
                             {% endif %}
                         </td>
-                        <!-- <td class="text-end">
-                            <a href="/requisition-details/{{ req.id }}" class="btn btn-outline-secondary btn-sm" title="View Details">
-                                <i class="bi bi-eye-fill"></i>
-                            </a>
-                            <a href="/procurement/material-requisition/{{ req.id }}" class="btn btn-primary btn-sm">
-                                <i class="bi bi-pencil-square me-1"></i> Process
-                            </a>
-                        </td> -->
+                       
                         <td class="text-end">
                         <div class="btn-group" role="group" aria-label="Actions">
                             <a href="/requisition-details/{{ req.id }}" class="btn btn-outline-secondary btn-sm" title="View Details">
                                 <i class="bi bi-eye-fill"></i>
                             </a>
-                            {% if req.pm_approval == 'Approved' and req.qs_approval == 'Approved' %}
-                            <a href="/procurement/material-requisition/{{ req.id }}" class="btn btn-primary btn-sm" title="Process">
-                                <i class="bi bi-pencil-square"></i>
-                            </a>
-                            {% endif %}
-                            {% if is_privileged or 'Procurement' in user_roles %}
-                            <button class="btn btn-success btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Approved" title="Approve">
-                                <i class="bi bi-check-lg"></i>
-                            </button>
-                            <button class="btn btn-danger btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Rejected" title="Reject">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                            {% endif %}
+                           
                         </div>
                     </td>
                     </tr>
                     {% else %}
                     <tr>
                         <td colspan="7" class="text-center text-muted py-4">
-                            No pending material requisitions found.
+                            No delivered material requisitions found.
                         </td>
                     </tr>
                     {% endfor %}

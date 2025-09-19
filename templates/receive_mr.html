@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
+    .choices[data-type*="select-one"]::after { border-color: var(--bs-body-color) transparent transparent; }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
+    #image-preview-container { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+    .img-preview-wrapper { position: relative; width: 100px; height: 100px; }
+    .img-preview { width: 100%; height: 100%; object-fit: cover; border-radius: .375rem; border: 1px solid #dee2e6; }
+    .upload-progress { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; border-radius: .375rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form id="receive-mr-form" novalidate>
+            <input type="hidden" name="image_ids" id="image_ids">
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="project_id" class="form-label">1. Select Project</label>
+                    <select class="form-select" id="project_id" required>
+                        <option value="">Select a project...</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="requisition_id" class="form-label">2. Select MR Number</label>
+                    <select class="form-select" id="requisition_id" name="requisition_id" required disabled>
+                        <option value="">Select a project first...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="form-details" class="mt-4" style="display: none;">
+                <hr>
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <h5 class="mb-3">3. Enter Receipt Details</h5>
+                        <div class="mb-3">
+                            <label for="delivery_status" class="form-label">Delivery Status</label>
+                            <select class="form-select" id="delivery_status" name="delivery_status" required>
+                                <option value="Pending">Pending</option>
+                                <option value="Partial Delivered">Partial Delivered</option>
+                                <option value="Delivered">Delivered</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="image-upload-input" class="form-label">Upload Images (Delivery Note, etc.)</label>
+                            <input class="form-control" type="file" id="image-upload-input" accept="image/*" multiple>
+                            <div id="image-preview-container"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="4"></textarea>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <h5 class="mb-3">MR Confirmation</h5>
+                        <div class="card bg-light border-dashed">
+                            <div class="card-body" id="mr-details-container">
+                                <p class="text-muted">Select an MR number to see details.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 text-end">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                        Submit Receipt
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const projectSelect = document.getElementById('project_id');
+    const requisitionSelect = document.getElementById('requisition_id');
+    const formDetails = document.getElementById('form-details');
+    const mrDetailsContainer = document.getElementById('mr-details-container');
+    const imageUploadInput = document.getElementById('image-upload-input');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const hiddenImageIdsInput = document.getElementById('image_ids');
+    const form = document.getElementById('receive-mr-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    const projectChoices = new Choices(projectSelect);
+    const requisitionChoices = new Choices(requisitionSelect);
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    
+    projectSelect.addEventListener('change', async function() {
+        const projectId = this.value;
+        requisitionChoices.clearStore();
+        requisitionChoices.disable();
+        mrDetailsContainer.innerHTML = '<p class="text-muted">Select an MR number to see details.</p>';
+        formDetails.style.display = 'none';
+
+        if (!projectId) return;
+
+        requisitionChoices.setChoices([{ value: '', label: 'Loading...', disabled: true }]);
+        
+        try {
+            const response = await fetch(`/api/material-receipts/pending-mrs/${projectId}`);
+            if (!response.ok) throw new Error('Failed to fetch MRs.');
+            const mrs = await response.json();
+            
+            const choices = mrs.map(mr => ({ value: mr.id, label: mr.mr_number }));
+            requisitionChoices.clearStore();
+            requisitionChoices.setChoices([{ value: '', label: 'Select an MR number...', placeholder: true }, ...choices]);
+            requisitionChoices.enable();
+        } catch (error) {
+            console.error(error);
+            requisitionChoices.setChoices([{ value: '', label: 'Error loading MRs', disabled: true }]);
+        }
+    });
+    
+    requisitionSelect.addEventListener('change', async function() {
+        const reqId = this.value;
+        mrDetailsContainer.innerHTML = '<p class="text-muted">Loading details...</p>';
+        if (!reqId) {
+            formDetails.style.display = 'none';
+            return;
+        }
+        
+        formDetails.style.display = 'block';
+
+        try {
+            const response = await fetch(`/api/material-receipts/mr-details/${reqId}`);
+            if (!response.ok) throw new Error('Failed to fetch MR details.');
+            const details = await response.json();
+            
+            mrDetailsContainer.innerHTML = `
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Material Type</dt><dd class="col-sm-7">${details.material_type}</dd>
+                    <dt class="col-sm-5">Supplier</dt><dd class="col-sm-7">${details.supplier}</dd>
+                    <dt class="col-sm-5">LPO Number</dt><dd class="col-sm-7">${details.lpo_number}</dd>
+                    <dt class="col-sm-12 mt-2">Materials & Quantity</dt>
+                    <dd class="col-sm-12"><pre style="white-space: pre-wrap; font-size: 0.9em;">${details.material_with_quantity}</pre></dd>
+                </dl>
+            `;
+        } catch (error) {
+            console.error(error);
+            mrDetailsContainer.innerHTML = '<p class="text-danger">Error loading details.</p>';
+        }
+    });
+
+    imageUploadInput.addEventListener('change', function(event) {
+        const files = event.target.files;
+        if (!files.length) return;
+        
+        const token = getCookie('access_token');
+        if (!token) { alert('Authentication error.'); return; }
+
+        imagePreviewContainer.innerHTML = '';
+        let uploadedImageIds = [];
+        hiddenImageIdsInput.value = '';
+
+        Array.from(files).forEach(file => {
+            const previewWrapper = document.createElement('div');
+            previewWrapper.className = 'img-preview-wrapper';
+            const img = document.createElement('img');
+            img.className = 'img-preview';
+            const progressOverlay = document.createElement('div');
+            progressOverlay.className = 'upload-progress';
+            progressOverlay.innerHTML = '<div class="spinner-border spinner-border-sm text-light" role="status"></div>';
+            previewWrapper.appendChild(img);
+            previewWrapper.appendChild(progressOverlay);
+            imagePreviewContainer.appendChild(previewWrapper);
+
+            const reader = new FileReader();
+            reader.onload = e => { img.src = e.target.result; }
+            reader.readAsDataURL(file);
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/material-receipts/upload-image', { 
+                method: 'POST', 
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData 
+            })
+            .then(response => response.ok ? response.json() : Promise.reject('Upload failed'))
+            .then(result => {
+                uploadedImageIds.push(result.image_id);
+                hiddenImageIdsInput.value = uploadedImageIds.join(',');
+                progressOverlay.innerHTML = '<i class="bi bi-check-circle-fill text-success fs-4"></i>';
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                progressOverlay.innerHTML = '<i class="bi bi-x-circle-fill text-danger fs-4"></i>';
+            });
+        });
+    });
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+
+        const spinner = submitBtn.querySelector('.spinner-border');
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        const token = getCookie('access_token');
+        if (!token) { /* handle error */ return; }
+
+        try {
+            const response = await fetch('/api/material-receipts/', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: new FormData(form)
+            });
+            const result = await response.json();
+            if (!response.ok) { throw new Error(result.detail || 'Submission failed.'); }
+            
+            document.getElementById('toast-title').innerText = 'Success!';
+            document.getElementById('toast-body').innerText = result.message;
+            toastElement.className = 'toast bg-success text-white';
+            toast.show();
+            form.reset();
+            projectChoices.setChoiceByValue('');
+            requisitionChoices.clearStore();
+            formDetails.style.display = 'none';
+            imagePreviewContainer.innerHTML = '';
+
+        } catch (error) {
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+        } finally {
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

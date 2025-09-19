@@ -39,18 +39,78 @@ async def list_material_requisitions(
     if isinstance(context, RedirectResponse):
         return context
 
-    requisitions = db.query(models.MaterialRequisition).filter(
+    # --- V3 DATA FILTERING LOGIC ---
+    # Start with a base query
+    query = db.query(models.MaterialRequisition).filter(
         models.MaterialRequisition.status == 'Pending'
     ).options(
         joinedload(models.MaterialRequisition.project),
         joinedload(models.MaterialRequisition.requested_by)
-    ).order_by(models.MaterialRequisition.request_date).all()
+    )
+
+    # Define roles that can see ALL requisitions
+    privileged_roles = {
+        'Super Admin', 'Admin', 'Operation Mananger', 
+        'Project Manager', 'Procurement', 'QS'
+    }
+    is_privileged = bool(privileged_roles.intersection(context["user_roles"]))
+
+    # If the user is NOT privileged, apply a filter
+    if not is_privileged:
+        # This will apply to roles like 'Supervisor/Site Officer'
+        current_user_id = context["user"].id
+        query = query.filter(models.MaterialRequisition.requested_by_id == current_user_id)
+    
+    # Execute the final query
+    requisitions = query.order_by(models.MaterialRequisition.request_date).all()
+    # ------------------------------------
     
     context.update({
         "page_title": "Procurement Dashboard",
         "requisitions": requisitions
     })
     return templates.TemplateResponse("procurement_list.html", context)
+
+
+@router.get("/material-requisitions-delivered", response_class=HTMLResponse, tags=["Procurement"])
+async def list_material_requisitions_delivered(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+
+    # --- V3 DATA FILTERING LOGIC ---
+    # Start with a base query
+    query = db.query(models.MaterialRequisition).filter(
+        models.MaterialRequisition.status == 'Delivered'
+    ).options(
+        joinedload(models.MaterialRequisition.project),
+        joinedload(models.MaterialRequisition.requested_by)
+    )
+
+    # Define roles that can see ALL requisitions
+    privileged_roles = {
+        'Super Admin', 'Admin', 'Operation Mananger', 
+        'Project Manager', 'Procurement', 'QS'
+    }
+    is_privileged = bool(privileged_roles.intersection(context["user_roles"]))
+
+    # If the user is NOT privileged, apply a filter
+    if not is_privileged:
+        # This will apply to roles like 'Supervisor/Site Officer'
+        current_user_id = context["user"].id
+        query = query.filter(models.MaterialRequisition.requested_by_id == current_user_id)
+    
+    # Execute the final query
+    requisitions = query.order_by(models.MaterialRequisition.request_date).all()
+    # ------------------------------------
+    
+    context.update({
+        "page_title": "Procurement Dashboard",
+        "requisitions": requisitions
+    })
+    return templates.TemplateResponse("procurement_list_delivered.html", context)
 
 
 @router.get("/material-requisition/{req_id}", response_class=HTMLResponse, tags=["Procurement"])
