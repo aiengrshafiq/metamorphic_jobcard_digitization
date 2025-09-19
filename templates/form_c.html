@@ -188,6 +188,10 @@
                 };
 
                 videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                // --- ADD THIS LINE ---
+                // Now that we have permission, check for other cameras.
+                checkCameraSupport();
+                // ---------------------
                 videoPreview.srcObject = videoStream;
                 mediaRecorder = new MediaRecorder(videoStream, { mimeType: 'video/webm' });
                 recordedChunks = [];
@@ -282,7 +286,7 @@
         stopBtn.addEventListener('click', stopRecording);
         retakeBtn.addEventListener('click', resetVideo);
         switchCameraBtn.addEventListener('click', switchCamera);
-        checkCameraSupport();
+        //checkCameraSupport();
 
         // --- IMAGE UPLOADER LOGIC (Unchanged) ---
         const imageUploadInput = document.getElementById('image-upload-input');
