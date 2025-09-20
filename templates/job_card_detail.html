@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div id="loading-state" class="text-center">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+        <p class="mt-2 text-muted">Loading job card details...</p>
+    </div>
+
+    <div id="content-container" style="display: none;">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header"><h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Tasks</h5></div>
+                    <ul class="list-group list-group-flush" id="task-list"></ul>
+                </div>
+
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header"><h5 class="mb-0"><i class="bi bi-chat-dots-fill me-2"></i>Comments</h5></div>
+                    <div class="card-body">
+                        <div id="comment-list" class="mb-3"></div>
+                       <form id="comment-form">
+                        <div class="mb-3">
+                            <label for="comment-text" class="form-label">Add a new comment</label>
+
+                            <textarea class="form-control" id="comment-text" name="comment_text" rows="3" required placeholder="Add a new comment..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="submit-comment-btn">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                            Post Comment
+                        </button>
+                    </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header"><h5 class="mb-0">Job Card Info</h5></div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-12" id="jc-number"></dt>
+                            <dd class="col-12" id="jc-project"></dd>
+                            <dt class="col-sm-5 mt-2">Status</dt><dd class="col-sm-7 mt-2" id="jc-status"></dd>
+                            <dt class="col-sm-5">Date Issued</dt><dd class="col-sm-7" id="jc-date-issued"></dd>
+                            <dt class="col-sm-5">Site Location</dt><dd class="col-sm-7" id="jc-site-location"></dd>
+                            <dt class="col-sm-5">Created By</dt><dd class="col-sm-7" id="jc-created-by"></dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header"><h5 class="mb-0">Assigned Personnel</h5></div>
+                    <div class="card-body">
+                         <dl class="row mb-0">
+                            <dt class="col-sm-5">Site Engineer</dt><dd class="col-sm-7" id="jc-engineer"></dd>
+                            <dt class="col-sm-5">Supervisor</dt><dd class="col-sm-7" id="jc-supervisor"></dd>
+                            <dt class="col-sm-5">Foreman</dt><dd class="col-sm-7" id="jc-foreman"></dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const jcId = {{ jc_id }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+    const commentList = document.getElementById('comment-list');
+    const commentForm = document.getElementById('comment-form');
+    const commentText = document.getElementById('comment-text');
+    const submitCommentBtn = document.getElementById('submit-comment-btn');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    function renderComments(comments) {
+        commentList.innerHTML = '';
+        if (comments && comments.length > 0) {
+            comments.slice().reverse().forEach(comment => { // Show newest first
+                const commentEl = document.createElement('div');
+                commentEl.className = 'd-flex mb-3 border-bottom pb-2';
+                const commentDate = new Date(comment.created_at).toLocaleString();
+                commentEl.innerHTML = `
+                    <div class="flex-shrink-0 me-3"><i class="bi bi-person-circle fs-3 text-secondary"></i></div>
+                    <div class="flex-grow-1">
+                        <h6 class="mt-0 mb-1">${comment.comment_by.name}</h6>
+                        <p class="mb-1" style="white-space: pre-wrap;">${comment.comment_text}</p>
+                        <small class="text-muted">${commentDate}</small>
+                    </div>`;
+                commentList.appendChild(commentEl);
+            });
+        } else {
+            commentList.innerHTML = '<p class="text-muted text-center">No comments yet.</p>';
+        }
+    }
+    
+    async function fetchJobCardDetails() {
+        const token = getCookie('access_token');
+        if (!token) { /* handle error */ return; }
+        try {
+            const response = await fetch(`/api/job-card-details/${jcId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || 'Could not load details.');
+            }
+            const data = await response.json();
+            
+            // Populate Info Cards
+            document.getElementById('jc-number').textContent = data.job_card_no;
+            document.getElementById('jc-project').textContent = data.project.name;
+            document.getElementById('jc-status').innerHTML = `<span class="badge ${data.status === 'Done' ? 'bg-success' : 'bg-warning text-dark'}">${data.status}</span>`;
+            document.getElementById('jc-date-issued').textContent = new Date(data.date_issued).toLocaleDateString();
+            document.getElementById('jc-site-location').textContent = data.site_location;
+            document.getElementById('jc-created-by').textContent = data.created_by ? data.created_by.name : 'N/A';
+            document.getElementById('jc-engineer').textContent = data.site_engineer_user ? data.site_engineer_user.name : 'N/A';
+            document.getElementById('jc-supervisor').textContent = data.supervisor_user ? data.supervisor_user.name : 'N/A';
+            document.getElementById('jc-foreman').textContent = data.foreman_user ? data.foreman_user.name : 'N/A';
+
+            // Populate Tasks
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = '';
+            data.tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.innerHTML = `<span>${task.task_details}</span> <span class="badge bg-primary rounded-pill">${task.status}</span>`;
+                taskList.appendChild(li);
+            });
+            
+            // Populate Comments
+            renderComments(data.comments);
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger text-center">${error.message}</p>`;
+        }
+    }
+    
+    commentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const token = getCookie('access_token');
+        if (!token) { return; }
+        
+        const spinner = submitCommentBtn.querySelector('.spinner-border');
+        submitCommentBtn.disabled = true;
+        spinner.style.display = 'inline-block';
+
+        try {
+            const response = await fetch(`/api/job-card-details/${jcId}/comments`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: new FormData(commentForm)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Failed to post comment.');
+            
+            fetchJobCardDetails(); // Re-fetch all data to show the new comment
+            commentText.value = '';
+
+        } catch (error) {
+            // Show error toast
+        } finally {
+            submitCommentBtn.disabled = false;
+            spinner.style.display = 'none';
+        }
+    });
+
+    fetchJobCardDetails();
+});
+</script>
+{% endblock %}

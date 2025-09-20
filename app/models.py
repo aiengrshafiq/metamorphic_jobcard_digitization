@@ -48,6 +48,8 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
 
+    job_card_comments = relationship("JobCardComment", back_populates="comment_by")
+
     roles = relationship("Role", secondary=user_role_association, backref="users")
     material_requisitions = relationship("MaterialRequisition", back_populates="requested_by")
     mr_comments = relationship("MaterialRequisitionComment", back_populates="comment_by")
@@ -114,6 +116,8 @@ class DutyOfficerProgress(Base):
     kt_help_required_details = Column(Text)
     kt_critical_actions_required = Column(Text)
     created_at = Column(DateTime, default=func.now())
+
+    created_by = relationship("User", foreign_keys=[created_by_id])
     
     job_card = relationship("JobCard", back_populates="progress_reports")
     foreman_signature = relationship("Foreman", back_populates="progress_reports")
@@ -172,6 +176,12 @@ class SiteOfficerReport(Base):
     sa_approved_drawings_check = Column(String)
     sa_drawing_help_details = Column(Text)
     created_at = Column(DateTime, default=func.now())
+
+    # --- ADD THESE THREE RELATIONSHIPS ---
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    site_officer_user = relationship("User", foreign_keys=[site_officer_user_id])
+    duty_officer_user = relationship("User", foreign_keys=[duty_officer_user_id])
+    # -------------------------------------
     
     site_officer = relationship("Supervisor", back_populates="site_officer_reports")
     duty_officer = relationship("Foreman", back_populates="site_officer_reports")
@@ -183,6 +193,8 @@ class SiteOfficerReport(Base):
     site_images = relationship("SiteImage")
     
     def __str__(self) -> str: return f"Site Officer Report for {self.site_location} on {self.date}"
+
+
 
 # ... (rest of models like Project, Supervisor, Task, etc., are unchanged) ...
 class ToolboxVideo(Base):
@@ -256,6 +268,13 @@ class JobCard(Base):
     tasks = relationship("Task", back_populates="job_card", cascade="all, delete-orphan")
     progress_reports = relationship("DutyOfficerProgress", back_populates="job_card", cascade="all, delete-orphan")
     site_officer_reports = relationship("SiteOfficerReport", back_populates="job_card", cascade="all, delete-orphan")
+     # --- ADD THESE RELATIONSHIPS ---
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    site_engineer_user = relationship("User", foreign_keys=[site_engineer_user_id])
+    supervisor_user = relationship("User", foreign_keys=[supervisor_user_id])
+    foreman_user = relationship("User", foreign_keys=[foreman_user_id])
+    comments = relationship("JobCardComment", back_populates="job_card", cascade="all, delete-orphan")
+    # -----------------------------
     def __str__(self) -> str: return self.job_card_no
 
 class Task(Base):
@@ -404,3 +423,15 @@ class MaterialReceiptImage(Base):
     receipt_id = Column(Integer, ForeignKey('material_receipts.id'), nullable=True)
 
     receipt = relationship("MaterialReceipt", back_populates="images")
+
+class JobCardComment(Base):
+    __tablename__ = 'jc_comments'
+    id = Column(Integer, primary_key=True, index=True)
+    comment_text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+
+    job_card_id = Column(Integer, ForeignKey('job_cards.id'), nullable=False)
+    comment_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    job_card = relationship("JobCard", back_populates="comments")
+    comment_by = relationship("User", back_populates="job_card_comments")

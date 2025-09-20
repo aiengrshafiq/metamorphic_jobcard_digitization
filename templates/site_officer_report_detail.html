@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div id="loading-state" class="text-center">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+        <p class="mt-2 text-muted">Loading report details...</p>
+    </div>
+
+    <div id="content-container" style="display: none;">
+        <div class="row g-4">
+            <div class="col-lg-8" id="details-main-column">
+                </div>
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header"><h5 class="mb-0">Report Info</h5></div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Report ID</dt><dd class="col-sm-7" id="info-report-id"></dd>
+                            <dt class="col-sm-5">Job Card</dt><dd class="col-sm-7" id="info-job-card"></dd>
+                            <dt class="col-sm-5">Project</dt><dd class="col-sm-7" id="info-project"></dd>
+                            <dt class="col-sm-5">Report Date</dt><dd class="col-sm-7" id="info-date"></dd>
+                            <dt class="col-sm-5">Site Officer</dt><dd class="col-sm-7" id="info-site-officer"></dd>
+                            <dt class="col-sm-5">Duty Officer</dt><dd class="col-sm-7" id="info-duty-officer"></dd>
+                            <dt class="col-sm-5">Submitted By</dt><dd class="col-sm-7" id="info-submitted-by"></dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="card shadow-sm mt-4" id="video-card-container" style="display:none;">
+                    <div class="card-header"><h5 class="mb-0">Toolbox Video</h5></div>
+                    <div class="card-body" id="video-container"></div>
+                </div>
+                <div class="card shadow-sm mt-4" id="image-card-container" style="display:none;">
+                    <div class="card-header"><h5 class="mb-0">Site Images</h5></div>
+                    <div class="card-body" id="image-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const reportId = {{ report_id }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+    const mainColumn = document.getElementById('details-main-column');
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    function createDetailCard(title, details) {
+        let content = '<dl class="row mb-0">';
+        for (const [key, value] of Object.entries(details)) {
+            let displayValue = value;
+            if (typeof value === 'boolean') {
+                displayValue = value ? 'Yes' : 'No';
+            }
+            if (displayValue !== null && displayValue !== '') {
+                content += `<dt class="col-sm-4">${key}</dt><dd class="col-sm-8">${displayValue}</dd>`;
+            }
+        }
+        content += '</dl>';
+        
+        const card = document.createElement('div');
+        card.className = 'card shadow-sm mb-4';
+        card.innerHTML = `<div class="card-header"><h5 class="mb-0">${title}</h5></div><div class="card-body">${content}</div>`;
+        return card;
+    }
+
+    async function fetchReportDetails() {
+        const token = getCookie('access_token');
+        if (!token) {
+            loadingState.innerHTML = '<p class="text-danger">Authentication Error. Please log in.</p>';
+            return;
+        }
+        try {
+            const response = await fetch(`/api/site-officer-reports/${reportId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || 'Could not load report details.');
+            }
+            const data = await response.json();
+
+            // Populate side info
+            document.getElementById('info-report-id').textContent = data.id;
+            document.getElementById('info-job-card').textContent = data.job_card.job_card_no;
+            document.getElementById('info-project').textContent = data.job_card.project.name;
+            document.getElementById('info-date').textContent = new Date(data.date).toLocaleDateString();
+            document.getElementById('info-site-officer').textContent = data.site_officer_user ? data.site_officer_user.name : 'N/A';
+            document.getElementById('info-duty-officer').textContent = data.duty_officer_user ? data.duty_officer_user.name : 'N/A';
+            document.getElementById('info-submitted-by').textContent = data.created_by.name;
+
+            // Build detail cards
+            mainColumn.innerHTML = '';
+            mainColumn.appendChild(createDetailCard('Toolbox Talk', {'Attendance': data.tbt_attendance, 'Topic': data.tbt_topic_discussed, 'Key Points': data.tbt_key_points}));
+            mainColumn.appendChild(createDetailCard('Job Card Mapping', {'Form B Completed': data.form_b_completed_check, 'Pictures on WhatsApp': data.progress_pictures_check, 'Dependencies': data.dependency_notes}));
+            mainColumn.appendChild(createDetailCard('Site Management', {'Manpower': data.sm_manpower_availability, 'Subcontractor Coord.': data.sm_subcontractor_coordination, 'Coordination Issues': data.sm_coordination_issues, 'Other Notes': data.sm_other_notes}));
+            mainColumn.appendChild(createDetailCard('Material Requisition', {'MR Submitted': data.material_requisition_project_id ? 'Yes' : 'No', 'Commercial Delivery Check': data.commercial_delivery_check, 'Delivery Comments': data.delivery_comments}));
+            mainColumn.appendChild(createDetailCard('Quality Control', {'Steps Explained': data.qc_steps_explained, 'Step Details': data.qc_steps_details, 'Drawing Mismatches': data.qc_drawing_mismatches}));
+            mainColumn.appendChild(createDetailCard('Risks & Escalations', {'Delays Flagged': data.re_delays_flagged_reason, 'Support Needed': data.re_support_needed}));
+            mainColumn.appendChild(createDetailCard('Housekeeping & Safety', {'Waste Management': data.hs_waste_management, 'Waste Comments': data.hs_waste_management_comments, 'Walkways Clear': data.hs_walkways_clear, 'Material Storage': data.hs_material_storage, 'PPE Compliance': data.hs_ppe_compliance, 'Incidents/Near Misses': data.hs_incidents_near_misses, 'Safety Comments': data.hs_safety_comments}));
+            mainColumn.appendChild(createDetailCard('Summary & Action Points', {'Overall Health': data.sa_overall_site_health, 'Immediate Actions': data.sa_immediate_actions, 'Responsible Person': data.sa_responsible_person, 'Action Deadline': data.sa_action_deadline ? new Date(data.sa_action_deadline).toLocaleDateString() : 'N/A', 'Critical Actions': data.sa_critical_actions, 'Drawings Check': data.sa_approved_drawings_check, 'Drawing Help Details': data.sa_drawing_help_details}));
+            
+            if (data.toolbox_videos && data.toolbox_videos.length > 0) {
+                document.getElementById('video-card-container').style.display = 'block';
+                const video = data.toolbox_videos[0];
+                document.getElementById('video-container').innerHTML = `<video src="${video.blob_url}" class="w-100" controls></video>`;
+            }
+            
+            if (data.site_images && data.site_images.length > 0) {
+                document.getElementById('image-card-container').style.display = 'block';
+                let imagesHtml = '<div class="d-flex flex-wrap gap-2">';
+                data.site_images.forEach(img => {
+                    imagesHtml += `<a href="${img.blob_url}" target="_blank"><img src="${img.blob_url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px;"></a>`;
+                });
+                imagesHtml += '</div>';
+                document.getElementById('image-container').innerHTML = imagesHtml;
+            }
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger text-center">${error.message}</p>`;
+        }
+    }
+
+    fetchReportDetails();
+});
+</script>
+{% endblock %}

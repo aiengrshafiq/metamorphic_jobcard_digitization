@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Report ID</th>
+                        <th>Job Card</th>
+                        <th>Project</th>
+                        <th>Work Date</th>
+                        <th>Submitted By</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="reports-table-body">
+                    </tbody>
+            </table>
+            <p id="loading-state" class="text-center text-muted mt-3">Loading reports...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tableBody = document.getElementById('reports-table-body');
+    const loadingState = document.getElementById('loading-state');
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    async function fetchReports() {
+        const token = getCookie('access_token');
+        if (!token) {
+            loadingState.textContent = 'Authentication error. Please log in.';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/duty-officer-reports/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Failed to load data.');
+            
+            const reports = await response.json();
+            
+            if (reports.length === 0) {
+                loadingState.textContent = 'No progress reports found.';
+            } else {
+                loadingState.style.display = 'none';
+                tableBody.innerHTML = '';
+                reports.forEach(report => {
+                    const row = document.createElement('tr');
+                    const workDate = new Date(report.date_of_work).toLocaleDateString();
+                    row.innerHTML = `
+                        <td>${report.id}</td>
+                        <td>${report.job_card.job_card_no}</td>
+                        <td>${report.job_card.project.name}</td>
+                        <td>${workDate}</td>
+                        <td>${report.created_by.name}</td>
+                        <td class="text-end">
+                            <a href="/duty-officer-reports/${report.id}" class="btn btn-outline-secondary btn-sm" title="View Details">
+                                <i class="bi bi-eye-fill"></i> View
+                            </a>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+
+    fetchReports();
+});
+</script>
+{% endblock %}

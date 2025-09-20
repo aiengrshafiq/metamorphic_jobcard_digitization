@@ -288,3 +288,65 @@ async def receive_mr_form(
         "projects": db.query(models.Project).order_by(models.Project.name).all(),
     })
     return templates.TemplateResponse("receive_mr.html", context)
+
+
+@router.get("/duty-officer-reports", response_class=HTMLResponse, tags=["Pages"])
+async def duty_officer_reports_list_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+    
+    context["page_title"] = "View Progress Reports"
+    return templates.TemplateResponse("duty_officer_progress_list.html", context)
+
+
+@router.get("/duty-officer-reports/{report_id}", response_class=HTMLResponse, tags=["Pages"])
+async def duty_officer_report_detail_page(
+    report_id: int,
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context["page_title"] = f"Progress Report #{report_id}"
+    context["report_id"] = report_id # Pass the ID to the template
+    return templates.TemplateResponse("duty_officer_progress_detail.html", context)
+
+
+@router.get("/site-officer-reports", response_class=HTMLResponse, tags=["Pages"])
+async def site_officer_reports_list_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+    
+    context["page_title"] = "View Daily Reports"
+    return templates.TemplateResponse("site_officer_report_list.html", context)
+
+
+@router.get("/site-officer-reports/{report_id}", response_class=HTMLResponse, tags=["Pages"])
+async def site_officer_report_detail_page(
+    report_id: int,
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context["page_title"] = f"Daily Report #{report_id}"
+    context["report_id"] = report_id
+    return templates.TemplateResponse("site_officer_report_detail.html", context)
+
+
+@router.get("/job-card-details/{jc_id}", response_class=HTMLResponse, tags=["Pages"])
+async def job_card_detail_page(
+    jc_id: int,
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context["page_title"] = f"Job Card Details #{jc_id}"
+    context["jc_id"] = jc_id
+    return templates.TemplateResponse("job_card_detail.html", context)
+
