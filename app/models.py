@@ -29,6 +29,13 @@ user_role_association = Table(
     Column('role_id', Integer, ForeignKey('roles.id'))
 )
 
+mr_jc_association_table = Table(
+    'mr_jc_association',
+    Base.metadata,
+    Column('material_requisition_id', Integer, ForeignKey('material_requisitions.id'), primary_key=True),
+    Column('job_card_id', Integer, ForeignKey('job_cards.id'), primary_key=True)
+)
+
 class Role(Base):
     __tablename__ = 'roles'
     id = Column(Integer, primary_key=True, index=True)
@@ -274,6 +281,7 @@ class JobCard(Base):
     supervisor_user = relationship("User", foreign_keys=[supervisor_user_id])
     foreman_user = relationship("User", foreign_keys=[foreman_user_id])
     comments = relationship("JobCardComment", back_populates="job_card", cascade="all, delete-orphan")
+    material_requisitions = relationship("MaterialRequisition", secondary=mr_jc_association_table, back_populates="job_cards")
     # -----------------------------
     def __str__(self) -> str: return self.job_card_no
 
@@ -301,7 +309,6 @@ class MaterialRequisition(Base):
     project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
     requested_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     material_type = Column(String, nullable=False)
-    material_with_quantity = Column(Text, nullable=False)
     urgency = Column(String, nullable=False)
     required_delivery_date = Column(Date, nullable=False)
     created_at = Column(DateTime, default=func.now())
@@ -315,11 +322,13 @@ class MaterialRequisition(Base):
     mr_approval = Column(String, nullable=True, default='Pending')
     payment_status = Column(String, nullable=True)
     remarks = Column(Text, nullable=True)
+    items = relationship("RequisitionItem", back_populates="requisition", cascade="all, delete-orphan")
     project = relationship("Project", back_populates="material_requisitions")
     requested_by = relationship("User", back_populates="material_requisitions")
     supplier = relationship("Supplier", back_populates="requisitions")
     comments = relationship("MaterialRequisitionComment", back_populates="requisition", cascade="all, delete-orphan")
     receipts = relationship("MaterialReceipt", back_populates="requisition")
+    job_cards = relationship("JobCard", secondary=mr_jc_association_table, back_populates="material_requisitions")
     def __str__(self) -> str:
         p_name = self.project.name if self.project else f"Project ID {self.project_id}"
         return f"Req #{self.id} ({self.mr_number or 'N/A'}) for {p_name}"
@@ -332,6 +341,24 @@ class Supplier(Base):
     phone = Column(String, nullable=True)
     requisitions = relationship("MaterialRequisition", back_populates="supplier")
     def __str__(self) -> str: return self.name
+
+class Material(Base):
+    __tablename__ = 'materials'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    unit = Column(String, nullable=False) # e.g., 'nos', 'kg', 'm', 'ton'
+
+    def __str__(self):
+        return f"{self.name} ({self.unit})"
+
+class RequisitionItem(Base):
+    __tablename__ = 'requisition_items'
+    requisition_id = Column(Integer, ForeignKey('material_requisitions.id'), primary_key=True)
+    material_id = Column(Integer, ForeignKey('materials.id'), primary_key=True)
+    quantity = Column(Numeric(10, 2), nullable=False)
+
+    material = relationship("Material")
+    requisition = relationship("MaterialRequisition", back_populates="items")
 
 
 class NannyLog(Base):

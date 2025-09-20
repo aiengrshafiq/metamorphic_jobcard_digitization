@@ -25,8 +25,9 @@ def get_requisition_details(
         joinedload(models.MaterialRequisition.comments).joinedload(models.MaterialRequisitionComment.comment_by),
         # --- ADD THESE TWO LINES TO FETCH RECEIPT DATA ---
         joinedload(models.MaterialRequisition.receipts).joinedload(models.MaterialReceipt.received_by),
-        joinedload(models.MaterialRequisition.receipts).joinedload(models.MaterialReceipt.images)
+        joinedload(models.MaterialRequisition.receipts).joinedload(models.MaterialReceipt.images),
         # --------------------------------------------------
+        joinedload(models.MaterialRequisition.items).joinedload(models.RequisitionItem.material)
     ).filter(models.MaterialRequisition.id == req_id).first()
 
     if not requisition:

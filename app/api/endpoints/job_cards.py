@@ -130,3 +130,13 @@ async def get_job_card_tasks(job_card_id: int, db: Session = Depends(deps.get_db
     if not tasks:
         raise HTTPException(status_code=404, detail="No tasks found for this Job Card.")
     return [{"id": task.id, "task_details": task.task_details} for task in tasks]
+
+
+@router.get("/by-project/{project_id}", tags=["Job Cards"])
+def get_job_cards_by_project(project_id: int, db: Session = Depends(deps.get_db)):
+    """Fetches pending job cards for a given project ID."""
+    job_cards = db.query(models.JobCard).filter(
+        models.JobCard.project_id == project_id,
+        models.JobCard.status == 'Pending'
+    ).all()
+    return job_cards

@@ -25,19 +25,24 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Project Code <span class="text-danger">*</span></label>
-                    <select class="form-select" name="project_id" required>
+                    <select class="form-select" id="project_id" name="project_id" required>
                         <option value="">Select a project...</option>
                         {% for p in projects %}
                         <option value="{{ p.id }}">{{ p.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
+                <div class="col-md-6" id="job-cards-wrapper" style="display: none;">
+                    <label class="form-label">Related Job Cards (Optional)</label>
+                    <select class="form-select" id="job_card_ids" name="job_card_ids" multiple>
+                        </select>
+                </div>
                 <div class="col-md-6">
                     <label class="form-label">Requested By <span class="text-danger">*</span></label>
                     <select class="form-select" name="requested_by_id" required>
                         <option value="">Select a person...</option>
-                        {% for s in supervisors %}
-                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% for requester in supervisors %}
+                        <option value="{{ requester.id }}">{{ requester.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -60,9 +65,15 @@
                     </select>
                 </div>
                 <div class="col-12">
-                    <label class="form-label">Material with Quantity <span class="text-danger">*</span></label>
-                    <textarea class="form-control" name="material_with_quantity" rows="4" placeholder="e.g., Cement Bags - 50 nos&#10;12mm Steel Rebar - 10 tons" required></textarea>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">Materials & Quantities <span class="text-danger">*</span></label>
+                    <button type="button" class="btn btn-success btn-sm" id="add-item-btn">
+                        <i class="bi bi-plus-circle me-1"></i> Add Item
+                    </button>
                 </div>
+                <div id="line-items-container">
+                    </div>
+            </div>
             </div>
 
             <div class="mt-4 text-end">
@@ -87,11 +98,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        // --- Existing Choices.js and variable setup ---
-        const choicesInstances = [];
-        const formSelects = document.querySelectorAll('#material-requisition-form select');
-        formSelects.forEach(select => {
-            choicesInstances.push(new Choices(select, { searchEnabled: true, removeItemButton: false, itemSelectText: '' }));
+        // --- 1. INITIAL SETUP ---
+        const choicesInstances = {};
+        // Initialize Choices.js on the static dropdowns that exist on page load
+        document.querySelectorAll('#material-requisition-form select:not([multiple])').forEach(select => {
+            choicesInstances[select.name] = new Choices(select, { searchEnabled: true, removeItemButton: false, itemSelectText: '' });
         });
 
         const form = document.getElementById('material-requisition-form');
@@ -102,65 +113,131 @@
 
         document.querySelector('input[name="request_date"]').valueAsDate = new Date();
 
-        // --- UPDATED FORM SUBMISSION LOGIC ---
+        // --- 2. DYNAMIC JOB CARD DROPDOWN LOGIC ---
+        const projectSelect = document.getElementById('project_id');
+        const jobCardsWrapper = document.getElementById('job-cards-wrapper');
+        const jobCardsSelect = document.getElementById('job_card_ids');
+        let jobCardChoices;
+
+        projectSelect.addEventListener('change', async function() {
+            const projectId = this.value;
+            if (!projectId) {
+                jobCardsWrapper.style.display = 'none';
+                if (jobCardChoices) jobCardChoices.clearStore();
+                return;
+            }
+            jobCardsWrapper.style.display = 'block';
+            if (jobCardChoices) {
+                jobCardChoices.clearStore();
+                jobCardChoices.setChoices([{ value: '', label: 'Loading...', disabled: true }]);
+            } else {
+                 jobCardsSelect.innerHTML = '<option value="">Loading...</option>';
+            }
+            
+            try {
+                const response = await fetch(`/job-cards/by-project/${projectId}`);
+                if (!response.ok) throw new Error('Failed to fetch job cards.');
+                const jobCards = await response.json();
+                const choices = jobCards.map(jc => ({ value: jc.id, label: jc.job_card_no }));
+                
+                if (jobCardChoices) {
+                    jobCardChoices.setChoices(choices, 'value', 'label', true);
+                } else {
+                    jobCardChoices = new Choices(jobCardsSelect, { removeItemButton: true, choices: choices });
+                }
+            } catch (error) {
+                console.error(error);
+                if (jobCardChoices) jobCardChoices.clearStore();
+            }
+        });
+
+        // --- 3. DYNAMIC MATERIAL LINE ITEMS LOGIC ---
+        const lineItemsContainer = document.getElementById('line-items-container');
+        const addItemBtn = document.getElementById('add-item-btn');
+        let itemCounter = 0;
+
+        function createItemRow() {
+            const itemRow = document.createElement('div');
+            itemRow.className = 'row g-2 mb-2 align-items-center item-row';
+            itemRow.innerHTML = `
+                <div class="col-sm-7">
+                    <select class="form-select" name="material_ids" required>
+                        <option value="">Select a material...</option>
+                        {% for material in materials %}
+                        <option value="{{ material.id }}">{{ material.name }} ({{ material.unit }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-sm-4">
+                    <input type="number" step="0.01" class="form-control" name="quantities" placeholder="Quantity" required>
+                </div>
+                <div class="col-sm-1 text-end">
+                    <button type="button" class="btn btn-danger btn-sm remove-item-btn" title="Remove Item">&times;</button>
+                </div>
+            `;
+            lineItemsContainer.appendChild(itemRow);
+            new Choices(itemRow.querySelector('select'), { searchEnabled: true, removeItemButton: false, itemSelectText: '' });
+        }
+
+        addItemBtn.addEventListener('click', createItemRow);
+        
+        lineItemsContainer.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('remove-item-btn')) {
+                e.target.closest('.item-row').remove();
+            }
+        });
+        
+        // Add one line item row to start with
+        createItemRow();
+
+        // --- 4. FORM SUBMISSION LOGIC ---
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             if (!form.checkValidity()) {
                 form.classList.add('was-validated');
                 return;
             }
-
             spinner.style.display = 'inline-block';
             submitBtn.disabled = true;
 
             const toastBody = document.getElementById('toast-body');
             const toastTitle = document.getElementById('toast-title');
             toastElement.classList.remove('bg-danger', 'bg-success');
-
-            // 1. Get the auth token from the cookie
+            
             const token = getCookie('access_token');
             if (!token) {
                 toastElement.classList.add('bg-danger', 'text-white');
                 toastTitle.innerText = 'Authentication Error';
-                toastBody.innerText = 'You are not logged in. Please log in to submit the form.';
+                toastBody.innerText = 'You are not logged in.';
                 toast.show();
                 spinner.style.display = 'none';
                 submitBtn.disabled = false;
                 return;
             }
 
-            const formData = new FormData(form);
             try {
-                // 2. Corrected URL and added Authorization header
                 const response = await fetch('/procurement/material-requisitions/', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: formData
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: new FormData(form)
                 });
-
                 const result = await response.json();
-                
-                // 3. Handle specific 401 Unauthorized error
-                if (response.status === 401) {
-                    throw new Error(result.detail || 'Your session has expired. Please log in again.');
-                }
-                
-                if (response.ok) {
-                    toastElement.classList.add('bg-success', 'text-white');
-                    toastTitle.innerText = 'Success!';
-                    toastBody.innerText = result.message;
-                    form.reset();
-                    form.classList.remove('was-validated');
-                    document.querySelector('input[name="request_date"]').valueAsDate = new Date();
-                    
-                    // Reset all Choices.js instances
-                    choicesInstances.forEach(instance => instance.clearStore());
+                if (!response.ok) { throw new Error(result.detail || result.message || 'An error occurred.'); }
 
-                } else {
-                    throw new Error(result.message || result.detail || 'An unknown error occurred.');
-                }
+                toastElement.classList.add('bg-success', 'text-white');
+                toastTitle.innerText = 'Success!';
+                toastBody.innerText = result.message;
+                
+                // Full form reset
+                form.reset();
+                form.classList.remove('was-validated');
+                document.querySelector('input[name="request_date"]').valueAsDate = new Date();
+                Object.values(choicesInstances).forEach(instance => instance.clearStore());
+                if (jobCardChoices) jobCardChoices.clearStore();
+                jobCardsWrapper.style.display = 'none';
+                lineItemsContainer.innerHTML = '';
+                createItemRow(); // Add back one empty row
+
             } catch (error) {
                 toastElement.classList.add('bg-danger', 'text-white');
                 toastTitle.innerText = 'Error!';

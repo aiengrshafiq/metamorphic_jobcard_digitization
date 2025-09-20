@@ -201,12 +201,15 @@ async def read_material_requisition_form(
     if isinstance(context, RedirectResponse):
         return context
         
+    all_materials = db.query(models.Material).order_by(models.Material.name).all()
+
     context.update({
         "page_title": "Material Requisition Form",
         "projects": db.query(models.Project).order_by(models.Project.name).all(),
         "supervisors": db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.SUPERVISOR).all(),
         "material_types": app_config.get('material_types', []),
         "urgency_levels": app_config.get('urgency_levels', []),
+        "materials": all_materials,
     })
     
     return templates.TemplateResponse("material_requisition_form.html", context)

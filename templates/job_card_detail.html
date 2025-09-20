@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
             data.tasks.forEach(task => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                li.innerHTML = `<span>${task.task_details}</span> <span class="badge bg-primary rounded-pill">${task.status}</span>`;
+                li.innerHTML = `<span>${task.task_details}</span> <span>${task.quantity}</span> <span>${task.units}</span> <span class="badge bg-primary rounded-pill">${task.status}</span>`;
                 taskList.appendChild(li);
             });
             

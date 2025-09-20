@@ -37,8 +37,20 @@
                             <dt class="col-sm-3">Material Type</dt>
                             <dd class="col-sm-9" id="material-type"></dd>
                             
-                            <dt class="col-sm-3">Materials & Quantity</dt>
-                            <dd class="col-sm-9"><pre class="mb-0" id="material-quantity" style="white-space: pre-wrap; font-family: inherit;"></pre></dd>
+                            <dt class="col-sm-12">Materials & Quantity</dt>
+                            <dd class="col-sm-12">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Material</th>
+                                            <th class="text-end">Quantity</th>
+                                            <th>Unit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="materials-table-body">
+                                        </tbody>
+                                </table>
+                            </dd>
                         </dl>
                     </div>
                 </div>
@@ -132,6 +144,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const commentText = document.getElementById('comment-text');
     const submitCommentBtn = document.getElementById('submit-comment-btn');
     const receiptsContainer = document.getElementById('receipts-container'); // Get the new container
+    const materialsTableBody = document.getElementById('materials-table-body');
     const toastElement = document.getElementById('responseToast');
     const toast = new bootstrap.Toast(toastElement);
 
@@ -198,6 +211,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+     // --- NEW FUNCTION TO RENDER THE MATERIALS TABLE ---
+    function renderMaterials(items) {
+        materialsTableBody.innerHTML = '';
+        if (items && items.length > 0) {
+            items.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.material.name}</td>
+                    <td class="text-end">${item.quantity}</td>
+                    <td>${item.material.unit}</td>
+                `;
+                materialsTableBody.appendChild(row);
+            });
+        } else {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td colspan="3" class="text-center text-muted">No materials listed.</td>`;
+            materialsTableBody.appendChild(row);
+        }
+    }
+
     async function fetchRequisitionDetails() {
         const token = getCookie('access_token');
         if (!token) {
@@ -220,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('requested-by').textContent = data.requested_by ? data.requested_by.name : 'N/A';
             document.getElementById('request-date').textContent = new Date(data.request_date).toLocaleDateString();
             document.getElementById('material-type').textContent = data.material_type;
-            document.getElementById('material-quantity').textContent = data.material_with_quantity;
+            //document.getElementById('material-quantity').textContent = data.material_with_quantity;
             
             // Populate sidebar fields
             document.getElementById('urgency').textContent = data.urgency;
@@ -236,6 +269,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Render dynamic sections
             renderComments(data.comments);
             renderReceipts(data.receipts); // <-- CALL THE NEW FUNCTION
+            renderMaterials(data.items);
 
             loadingState.style.display = 'none';
             contentContainer.style.display = 'block';

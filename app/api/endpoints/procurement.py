@@ -9,6 +9,7 @@ from datetime import date
 import yaml
 from pathlib import Path
 import os
+from typing import List
 
 from app.api import deps
 from app import models
@@ -124,7 +125,8 @@ async def process_material_requisition_form(
 
     req = db.query(models.MaterialRequisition).options(
         joinedload(models.MaterialRequisition.project),
-        joinedload(models.MaterialRequisition.requested_by)
+        joinedload(models.MaterialRequisition.requested_by),
+        joinedload(models.MaterialRequisition.items).joinedload(models.RequisitionItem.material)
     ).filter(models.MaterialRequisition.id == req_id).first()
 
     if not req:
@@ -150,9 +152,12 @@ async def create_material_requisition(
     project_id: int = Form(...),
     requested_by_id: int = Form(...),
     material_type: str = Form(...),
-    material_with_quantity: str = Form(...),
+    #material_with_quantity: str = Form(...),
     urgency: str = Form(...),
-    required_delivery_date: date = Form(...)
+    required_delivery_date: date = Form(...),
+    job_card_ids: List[int] = Form(None),
+    material_ids: List[int] = Form(...),
+    quantities: List[float] = Form(...)
 ):
     try:
          # --- NEW: MR Number Generation Logic ---
@@ -171,10 +176,28 @@ async def create_material_requisition(
             project_id=project_id,
             requested_by_id=requested_by_id,
             material_type=material_type,
-            material_with_quantity=material_with_quantity,
+            #material_with_quantity=material_with_quantity,
             urgency=urgency,
             required_delivery_date=required_delivery_date
         )
+         # --- NEW: Link the selected Job Cards ---
+        if job_card_ids:
+            job_cards_to_link = db.query(models.JobCard).filter(models.JobCard.id.in_(job_card_ids)).all()
+            requisition.job_cards.extend(job_cards_to_link)
+        # ------------------------------------
+        # --- NEW: Create RequisitionItem objects from the form data ---
+        if len(material_ids) != len(quantities):
+            raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
+
+        for mat_id, qty in zip(material_ids, quantities):
+            if not mat_id or not qty:
+                continue
+            item = models.RequisitionItem(
+                material_id=mat_id,
+                quantity=qty
+            )
+            requisition.items.append(item)
+        # -----------------------------------------------------------
         db.add(requisition)
         db.commit()
         return JSONResponse(status_code=200, content={"message": "Material requisition submitted successfully!"})

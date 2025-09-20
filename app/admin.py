@@ -4,9 +4,10 @@ from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 from sqlalchemy.orm import joinedload
 
+
 from app.models import (
     User, Role, UserRole, JobCard, Task, Project, SiteEngineer, Supervisor, Foreman,
-    DutyOfficerProgress, SiteOfficerReport, MaterialRequisition, Supplier, ToolboxVideo, SiteImage, NannyLog
+    DutyOfficerProgress, SiteOfficerReport, MaterialRequisition, Supplier, ToolboxVideo, SiteImage, NannyLog,Material
 )
 from app.auth.security import verify_password
 from app.core.database import SessionLocal
@@ -121,8 +122,14 @@ class NannyLogAdmin(ModelView, model=NannyLog):
     column_list = [NannyLog.id, NannyLog.nanny_id, NannyLog.log_date, NannyLog.created_by]
     column_details_list = [NannyLog.id, NannyLog.nanny_id, NannyLog.log_date, NannyLog.created_by]
 
+class MaterialAdmin(ModelView, model=Material):
+    column_list = [Material.id, Material.name, Material.unit]
+    form_columns = [Material.name, Material.unit]
+    name_plural = "Master Materials"
+
 # --- Function to add all views to the admin instance ---
 def create_admin_views(admin: Admin):
+    admin.add_view(MaterialAdmin)
     admin.add_view(UserAdmin)
     admin.add_view(RoleAdmin)
     admin.add_view(SiteImageAdmin)
