@@ -61,6 +61,7 @@ class User(Base):
     material_requisitions = relationship("MaterialRequisition", back_populates="requested_by")
     mr_comments = relationship("MaterialRequisitionComment", back_populates="comment_by")
     material_receipts = relationship("MaterialReceipt", back_populates="received_by")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan", order_by="Notification.created_at.desc()")
 
     def verify_password(self, plain_password: str) -> bool:
         return pwd_context.verify(plain_password, self.hashed_password)
@@ -491,3 +492,16 @@ class JobCardAssignmentLog(Base):
     assigned_supervisor = relationship("User", foreign_keys=[assigned_supervisor_id])
     assigned_foreman = relationship("User", foreign_keys=[assigned_foreman_id])
     # ----------------------------------
+
+
+class Notification(Base):
+    __tablename__ = 'notifications'
+    id = Column(Integer, primary_key=True, index=True)
+    message = Column(String, nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False)
+    link = Column(String, nullable=True) # URL to the relevant item
+    created_at = Column(DateTime, default=func.now())
+
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    user = relationship("User", back_populates="notifications")

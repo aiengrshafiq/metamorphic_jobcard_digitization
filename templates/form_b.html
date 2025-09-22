@@ -347,10 +347,18 @@
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (!response.ok) throw new Error('Could not fetch tasks.');
-                    const tasks = await response.json();
-                    let options = '<option value="">Select a task...</option>';
-                    tasks.forEach(task => { options += `<option value="${task.id}">${task.task_details}</option>`; });
-                    taskSelect.innerHTML = options;
+                   const tasks = await response.json();
+                        let options = '<option value="">Select a task...</option>';
+                        tasks.forEach(task => {
+                            // Build a more descriptive label
+                            let displayText = task.task_details;
+                            if (task.quantity && task.units) {
+                                displayText += ` (${task.quantity} ${task.units})`;
+                            }
+                            options += `<option value="${task.id}">${displayText}</option>`; 
+                        });
+                        taskSelect.innerHTML = options;
+                        console.log('Tasks Options loaded:', options);
                 } catch (error) {
                     taskSelect.innerHTML = '<option value="">Could not load tasks</option>';
                 }

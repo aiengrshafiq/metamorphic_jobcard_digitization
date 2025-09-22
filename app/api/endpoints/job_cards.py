@@ -66,6 +66,24 @@ async def create_job_card(
                 assigned_crew=assigned_crew[i]
             )
             db.add(new_task)
+        
+        # --- ADD THIS NOTIFICATION LOGIC ---
+        # Notify the new Supervisor
+        supervisor_notification = models.Notification(
+            user_id=supervisor_user_id,
+            message=f"Job Card {job_card_no} has been assigned to you by {current_user.name}.",
+            link=f"/job-card-details/{jc_id}"
+        )
+        db.add(supervisor_notification)
+        
+        # Notify the new Foreman
+        foreman_notification = models.Notification(
+            user_id=foreman_user_id,
+            message=f"Job Card {job_card_no} has been assigned to you by {current_user.name}.",
+            link=f"/job-card-details/{jc_id}"
+        )
+        db.add(foreman_notification)
+        # -----------------------------------
         db.commit()
         return JSONResponse(
             status_code=200,
@@ -129,7 +147,7 @@ async def get_job_card_tasks(job_card_id: int, db: Session = Depends(deps.get_db
     tasks = db.query(models.Task).filter(models.Task.job_card_id == job_card_id).all()
     if not tasks:
         raise HTTPException(status_code=404, detail="No tasks found for this Job Card.")
-    return [{"id": task.id, "task_details": task.task_details} for task in tasks]
+    return [{"id": task.id, "task_details": task.task_details, "quantity": task.quantity, "units": task.units} for task in tasks]
 
 
 @router.get("/by-project/{project_id}", tags=["Job Cards"])

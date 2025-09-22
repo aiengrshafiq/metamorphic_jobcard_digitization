@@ -109,6 +109,23 @@ def reassign_job_card(
         change_notes=notes
     )
     db.add(log_entry)
+    # --- ADD THIS NOTIFICATION LOGIC ---
+    # Notify the new Supervisor
+    supervisor_notification = models.Notification(
+        user_id=supervisor_user_id,
+        message=f"Job Card {job_card.job_card_no} has been assigned to you by {current_user.name}.",
+        link=f"/job-card-details/{jc_id}"
+    )
+    db.add(supervisor_notification)
+    
+    # Notify the new Foreman
+    foreman_notification = models.Notification(
+        user_id=foreman_user_id,
+        message=f"Job Card {job_card.job_card_no} has been assigned to you by {current_user.name}.",
+        link=f"/job-card-details/{jc_id}"
+    )
+    db.add(foreman_notification)
+    # -----------------------------------
     db.commit()
 
     return {"message": "Job Card successfully re-assigned."}
