@@ -60,14 +60,12 @@
         </div>
     </nav>
 
-    {% set privileged_roles = ['Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'] %}
-    {% set is_privileged = user_roles | select('in', privileged_roles) | list | length > 0 %}
+   
 
-    {% set admin_roles = ['Super Admin', 'Admin'] %}
-    {% set is_admin = user_roles | select('in', admin_roles) | list | length > 0 %}
+    
 
 
-    <!-- <pre>{{ user_roles | safe }}</pre> -->
+    <pre>{{ user_roles | safe }}</pre>
 
     <div class="container-fluid">
         <div class="row g-0">
@@ -141,6 +139,15 @@
                         </li>
                         {% endif %}
                     </ul>
+                    {% if is_privileged or 'Finance' in user_roles or 'Procurement' in user_roles %}
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                        <span>Finance</span>
+                    </h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item"><a class="nav-link" href="/lpos"><i class="bi bi-receipt me-2"></i> Purchase Orders</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/lpos/new"><i class="bi bi-plus-circle me-2"></i> Create LPO</a></li>
+                    </ul>
+                    {% endif %}
                     {% if is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
                  <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                      <span>List</span>
@@ -251,6 +258,15 @@
                         </li>
                         {% endif %}
                  </ul>
+                  {% if is_privileged or 'Finance' in user_roles or 'Procurement' in user_roles %}
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                        <span>Finance</span>
+                    </h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item"><a class="nav-link" href="/lpos"><i class="bi bi-receipt me-2"></i> Purchase Orders</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/lpos/new"><i class="bi bi-plus-circle me-2"></i> Create LPO</a></li>
+                    </ul>
+                    {% endif %}
                  {% if is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
                  <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                      <span>List</span>

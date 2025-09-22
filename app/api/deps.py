@@ -75,17 +75,22 @@ def get_template_context(
     request: Request, 
     current_user: models.User = Depends(get_current_user_from_cookie)
 ) -> dict | RedirectResponse:
-    """
-    A dependency that prepares the common context dictionary for templates.
-    Returns a RedirectResponse if the user is not logged in.
-    """
     if isinstance(current_user, RedirectResponse):
         return current_user
 
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
     
+    # --- ADD THIS LOGIC ---
+    privileged_roles = {'Super Admin', 'Admin', 'Operation Manager', 'Project Manager'}
+    is_privileged = bool(privileged_roles.intersection(user_roles))
+    admin_roles = {'Super Admin', 'Admin'}
+    is_admin = bool(admin_roles.intersection(user_roles))
+    # ----------------------
+
     return {
         "request": request,
         "user": current_user,
-        "user_roles": user_roles
+        "user_roles": user_roles,
+        "is_privileged": is_privileged,
+        "is_admin":is_admin # <-- Pass the boolean flag to the template
     }

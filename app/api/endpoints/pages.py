@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Request # <--- MAKE SURE 'Request' IS IM
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload, selectinload
+from app.api.endpoints.lpo.lpo import get_next_lpo_number
 import yaml
 from pathlib import Path
 import os
@@ -375,4 +376,28 @@ async def job_card_detail_page(
     context["page_title"] = f"Job Card Details #{jc_id}"
     context["jc_id"] = jc_id
     return templates.TemplateResponse("job_card_detail.html", context)
+
+
+@router.get("/lpos", response_class=HTMLResponse, tags=["Pages"])
+async def list_lpo_page(context: dict = Depends(deps.get_template_context)):
+    if isinstance(context, RedirectResponse): return context
+    context["page_title"] = "Purchase Orders"
+    return templates.TemplateResponse("lpo/list_lpo.html", context)
+
+@router.get("/lpos/new", response_class=HTMLResponse, tags=["Pages"])
+async def create_lpo_page(context: dict = Depends(deps.get_template_context), db: Session = Depends(deps.get_db)):
+    if isinstance(context, RedirectResponse): return context
+    context["page_title"] = "Create Purchase Order"
+    context["next_lpo_number"] = get_next_lpo_number(db) # We need to import this function
+    context["suppliers"] = db.query(models.Supplier).order_by(models.Supplier.name).all()
+    context["projects"] = db.query(models.Project).order_by(models.Project.name).all()
+    context["materials"] = db.query(models.Material).order_by(models.Material.name).all()
+    return templates.TemplateResponse("lpo/create_lpo.html", context)
+
+@router.get("/lpos/{lpo_id}", response_class=HTMLResponse, tags=["Pages"])
+async def view_lpo_page(lpo_id: int, context: dict = Depends(deps.get_template_context)):
+    if isinstance(context, RedirectResponse): return context
+    context["page_title"] = f"Purchase Order #{lpo_id}"
+    context["lpo_id"] = lpo_id
+    return templates.TemplateResponse("lpo/view_lpo.html", context)
 

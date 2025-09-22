@@ -12,13 +12,14 @@ Base = declarative_base()
 class UserRole(str, enum.Enum):
     SUPER_ADMIN = "Super Admin"
     ADMIN = "Admin"
-    OPERATION_MANAGER = "Operation Mananger"
+    OPERATION_MANAGER = "Operation Manager"
     PROJECT_MANAGER = "Project Manager"
     SITE_ENGINEER = "Site Engineer"
     SUPERVISOR = "Supervisor/Site Officer"
     FOREMAN = "Foreman/Duty Officer"
     PROCUREMENT = "Procurement"
     QS = "QS"
+    FINANCE = "Finance"
     USER = "User"
 
 # Association table for the many-to-many relationship between users and roles
@@ -39,10 +40,12 @@ mr_jc_association_table = Table(
 class Role(Base):
     __tablename__ = 'roles'
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(SQLAlchemyEnum(UserRole), unique=True, nullable=False)
+    #name = Column(SQLAlchemyEnum(UserRole), unique=True, nullable=False)
+    name = Column(String, unique=True, nullable=False)
 
     def __str__(self) -> str:
-        return self.name.value
+        #return self.name.value
+        return self.name
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -505,3 +508,55 @@ class Notification(Base):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
 
     user = relationship("User", back_populates="notifications")
+
+
+lpo_item_project_association = Table(
+    'lpo_item_project_association', Base.metadata,
+    Column('lpo_item_id', Integer, ForeignKey('lpo_items.id'), primary_key=True),
+    Column('project_id', Integer, ForeignKey('projects.id'), primary_key=True)
+)
+
+class LPO(Base):
+    __tablename__ = 'lpos'
+    id = Column(Integer, primary_key=True, index=True)
+    lpo_number = Column(String, unique=True, nullable=False)
+    lpo_date = Column(Date, nullable=False, default=func.current_date())
+    status = Column(String, nullable=False, default='Pending') # Pending, Approved, Rejected
+    message_to_supplier = Column(Text, nullable=True)
+    memo = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+
+    supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False)
+    project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
+    created_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    supplier = relationship("Supplier")
+    project = relationship("Project")
+    created_by = relationship("User")
+    items = relationship("LPOItem", back_populates="lpo", cascade="all, delete-orphan")
+    attachments = relationship("LPOAttachment", back_populates="lpo", cascade="all, delete-orphan")
+
+class LPOItem(Base):
+    __tablename__ = 'lpo_items'
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(Text, nullable=True)
+    quantity = Column(Numeric(10, 2), nullable=False)
+    rate = Column(Numeric(10, 2), nullable=False)
+    tax_rate = Column(Numeric(4, 2), default=0.00) # e.g., 0.05 for 5%
+
+    lpo_id = Column(Integer, ForeignKey('lpos.id'), nullable=False)
+    material_id = Column(Integer, ForeignKey('materials.id'), nullable=False)
+
+    lpo = relationship("LPO", back_populates="items")
+    material = relationship("Material")
+    projects = relationship("Project", secondary=lpo_item_project_association)
+
+class LPOAttachment(Base):
+    __tablename__ = 'lpo_attachments'
+    id = Column(Integer, primary_key=True, index=True)
+    blob_url = Column(String, nullable=False)
+    file_name = Column(String, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    lpo_id = Column(Integer, ForeignKey('lpos.id'), nullable=True)
+
+    lpo = relationship("LPO", back_populates="attachments")

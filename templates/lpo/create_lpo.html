@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
+    .choices[data-type*="select-one"]::after { border-color: var(--bs-body-color) transparent transparent; }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
+    .item-row input[type=number] { text-align: right; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form id="lpo-form" novalidate>
+            <div class="row g-3 align-items-center">
+                <div class="col-lg-6">
+                    <label for="supplier_id" class="form-label">Supplier <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <select id="supplier_id" name="supplier_id" required>
+                            <option value="">Select a supplier...</option>
+                            {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                        </select>
+                        </div>
+                </div>
+                <div class="col-lg-3">
+                    <label for="project_id" class="form-label">Main Project <span class="text-danger">*</span></label>
+                    <select id="project_id" name="project_id" required>
+                         <option value="">Select a project...</option>
+                         {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                 <div class="col-lg-3">
+                    <label for="lpo_date" class="form-label">LPO Date</label>
+                    <input type="date" class="form-control" id="lpo_date" name="lpo_date" required>
+                </div>
+            </div>
+
+            <hr class="my-4">
+            
+            <h5 class="mb-3">Item Details</h5>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 25%;">Product/Service</th>
+                            <th style="width: 25%;">Description</th>
+                            <th style="width: 10%;">QTY</th>
+                            <th style="width: 10%;">Rate</th>
+                            <th style="width: 10%;">Amount</th>
+                            <th style="width: 15%;">Tax</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="line-items-body"></tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="add-item-btn"><i class="bi bi-plus-circle me-1"></i> Add Line</button>
+            
+            <div class="row justify-content-end mt-3">
+                <div class="col-md-5">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr><th>Subtotal</th><td class="text-end" id="subtotal">0.00</td></tr>
+                            <tr><th>Tax (5%)</th><td class="text-end" id="tax-total">0.00</td></tr>
+                            <tr class="fw-bold"><th>TOTAL</th><td class="text-end fs-5" id="grand-total">0.00</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <hr class="my-4">
+            <div class="row g-3">
+                <div class="col-md-6"><label for="message_to_supplier" class="form-label">Message to Supplier</label><textarea class="form-control" id="message_to_supplier" name="message_to_supplier" rows="3"></textarea></div>
+                <div class="col-md-6"><label for="memo" class="form-label">Memo</label><textarea class="form-control" id="memo" name="memo" rows="3"></textarea></div>
+            </div>
+            
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Save LPO
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const choicesConfig = { searchEnabled: true, removeItemButton: false, itemSelectText: '' };
+    new Choices('#supplier_id', choicesConfig);
+    new Choices('#project_id', choicesConfig);
+    document.getElementById('lpo_date').valueAsDate = new Date();
+
+    const lineItemsBody = document.getElementById('line-items-body');
+    const addItemBtn = document.getElementById('add-item-btn');
+    
+    // JS representation of materials passed from the backend
+    const materials = [
+        {% for m in materials %}
+        { value: '{{ m.id }}', label: '{{ m.name }} ({{ m.unit }})' },
+        {% endfor %}
+    ];
+
+    function calculateTotals() {
+        let subtotal = 0;
+        let taxTotal = 0;
+        document.querySelectorAll('.item-row').forEach(row => {
+            const amountEl = row.querySelector('.item-amount');
+            const taxSelect = row.querySelector('.item-tax');
+            const amount = parseFloat(amountEl.textContent) || 0;
+            subtotal += amount;
+            if (taxSelect.value === '0.05') {
+                taxTotal += amount * 0.05;
+            }
+        });
+        document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+        document.getElementById('tax-total').textContent = taxTotal.toFixed(2);
+        document.getElementById('grand-total').textContent = (subtotal + taxTotal).toFixed(2);
+    }
+
+    function createItemRow() {
+        const row = document.createElement('tr');
+        row.className = 'item-row';
+        row.innerHTML = `
+            <td><select name="material_id"></select></td>
+            <td><input type="text" class="form-control" name="description"></td>
+            <td><input type="number" step="0.01" class="form-control item-qty" name="quantity" value="1.00"></td>
+            <td><input type="number" step="0.01" class="form-control item-rate" name="rate" value="0.00"></td>
+            <td class="text-end item-amount">0.00</td>
+            <td><select class="form-select item-tax" name="tax_rate"><option value="0.00">ZERO (0%)</option><option value="0.05">VAT (5%)</option></select></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-danger remove-item-btn">&times;</button></td>
+        `;
+        lineItemsBody.appendChild(row);
+        const materialSelect = row.querySelector('select[name="material_id"]');
+        new Choices(materialSelect, { choices: [{ value: '', label: 'Select material...', placeholder: true }, ...materials] });
+    }
+
+    // Event delegation for dynamic rows
+    lineItemsBody.addEventListener('input', function(e) {
+        if (e.target.classList.contains('item-qty') || e.target.classList.contains('item-rate')) {
+            const row = e.target.closest('.item-row');
+            const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+            const rate = parseFloat(row.querySelector('.item-rate').value) || 0;
+            row.querySelector('.item-amount').textContent = (qty * rate).toFixed(2);
+            calculateTotals();
+        }
+    });
+
+    lineItemsBody.addEventListener('change', function(e) {
+        if (e.target.classList.contains('item-tax')) {
+            calculateTotals();
+        }
+    });
+
+    lineItemsBody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-item-btn')) {
+            e.target.closest('.item-row').remove();
+            calculateTotals();
+        }
+    });
+
+    addItemBtn.addEventListener('click', createItemRow);
+    createItemRow(); // Start with one empty row
+
+    // --- FORM SUBMISSION ---
+    const form = document.getElementById('lpo-form');
+    // ... (rest of the submission logic: getCookie, submitBtn, toast, etc.)
+    form.addEventListener('submit', async function(e) { /* Your existing robust form submission logic */ });
+});
+</script>
+{% endblock %}

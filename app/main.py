@@ -14,6 +14,10 @@ from app.api.endpoints import pages, job_cards, reports, procurement, uploads, u
 from app.auth.router import router as auth_router
 
 
+from app.api.endpoints.lpo.lpo import router as lpo_router
+
+
+
 
 app = FastAPI(title="Metamorphic Job Card App V2")
 
@@ -60,6 +64,9 @@ app.include_router(site_officer_reports.router, prefix="/api/site-officer-report
 app.include_router(job_card_details.router, prefix="/api/job-card-details", tags=["Job Card Details"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 # -------------------------------
+
+app.include_router(lpo_router, prefix="/api/lpos", tags=["LPO"])
+
 
 @app.get("/health", tags=["System"])
 async def health_check():
