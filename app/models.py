@@ -282,6 +282,7 @@ class JobCard(Base):
     foreman_user = relationship("User", foreign_keys=[foreman_user_id])
     comments = relationship("JobCardComment", back_populates="job_card", cascade="all, delete-orphan")
     material_requisitions = relationship("MaterialRequisition", secondary=mr_jc_association_table, back_populates="job_cards")
+    assignment_logs = relationship("JobCardAssignmentLog", back_populates="job_card", cascade="all, delete-orphan", order_by="JobCardAssignmentLog.created_at.desc()")
     # -----------------------------
     def __str__(self) -> str: return self.job_card_no
 
@@ -329,9 +330,17 @@ class MaterialRequisition(Base):
     comments = relationship("MaterialRequisitionComment", back_populates="requisition", cascade="all, delete-orphan")
     receipts = relationship("MaterialReceipt", back_populates="requisition")
     job_cards = relationship("JobCard", secondary=mr_jc_association_table, back_populates="material_requisitions")
+     # --- THIS IS THE UPDATED METHOD ---
     def __str__(self) -> str:
-        p_name = self.project.name if self.project else f"Project ID {self.project_id}"
+        # Check if the 'project' relationship is already loaded to prevent lazy load errors
+        if 'project' in self.__dict__ and self.project:
+            p_name = self.project.name
+        else:
+            # Fallback to the ID if the full object isn't loaded
+            p_name = f"Project ID {self.project_id}"
+            
         return f"Req #{self.id} ({self.mr_number or 'N/A'}) for {p_name}"
+        
 
 class Supplier(Base):
     __tablename__ = 'suppliers'
@@ -462,3 +471,23 @@ class JobCardComment(Base):
 
     job_card = relationship("JobCard", back_populates="comments")
     comment_by = relationship("User", back_populates="job_card_comments")
+
+
+class JobCardAssignmentLog(Base):
+    __tablename__ = 'jc_assignment_logs'
+    id = Column(Integer, primary_key=True, index=True)
+    change_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+
+    job_card_id = Column(Integer, ForeignKey('job_cards.id'), nullable=False)
+    assigned_supervisor_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    assigned_foreman_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    changed_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    job_card = relationship("JobCard", back_populates="assignment_logs")
+    changed_by = relationship("User", foreign_keys=[changed_by_id])
+
+    # --- ADD THESE TWO RELATIONSHIPS ---
+    assigned_supervisor = relationship("User", foreign_keys=[assigned_supervisor_id])
+    assigned_foreman = relationship("User", foreign_keys=[assigned_foreman_id])
+    # ----------------------------------

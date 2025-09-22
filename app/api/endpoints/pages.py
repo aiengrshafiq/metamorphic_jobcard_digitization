@@ -30,11 +30,34 @@ app_config = _load_config()
 # --- Protected Page Routes (Using the new dependency) ---
 
 @router.get("/", response_class=HTMLResponse, tags=["Pages"])
-async def dashboard(context: dict = Depends(deps.get_template_context)):
+async def dashboard(context: dict = Depends(deps.get_template_context),db: Session = Depends(deps.get_db)):
     if isinstance(context, RedirectResponse):
         return context
     
     context["page_title"] = "Dashboard"
+    # --- NEW LOGIC TO FETCH PENDING JOB CARDS ---
+    current_user = context["user"]
+    user_roles = context["user_roles"]
+    
+    # Define roles that need to see their pending job cards
+    field_roles = {'Supervisor/Site Officer', 'Foreman/Duty Officer'}
+    
+    # Check if the user has one of the field roles
+    if any(role in user_roles for role in field_roles):
+        # Query for job cards that are 'Pending' and assigned to this user
+        pending_job_cards = db.query(models.JobCard).filter(
+            models.JobCard.status == 'Pending',
+            or_(
+                models.JobCard.supervisor_user_id == current_user.id,
+                models.JobCard.foreman_user_id == current_user.id
+            )
+        ).options(
+            joinedload(models.JobCard.project) # Load project info efficiently
+        ).order_by(models.JobCard.date_issued.desc()).all()
+        
+        # Add the list to the context
+        context["pending_job_cards"] = pending_job_cards
+    # ----------------------------------------------
     return templates.TemplateResponse("dashboard.html", context)
 
 
