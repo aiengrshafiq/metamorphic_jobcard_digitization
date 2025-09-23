@@ -139,7 +139,7 @@
                         </li>
                         {% endif %}
                     </ul>
-                    {% if is_privileged or 'Finance' in user_roles or 'Procurement' in user_roles %}
+                    {% if is_admin or 'Finance' in user_roles or 'Procurement' in user_roles %}
                     <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                         <span>Finance</span>
                     </h6>
@@ -258,7 +258,7 @@
                         </li>
                         {% endif %}
                  </ul>
-                  {% if is_privileged or 'Finance' in user_roles or 'Procurement' in user_roles %}
+                  {% if is_admin or 'Finance' in user_roles or 'Procurement' in user_roles %}
                     <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                         <span>Finance</span>
                     </h6>

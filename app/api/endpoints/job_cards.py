@@ -72,7 +72,7 @@ async def create_job_card(
         supervisor_notification = models.Notification(
             user_id=supervisor_user_id,
             message=f"Job Card {job_card_no} has been assigned to you by {current_user.name}.",
-            link=f"/job-card-details/{jc_id}"
+            link=f"/job-card-details/{new_job_card.id}"
         )
         db.add(supervisor_notification)
         
@@ -80,7 +80,7 @@ async def create_job_card(
         foreman_notification = models.Notification(
             user_id=foreman_user_id,
             message=f"Job Card {job_card_no} has been assigned to you by {current_user.name}.",
-            link=f"/job-card-details/{jc_id}"
+            link=f"/job-card-details/{new_job_card.id}"
         )
         db.add(foreman_notification)
         # -----------------------------------
