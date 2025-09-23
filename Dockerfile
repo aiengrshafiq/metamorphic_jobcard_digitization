@@ -2,6 +2,15 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim-bullseye as builder
 
+# Install system dependencies required by WeasyPrint
+RUN apt-get update && apt-get install -y \
+    libpango-1.0-0 \
+    libcairo2 \
+    libgobject-2.0-0 \
+    libffi-dev \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set the working directory
 WORKDIR /app
 
