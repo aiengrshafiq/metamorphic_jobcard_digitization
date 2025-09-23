@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h5 class="mb-0">Purchase Orders</h5>
+        <div class="col-12 col-md-4">
+            <input type="search" id="search-input" class="form-control form-control-sm" placeholder="Search by LPO #, Supplier, Project...">
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>LPO #</th>
+                        <th>Date</th>
+                        <th>Supplier</th>
+                        <th>Project</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="lpo-table-body">
+                    </tbody>
+            </table>
+            <p id="loading-state" class="text-center text-muted mt-3">Loading LPOs...</p>
+        </div>
+        <nav id="pagination-container" aria-label="LPO Pagination" class="d-flex justify-content-end mt-3"></nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tableBody = document.getElementById('lpo-table-body');
+    const loadingState = document.getElementById('loading-state');
+    const searchInput = document.getElementById('search-input');
+    const paginationContainer = document.getElementById('pagination-container');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+    
+    // This Jinja2 variable is passed from the backend context
+    const isFinanceUser = {{ ('Finance' in user_roles|list) | tojson }};
+    const ITEMS_PER_PAGE = 20;
+    let currentPage = 1;
+    let currentSearch = "";
+    let searchTimeout;
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    function renderStatusBadge(status) {
+        if (status === 'Approved') return `<span class="badge bg-success">${status}</span>`;
+        if (status === 'Rejected') return `<span class="badge bg-danger">${status}</span>`;
+        return `<span class="badge bg-warning text-dark">${status}</span>`;
+    }
+
+    async function fetchLPOs(page = 1, search = "") {
+        currentPage = page;
+        currentSearch = search;
+        loadingState.style.display = 'block';
+        loadingState.textContent = 'Loading LPOs...';
+        tableBody.innerHTML = '';
+        
+        const token = getCookie('access_token');
+        if (!token) {
+            loadingState.textContent = 'Authentication Error. Please log in.';
+            return;
+        }
+
+        const skip = (page - 1) * ITEMS_PER_PAGE;
+        const url = `/api/lpos/?skip=${skip}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(search)}`;
+        
+        try {
+            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` }});
+            if (!response.ok) throw new Error('Failed to load LPOs.');
+            const data = await response.json();
+            
+            if (data.lpos.length === 0) {
+                loadingState.textContent = 'No purchase orders found.';
+            } else {
+                loadingState.style.display = 'none';
+                data.lpos.forEach(lpo => {
+                    const row = document.createElement('tr');
+                    row.id = `lpo-row-${lpo.id}`;
+                    let actionButtons = '';
+                    if (isFinanceUser && lpo.status === 'Pending') {
+                        actionButtons = `
+                            <button class="btn btn-success btn-sm approval-btn" data-lpo-id="${lpo.id}" data-action="approve" title="Approve"><i class="bi bi-check-lg"></i></button>
+                            <button class="btn btn-danger btn-sm approval-btn" data-lpo-id="${lpo.id}" data-action="reject" title="Reject"><i class="bi bi-x-lg"></i></button>
+                        `;
+                    }
+                    row.innerHTML = `
+                        <td>${lpo.lpo_number}</td>
+                        <td>${new Date(lpo.lpo_date).toLocaleDateString()}</td>
+                        <td>${lpo.supplier.name}</td>
+                        <td>${lpo.project.name}</td>
+                        <td class="lpo-status">${renderStatusBadge(lpo.status)}</td>
+                        <td class="text-end"><div class="btn-group">${actionButtons}<a href="/lpos/${lpo.id}" class="btn btn-outline-secondary btn-sm" title="View Details"><i class="bi bi-eye-fill"></i></a></div></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+            renderPagination(data.total_count);
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+
+    function renderPagination(totalItems) {
+        paginationContainer.innerHTML = '';
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        if (totalPages <= 1) return;
+
+        const ul = document.createElement('ul');
+        ul.className = 'pagination';
+
+        for (let i = 1; i <= totalPages; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+            ul.appendChild(li);
+        }
+        paginationContainer.appendChild(ul);
+    }
+
+    async function handleApprovalAction(lpoId, action, button) {
+        const token = getCookie('access_token');
+        if (!token) { return; } // Add toast error if needed
+        
+        button.disabled = true;
+        const originalHtml = button.innerHTML;
+        button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+        
+        try {
+            const response = await fetch(`/api/lpos/${lpoId}/${action}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Action failed.');
+            
+            // Update UI on success
+            const row = document.getElementById(`lpo-row-${lpoId}`);
+            const statusCell = row.querySelector('.lpo-status');
+            statusCell.innerHTML = renderStatusBadge(action === 'approve' ? 'Approved' : 'Rejected');
+            
+            // Remove both approval buttons
+            row.querySelectorAll('.approval-btn').forEach(btn => btn.remove());
+            
+        } catch (error) {
+            // Show error toast
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        }
+    }
+
+    // Event Listeners
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            fetchLPOs(1, searchInput.value);
+        }, 500); // Debounce search
+    });
+
+    tableBody.addEventListener('click', e => {
+        const target = e.target.closest('.approval-btn');
+        if (target) {
+            const lpoId = target.dataset.lpoId;
+            const action = target.dataset.action;
+            handleApprovalAction(lpoId, action, target);
+        }
+    });
+
+    paginationContainer.addEventListener('click', e => {
+        e.preventDefault();
+        if (e.target.matches('.page-link')) {
+            const page = parseInt(e.target.dataset.page);
+            if (page !== currentPage) {
+                fetchLPOs(page, currentSearch);
+            }
+        }
+    });
+    
+    fetchLPOs(); // Initial load
+});
+</script>
+{% endblock %}

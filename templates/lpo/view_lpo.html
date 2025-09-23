@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div id="loading-state" class="text-center">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+        <p class="mt-2 text-muted">Loading LPO details...</p>
+    </div>
+
+    <div id="content-container" style="display: none;">
+        <div class="d-flex justify-content-end mb-3">
+            <a id="download-pdf-btn" href="#" class="btn btn-danger" target="_blank">
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF
+            </a>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="row border-bottom pb-3 mb-3">
+                    <div class="col-md-6">
+                        <h2 class="mb-0" id="lpo-number"></h2>
+                        <p class="text-muted mb-0">Purchase Order</p>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <strong>Date:</strong> <span id="lpo-date"></span><br>
+                        <strong>Project:</strong> <span id="lpo-project"></span>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">SUPPLIER</h6>
+                        <address id="supplier-details"></address>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th><th>Item & Description</th><th class="text-end">QTY</th><th class="text-end">Rate</th><th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="line-items-body"></tbody>
+                    </table>
+                </div>
+                <div class="row justify-content-end mt-3"><div class="col-md-5" id="totals-container"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const lpoId = {{ lpo_id }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+
+    // --- THIS FUNCTION WAS MISSING ---
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    // ---------------------------------
+
+    async function fetchLPODetails() {
+        const token = getCookie('access_token');
+        if (!token) { 
+            loadingState.innerHTML = '<p class="text-danger">Authentication Error. Please log in.</p>';
+            return; 
+        }
+        try {
+            const response = await fetch(`/api/lpos/${lpoId}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            if (!response.ok) throw new Error('Could not load LPO details.');
+            const lpo = await response.json();
+
+            // Populate fields
+            document.getElementById('lpo-number').textContent = lpo.lpo_number;
+            document.getElementById('lpo-date').textContent = new Date(lpo.lpo_date).toLocaleDateString();
+            document.getElementById('lpo-project').textContent = lpo.project.name;
+            document.getElementById('download-pdf-btn').href = `/api/lpos/${lpo.id}/pdf`;
+            
+            document.getElementById('supplier-details').innerHTML = `
+                <strong>${lpo.supplier.name}</strong><br>
+                ${lpo.supplier.email || ''}<br>
+                ${lpo.supplier.phone || ''}
+            `;
+            
+            const itemsBody = document.getElementById('line-items-body');
+            itemsBody.innerHTML = '';
+            lpo.items.forEach((item, index) => {
+                const row = itemsBody.insertRow();
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>
+                        <strong>${item.material.name}</strong>
+                        ${item.description ? `<br><small class="text-muted">${item.description}</small>` : ''}
+                    </td>
+                    <td class="text-end">${parseFloat(item.quantity).toFixed(2)}</td>
+                    <td class="text-end">${parseFloat(item.rate).toFixed(2)}</td>
+                    <td class="text-end">${(item.quantity * item.rate).toFixed(2)}</td>
+                `;
+            });
+
+            document.getElementById('totals-container').innerHTML = `
+                <table class="table table-sm">
+                    <tbody>
+                        <tr><th>Subtotal:</th><td class="text-end">${lpo.subtotal.toFixed(2)}</td></tr>
+                        <tr><th>Tax (5%):</th><td class="text-end">${lpo.tax_total.toFixed(2)}</td></tr>
+                        <tr class="fw-bold fs-5"><th>TOTAL:</th><td class="text-end">${lpo.grand_total.toFixed(2)}</td></tr>
+                    </tbody>
+                </table>
+            `;
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+        } catch (error) {
+            console.error("Fetch LPO Details Error:", error); // Log the actual error
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+    
+    fetchLPODetails();
+});
+</script>
+{% endblock %}

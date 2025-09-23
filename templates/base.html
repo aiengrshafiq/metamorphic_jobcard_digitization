@@ -321,54 +321,54 @@
             const notificationDropdownList = document.getElementById('notification-dropdown-list');
 
             if (getCookie('access_token')) {
-                notificationArea.style.display = 'block';
+                // notificationArea.style.display = 'block';
 
-                const eventSource = new EventSource('/api/notifications/stream');
+                // const eventSource = new EventSource('/api/notifications/stream');
 
-                eventSource.onmessage = function(event) {
-                    const data = JSON.parse(event.data);
+                // eventSource.onmessage = function(event) {
+                //     const data = JSON.parse(event.data);
                     
-                    // Update the badge count
-                    if (data.count > 0) {
-                        notificationCount.textContent = data.count;
-                        notificationCount.style.display = 'block';
-                    } else {
-                        notificationCount.style.display = 'none';
-                    }
+                //     // Update the badge count
+                //     if (data.count > 0) {
+                //         notificationCount.textContent = data.count;
+                //         notificationCount.style.display = 'block';
+                //     } else {
+                //         notificationCount.style.display = 'none';
+                //     }
 
-                    // Build the dropdown list
-                    notificationDropdownList.innerHTML = ''; // Clear old items
-                    if (data.notifications && data.notifications.length > 0) {
-                        data.notifications.forEach(n => {
-                            const li = document.createElement('li');
-                            li.innerHTML = `<a class="dropdown-item" href="${n.link}">${n.message}</a>`;
-                            notificationDropdownList.appendChild(li);
-                        });
-                    } else {
-                        const li = document.createElement('li');
-                        li.innerHTML = '<span class="dropdown-item-text text-muted">No new notifications</span>';
-                        notificationDropdownList.appendChild(li);
-                    }
-                };
+                //     // Build the dropdown list
+                //     notificationDropdownList.innerHTML = ''; // Clear old items
+                //     if (data.notifications && data.notifications.length > 0) {
+                //         data.notifications.forEach(n => {
+                //             const li = document.createElement('li');
+                //             li.innerHTML = `<a class="dropdown-item" href="${n.link}">${n.message}</a>`;
+                //             notificationDropdownList.appendChild(li);
+                //         });
+                //     } else {
+                //         const li = document.createElement('li');
+                //         li.innerHTML = '<span class="dropdown-item-text text-muted">No new notifications</span>';
+                //         notificationDropdownList.appendChild(li);
+                //     }
+                // };
 
-                eventSource.onerror = function(err) {
-                    console.error("EventSource failed:", err);
-                    eventSource.close();
-                };
+                // eventSource.onerror = function(err) {
+                //     console.error("EventSource failed:", err);
+                //     eventSource.close();
+                // };
 
-                // Use Bootstrap's event system to mark notifications as read when the dropdown is shown
-                const notificationDropdown = new bootstrap.Dropdown(notificationBell);
-                notificationArea.addEventListener('show.bs.dropdown', async function () {
-                    // Only make the API call if there are unread notifications
-                    if (parseInt(notificationCount.textContent) > 0) {
-                        notificationCount.style.display = 'none'; // Optimistically hide
-                        const token = getCookie('access_token');
-                        await fetch('/api/notifications/mark-as-read', {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                    }
-                });
+                // // Use Bootstrap's event system to mark notifications as read when the dropdown is shown
+                // const notificationDropdown = new bootstrap.Dropdown(notificationBell);
+                // notificationArea.addEventListener('show.bs.dropdown', async function () {
+                //     // Only make the API call if there are unread notifications
+                //     if (parseInt(notificationCount.textContent) > 0) {
+                //         notificationCount.style.display = 'none'; // Optimistically hide
+                //         const token = getCookie('access_token');
+                //         await fetch('/api/notifications/mark-as-read', {
+                //             method: 'POST',
+                //             headers: { 'Authorization': `Bearer ${token}` }
+                //         });
+                //     }
+                // });
             }
             // --- END OF NOTIFICATION LOGIC ---
             function logout() {

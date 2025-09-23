@@ -82,8 +82,8 @@
                     <legend>Select Role(s)</legend>
                     {% for role in roles %}
                     <div class="role-option">
-                        <input type="checkbox" id="role-{{ role.name.value }}" name="roles" value="{{ role.name.value }}">
-                        <label for="role-{{ role.name.value }}">{{ role.name.value }}</label>
+                        <input type="checkbox" id="role-{{ role.name }}" name="roles" value="{{ role.name }}">
+                        <label for="role-{{ role.name }}">{{ role.name }}</label>
                     </div>
                     {% endfor %}
                 </fieldset>

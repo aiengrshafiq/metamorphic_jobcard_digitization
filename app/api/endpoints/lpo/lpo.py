@@ -8,6 +8,7 @@ from sqlalchemy import func
 from typing import List, Optional
 from datetime import date
 import io
+from sqlalchemy import or_
 from weasyprint import HTML, CSS
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -105,3 +106,112 @@ async def upload_lpo_attachment(file: UploadFile = File(...), db: Session = Depe
     db.commit()
     db.refresh(new_attachment)
     return {"attachment_id": new_attachment.id}
+
+
+@router.get("/", tags=["LPO"])
+def get_lpos(
+    db: Session = Depends(deps.get_db),
+    skip: int = 0,
+    limit: int = 20,
+    search: Optional[str] = None
+):
+    """
+    Fetches a paginated and searchable list of all LPOs.
+    """
+    query = db.query(models.LPO).options(
+        joinedload(models.LPO.supplier),
+        joinedload(models.LPO.project),
+        joinedload(models.LPO.created_by)
+    )
+
+    if search:
+        search_term = f"%{search}%"
+        # Join with supplier and project to search their names
+        query = query.join(models.Supplier).join(models.Project).filter(
+            or_(
+                models.LPO.lpo_number.ilike(search_term),
+                models.Supplier.name.ilike(search_term),
+                models.Project.name.ilike(search_term)
+            )
+        )
+
+    total_count = query.count()
+    lpos = query.order_by(models.LPO.id.desc()).offset(skip).limit(limit).all()
+
+    return {"total_count": total_count, "lpos": lpos}
+
+def _check_finance_role(current_user: models.User):
+    """Helper to check if the current user has the Finance role."""
+    user_roles = {role.name for role in current_user.roles}
+    if "Finance" not in user_roles:
+        raise HTTPException(status_code=403, detail="Not authorized for this action.")
+
+@router.post("/{lpo_id}/approve", tags=["LPO"])
+def approve_lpo(
+    lpo_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    _check_finance_role(current_user)
+    lpo = db.query(models.LPO).filter(models.LPO.id == lpo_id).first()
+    if not lpo:
+        raise HTTPException(status_code=404, detail="LPO not found")
+    lpo.status = "Approved"
+    db.commit()
+    return {"message": f"{lpo.lpo_number} has been approved."}
+
+@router.post("/{lpo_id}/reject", tags=["LPO"])
+def reject_lpo(
+    lpo_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    _check_finance_role(current_user)
+    lpo = db.query(models.LPO).filter(models.LPO.id == lpo_id).first()
+    if not lpo:
+        raise HTTPException(status_code=404, detail="LPO not found")
+    lpo.status = "Rejected"
+    db.commit()
+    return {"message": f"{lpo.lpo_number} has been rejected."}
+
+@router.get("/{lpo_id}/pdf", tags=["LPO"], response_class=StreamingResponse)
+def generate_lpo_pdf(lpo_id: int, db: Session = Depends(deps.get_db)):
+    """Generates and returns a PDF for a given LPO."""
+    lpo = db.query(models.LPO).options(
+        joinedload(models.LPO.supplier),
+        joinedload(models.LPO.project),
+        joinedload(models.LPO.created_by),
+        selectinload(models.LPO.items).joinedload(models.LPOItem.material)
+    ).filter(models.LPO.id == lpo_id).first()
+
+    if not lpo:
+        raise HTTPException(status_code=404, detail="LPO not found")
+
+    # Render an HTML template with the LPO data
+    # Note: We use a separate template designed specifically for the PDF layout
+    html_string = pdf_templates.get_template("lpo/lpo_pdf.html").render({"lpo": lpo})
+
+    # Use WeasyPrint to convert the HTML to a PDF in memory
+    pdf_bytes = HTML(string=html_string).write_pdf()
+
+    # Create headers to prompt a download
+    headers = {
+        'Content-Disposition': f'inline; filename="{lpo.lpo_number}.pdf"'
+    }
+
+    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+
+
+@router.get("/{lpo_id}", tags=["LPO"])
+def get_lpo_details(lpo_id: int, db: Session = Depends(deps.get_db)):
+    """Fetches all details for a single LPO."""
+    lpo = db.query(models.LPO).options(
+        joinedload(models.LPO.supplier),
+        joinedload(models.LPO.project),
+        joinedload(models.LPO.created_by),
+        selectinload(models.LPO.items).joinedload(models.LPOItem.material),
+        selectinload(models.LPO.attachments)
+    ).filter(models.LPO.id == lpo_id).first()
+    if not lpo:
+        raise HTTPException(status_code=404, detail="LPO not found")
+    return lpo
