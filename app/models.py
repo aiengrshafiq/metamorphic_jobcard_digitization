@@ -510,6 +510,7 @@ class Notification(Base):
     user = relationship("User", back_populates="notifications")
 
 
+# --- NEW MODELS FOR LPO (Local Purchase Order) ---
 lpo_item_project_association = Table(
     'lpo_item_project_association', Base.metadata,
     Column('lpo_item_id', Integer, ForeignKey('lpo_items.id'), primary_key=True),
@@ -522,6 +523,11 @@ class LPO(Base):
     lpo_number = Column(String, unique=True, nullable=False)
     lpo_date = Column(Date, nullable=False, default=func.current_date())
     status = Column(String, nullable=False, default='Pending') # Pending, Approved, Rejected
+    # --- ADD THESE THREE COLUMNS ---
+    subtotal = Column(Numeric(12, 2), nullable=True)
+    tax_total = Column(Numeric(12, 2), nullable=True)
+    grand_total = Column(Numeric(12, 2), nullable=True)
+    # -----------------------------
     message_to_supplier = Column(Text, nullable=True)
     memo = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now())

@@ -7,6 +7,7 @@
     .choices[data-type*="select-one"]::after { border-color: var(--bs-body-color) transparent transparent; }
     .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
     .item-row input[type=number] { text-align: right; }
+    #attachment-list .list-group-item { padding: 0.5rem 1rem; }
 </style>
 {% endblock %}
 
@@ -14,15 +15,19 @@
 <div class="card shadow-sm border-0">
     <div class="card-body p-4">
         <form id="lpo-form" novalidate>
+            <input type="hidden" name="items_json" id="items_json">
+            <input type="hidden" name="attachment_ids" id="attachment_ids">
+            <input type="hidden" name="subtotal" id="hidden_subtotal">
+            <input type="hidden" name="tax_total" id="hidden_tax_total">
+            <input type="hidden" name="grand_total" id="hidden_grand_total">
+
             <div class="row g-3 align-items-center">
                 <div class="col-lg-6">
                     <label for="supplier_id" class="form-label">Supplier <span class="text-danger">*</span></label>
-                    <div class="input-group">
-                        <select id="supplier_id" name="supplier_id" required>
-                            <option value="">Select a supplier...</option>
-                            {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
-                        </select>
-                        </div>
+                    <select id="supplier_id" name="supplier_id" required>
+                        <option value="">Select a supplier...</option>
+                        {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                    </select>
                 </div>
                 <div class="col-lg-3">
                     <label for="project_id" class="form-label">Main Project <span class="text-danger">*</span></label>
@@ -72,8 +77,9 @@
 
             <hr class="my-4">
             <div class="row g-3">
-                <div class="col-md-6"><label for="message_to_supplier" class="form-label">Message to Supplier</label><textarea class="form-control" id="message_to_supplier" name="message_to_supplier" rows="3"></textarea></div>
-                <div class="col-md-6"><label for="memo" class="form-label">Memo</label><textarea class="form-control" id="memo" name="memo" rows="3"></textarea></div>
+                <div class="col-md-4"><label for="message_to_supplier" class="form-label">Message to Supplier</label><textarea class="form-control" id="message_to_supplier" name="message_to_supplier" rows="4"></textarea></div>
+                <div class="col-md-4"><label for="memo" class="form-label">Memo</label><textarea class="form-control" id="memo" name="memo" rows="4"></textarea></div>
+                <div class="col-md-4"><label for="attachments" class="form-label">Attachments</label><input class="form-control" type="file" id="attachments" multiple><div id="attachment-list" class="list-group mt-2"></div></div>
             </div>
             
             <div class="mt-4 text-end">
@@ -91,6 +97,13 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    // --- INITIAL SETUP ---
     const choicesConfig = { searchEnabled: true, removeItemButton: false, itemSelectText: '' };
     new Choices('#supplier_id', choicesConfig);
     new Choices('#project_id', choicesConfig);
@@ -98,14 +111,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const lineItemsBody = document.getElementById('line-items-body');
     const addItemBtn = document.getElementById('add-item-btn');
-    
-    // JS representation of materials passed from the backend
-    const materials = [
-        {% for m in materials %}
-        { value: '{{ m.id }}', label: '{{ m.name }} ({{ m.unit }})' },
-        {% endfor %}
-    ];
+    const materials = [ {% for m in materials %} { value: '{{ m.id }}', label: '{{ m.name }} ({{ m.unit }})' }, {% endfor %} ];
 
+    // --- CALCULATION LOGIC ---
     function calculateTotals() {
         let subtotal = 0;
         let taxTotal = 0;
@@ -118,31 +126,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 taxTotal += amount * 0.05;
             }
         });
+        const grandTotal = subtotal + taxTotal;
         document.getElementById('subtotal').textContent = subtotal.toFixed(2);
         document.getElementById('tax-total').textContent = taxTotal.toFixed(2);
-        document.getElementById('grand-total').textContent = (subtotal + taxTotal).toFixed(2);
+        document.getElementById('grand-total').textContent = grandTotal.toFixed(2);
+        // Update hidden inputs for form submission
+        document.getElementById('hidden_subtotal').value = subtotal.toFixed(2);
+        document.getElementById('hidden_tax_total').value = taxTotal.toFixed(2);
+        document.getElementById('hidden_grand_total').value = grandTotal.toFixed(2);
     }
 
+    // --- DYNAMIC LINE ITEM LOGIC ---
     function createItemRow() {
         const row = document.createElement('tr');
         row.className = 'item-row';
         row.innerHTML = `
             <td><select name="material_id"></select></td>
-            <td><input type="text" class="form-control" name="description"></td>
-            <td><input type="number" step="0.01" class="form-control item-qty" name="quantity" value="1.00"></td>
-            <td><input type="number" step="0.01" class="form-control item-rate" name="rate" value="0.00"></td>
-            <td class="text-end item-amount">0.00</td>
-            <td><select class="form-select item-tax" name="tax_rate"><option value="0.00">ZERO (0%)</option><option value="0.05">VAT (5%)</option></select></td>
-            <td class="text-center"><button type="button" class="btn btn-sm btn-danger remove-item-btn">&times;</button></td>
+            <td><input type="text" class="form-control form-control-sm" name="description"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm item-qty" name="quantity" value="1.00"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm item-rate" name="rate" value="0.00"></td>
+            <td class="text-end item-amount align-middle">0.00</td>
+            <td><select class="form-select form-select-sm item-tax" name="tax_rate"><option value="0.00">ZERO (0%)</option><option value="0.05">VAT (5%)</option></select></td>
+            <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-outline-danger remove-item-btn">&times;</button></td>
         `;
         lineItemsBody.appendChild(row);
-        const materialSelect = row.querySelector('select[name="material_id"]');
-        new Choices(materialSelect, { choices: [{ value: '', label: 'Select material...', placeholder: true }, ...materials] });
+        new Choices(row.querySelector('select[name="material_id"]'), { choices: [{ value: '', label: 'Select material...', placeholder: true }, ...materials] });
     }
 
-    // Event delegation for dynamic rows
     lineItemsBody.addEventListener('input', function(e) {
-        if (e.target.classList.contains('item-qty') || e.target.classList.contains('item-rate')) {
+        if (e.target.matches('.item-qty, .item-rate')) {
             const row = e.target.closest('.item-row');
             const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
             const rate = parseFloat(row.querySelector('.item-rate').value) || 0;
@@ -151,26 +163,108 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    lineItemsBody.addEventListener('change', function(e) {
-        if (e.target.classList.contains('item-tax')) {
-            calculateTotals();
-        }
-    });
-
-    lineItemsBody.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-item-btn')) {
-            e.target.closest('.item-row').remove();
-            calculateTotals();
-        }
-    });
-
+    lineItemsBody.addEventListener('change', e => { if (e.target.matches('.item-tax')) calculateTotals(); });
+    lineItemsBody.addEventListener('click', e => { if (e.target.matches('.remove-item-btn')) { e.target.closest('.item-row').remove(); calculateTotals(); }});
     addItemBtn.addEventListener('click', createItemRow);
-    createItemRow(); // Start with one empty row
+    createItemRow();
 
-    // --- FORM SUBMISSION ---
+    // --- ATTACHMENT LOGIC ---
+    const attachmentsInput = document.getElementById('attachments');
+    const attachmentList = document.getElementById('attachment-list');
+    const hiddenAttachmentIdsInput = document.getElementById('attachment_ids');
+    
+    attachmentsInput.addEventListener('change', function(e) {
+        const files = e.target.files;
+        if (!files.length) return;
+        const token = getCookie('access_token');
+        if (!token) { alert('Authentication error.'); return; }
+
+        Array.from(files).forEach(file => {
+            const attachmentEl = document.createElement('div');
+            attachmentEl.className = 'list-group-item d-flex justify-content-between align-items-center';
+            attachmentEl.innerHTML = `<span>${file.name}</span><div class="spinner-border spinner-border-sm" role="status"></div>`;
+            attachmentList.appendChild(attachmentEl);
+
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            fetch('/api/lpos/attachments', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            })
+            .then(response => response.ok ? response.json() : Promise.reject('Upload failed'))
+            .then(result => {
+                hiddenAttachmentIdsInput.value += `${result.attachment_id},`;
+                attachmentEl.innerHTML = `<span>${file.name}</span><i class="bi bi-check-circle-fill text-success"></i>`;
+            })
+            .catch(error => {
+                console.error(error);
+                attachmentEl.innerHTML = `<span>${file.name}</span><i class="bi bi-x-circle-fill text-danger"></i>`;
+                attachmentEl.classList.add('list-group-item-danger');
+            });
+        });
+    });
+
+    // --- FORM SUBMISSION LOGIC ---
     const form = document.getElementById('lpo-form');
-    // ... (rest of the submission logic: getCookie, submitBtn, toast, etc.)
-    form.addEventListener('submit', async function(e) { /* Your existing robust form submission logic */ });
+    const submitBtn = document.getElementById('submit-btn');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+
+        const spinner = submitBtn.querySelector('.spinner-border');
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        const token = getCookie('access_token');
+        if (!token) { /* handle error */ return; }
+
+        // Aggregate line items into a JSON string
+        const itemsData = [];
+        document.querySelectorAll('.item-row').forEach(row => {
+            const materialId = row.querySelector('[name="material_id"]').value;
+            const quantity = row.querySelector('[name="quantity"]').value;
+            if (materialId && quantity) {
+                itemsData.push({
+                    material_id: parseInt(materialId),
+                    description: row.querySelector('[name="description"]').value,
+                    quantity: parseFloat(quantity),
+                    rate: parseFloat(row.querySelector('[name="rate"]').value),
+                    tax_rate: parseFloat(row.querySelector('[name="tax_rate"]').value)
+                });
+            }
+        });
+        document.getElementById('items_json').value = JSON.stringify(itemsData);
+
+        try {
+            const response = await fetch('/api/lpos/', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: new FormData(form)
+            });
+            const result = await response.json();
+            if (!response.ok) { throw new Error(result.detail || 'Submission failed.'); }
+            
+            document.getElementById('toast-title').innerText = 'Success!';
+            document.getElementById('toast-body').innerText = 'LPO created successfully!';
+            toastElement.className = 'toast bg-success text-white';
+            toast.show();
+            setTimeout(() => { window.location.href = '/lpos'; }, 1500);
+
+        } catch (error) {
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+        } finally {
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
 });
 </script>
 {% endblock %}
