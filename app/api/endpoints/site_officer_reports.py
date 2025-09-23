@@ -24,7 +24,7 @@ def get_all_site_officer_reports(
     )
 
     privileged_roles = {'Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'}
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
     is_privileged = bool(privileged_roles.intersection(user_roles))
 
     if not is_privileged:
@@ -56,7 +56,7 @@ def get_site_officer_report_details(
 
     # Security check
     privileged_roles = {'Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'}
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
     is_privileged = bool(privileged_roles.intersection(user_roles))
     
     if not is_privileged and report.created_by_id != current_user.id:

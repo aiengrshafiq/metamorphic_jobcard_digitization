@@ -26,7 +26,7 @@ def get_all_duty_officer_reports(
 
     # Define roles that can see ALL reports
     privileged_roles = {'Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'}
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
     is_privileged = bool(privileged_roles.intersection(user_roles))
 
     # If the user is NOT privileged, filter the query to their own records
@@ -58,7 +58,7 @@ def get_duty_officer_report_details(
 
     # Security check: Ensure non-privileged users can only see their own reports
     privileged_roles = {'Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'}
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
     is_privileged = bool(privileged_roles.intersection(user_roles))
     
     if not is_privileged and report.created_by_id != current_user.id:

@@ -46,7 +46,7 @@ def get_job_card_details(
 
     # Security Check
     privileged_roles = {'Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'}
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
     is_privileged = bool(privileged_roles.intersection(user_roles))
     
     is_assigned = (
@@ -90,7 +90,7 @@ def reassign_job_card(
 ):
     """Re-assigns a Job Card and creates a history log entry."""
     privileged_roles = {'Super Admin', 'Admin', 'Operation Mananger', 'Project Manager'}
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
     if not privileged_roles.intersection(user_roles):
         raise HTTPException(status_code=403, detail="Not authorized to re-assign job cards")
 

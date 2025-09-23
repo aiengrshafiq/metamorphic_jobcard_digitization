@@ -73,7 +73,7 @@ def update_approval_status(
     if not req:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requisition not found")
 
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
 
     if update_data.approval_type == 'pm':
         if "Project Manager" not in user_roles:
