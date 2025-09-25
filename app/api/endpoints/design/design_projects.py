@@ -9,6 +9,10 @@ from app.api import deps
 from app import models, design_models
 from app.design_models import DesignPhaseName, DesignTaskStatus
 
+
+from typing import Optional # Ensure Optional is imported
+from datetime import date # Ensure date is imported
+
 router = APIRouter()
 
 # --- Deliverable Templates (as defined in the spec) ---
@@ -102,18 +106,31 @@ def get_design_project_details(project_id: int, db: Session = Depends(deps.get_d
     
     return project
 
+# Define a Pydantic model for the request body to keep it clean
+class TaskAssignmentData(BaseModel):
+    owner_id: int
+    due_date: Optional[date] = None
+
 @router.post("/tasks/{task_id}/assign", tags=["Design"])
 def assign_design_task(
     task_id: int,
-    owner_id: conint(gt=0) = Body(..., embed=True), # conint(gt=0) ensures a valid ID is sent
-    db: Session = Depends(deps.get_db)
+    assignment_data: TaskAssignmentData, # Use the Pydantic model
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
 ):
-    """Assigns a task to a user (owner)."""
+    """Assigns a task to a user and sets its due date."""
+    # Security Check for Design Manager role
+    user_roles = {role.name for role in current_user.roles}
+    if "Design Manager" not in user_roles:
+        raise HTTPException(status_code=403, detail="Not authorized for this action")
+
     task = db.query(design_models.DesignTask).filter(design_models.DesignTask.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    task.owner_id = owner_id
+    task.owner_id = assignment_data.owner_id
+    task.due_date = assignment_data.due_date
     db.commit()
     
     return {"message": "Task assigned successfully."}
+

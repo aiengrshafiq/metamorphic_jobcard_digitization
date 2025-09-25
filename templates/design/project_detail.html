@@ -19,20 +19,47 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const projectId = {{ project_id }};
+    const isDesignManager = {{ ('Design Manager' in user_roles) | tojson }};
     const loadingState = document.getElementById('loading-state');
     const contentContainer = document.getElementById('content-container');
     const phasesContainer = document.getElementById('phases-container');
     const teamMembers = {{ team_members | tojson }};
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
 
-    // --- THIS IS THE CORRECTED FUNCTION ---
     function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
         if (parts.length === 2) return parts.pop().split(';').shift();
     }
-    // ------------------------------------
 
-    async function assignTask(taskId, ownerId, button) {
+    // Helper to format dates for display and for the input value
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        // The backend sends UTC, but the date input needs YYYY-MM-DD in the local timezone.
+        // Creating a date from the string and using toISOString gets us close.
+        return new Date(dateString).toISOString().split('T')[0];
+    }
+
+    async function handleReviewAction(taskId, newStatus, button) {
+        const token = getCookie('access_token');
+        button.closest('.btn-group').innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span>`;
+        try {
+            const response = await fetch(`/api/design/tasks/${taskId}/review`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Action failed.');
+            fetchProjectDetails();
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    // --- UPDATED to accept and send dueDate ---
+    async function assignTask(taskId, ownerId, dueDate, button) {
         const token = getCookie('access_token');
         button.disabled = true;
         
@@ -40,14 +67,25 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch(`/api/design/tasks/${taskId}/assign`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ owner_id: parseInt(ownerId) }) // Ensure ownerId is an integer
+                body: JSON.stringify({ owner_id: parseInt(ownerId), due_date: dueDate })
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.detail || 'Assignment failed.');
             
             const assignedUser = teamMembers.find(u => u.id === parseInt(ownerId));
             const formCell = button.closest('.assignment-cell');
-            formCell.innerHTML = `<span class="badge bg-success">${assignedUser.name}</span>`;
+            
+            // Update the UI to show both name and the new due date
+            formCell.innerHTML = `
+                <div>${assignedUser.name}</div>
+                <small class="text-muted">Due: ${dueDate ? new Date(dueDate).toLocaleDateString() : 'Not set'}</small>
+            `;
+            
+            document.getElementById('toast-title').innerText = 'Success!';
+            document.getElementById('toast-body').innerText = result.message;
+            toastElement.className = 'toast bg-success text-white';
+            toast.show();
+
         } catch (error) {
             alert(error.message);
             button.disabled = false;
@@ -62,59 +100,103 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         try {
             const response = await fetch(`/api/design/${projectId}`, { headers: { 'Authorization': `Bearer ${token}` }});
-            if (!response.ok) throw new Error('Could not load project details.');
+            if (!response.ok) {
+                 const errData = await response.json();
+                 throw new Error(errData.detail || 'Could not load project details.');
+            }
             const project = await response.json();
 
             document.getElementById('project-name').textContent = project.name;
             document.getElementById('project-client').textContent = `Client: ${project.client}`;
-            phasesContainer.innerHTML = ''; // Clear previous content before rendering
+            phasesContainer.innerHTML = '';
 
             project.phases.forEach(phase => {
                 const phaseEl = document.createElement('div');
                 phaseEl.className = 'card mb-4';
                 let tasksHtml = '<ul class="list-group list-group-flush">';
                 phase.tasks.forEach(task => {
-                    let assignmentHtml = '';
-                    if (task.owner) {
-                        assignmentHtml = `<span class="badge bg-success">${task.owner.name}</span>`;
+                    let assignmentCellHtml = '';
+                    const dueDateString = task.due_date ? formatDate(task.due_date) : '';
+                    
+                    // --- THIS ENTIRE LOGIC BLOCK IS NOW COMPLETE ---
+                    if (task.status === 'Submitted' && task.title.includes('QA Review') && isDesignManager) {
+                        assignmentCellHtml = `
+                            <div class="btn-group btn-group-sm review-actions">
+                                <button type="button" class="btn btn-success" data-action="Done">Approve</button>
+                                <button type="button" class="btn btn-warning" data-action="Revision Requested">Revise</button>
+                            </div>
+                        `;
+                    } else if (task.owner) {
+                        assignmentCellHtml = `
+                            <div>${task.owner.name}</div>
+                            <small class="text-muted">Due: ${dueDateString ? new Date(task.due_date).toLocaleDateString() : 'Not set'}</small>
+                        `;
                     } else {
                         let options = '<option value="">Assign to...</option>';
                         teamMembers.forEach(user => {
                             options += `<option value="${user.id}">${user.name}</option>`;
                         });
-                        assignmentHtml = `
-                            <form class="assign-task-form d-flex gap-2">
-                                <select class="form-select form-select-sm">${options}</select>
-                                <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                        // Add the date input to the assignment form
+                        assignmentCellHtml = `
+                            <form class="assign-task-form d-flex flex-wrap gap-2">
+                                <select class="form-select form-select-sm" style="flex: 2;">${options}</select>
+                                <input type="date" class="form-control form-control-sm" value="${dueDateString}" style="flex: 1.5;">
+                                <button type="submit" class="btn btn-primary btn-sm" style="flex: 1;">Assign</button>
                             </form>
                         `;
                     }
+                    
+                    const statusBadges = {
+                        'Submitted': 'bg-info',
+                        'Revision Requested': 'bg-warning text-dark',
+                        'Verified': 'bg-primary',
+                        'Done': 'bg-success',
+                        'Open': 'bg-light text-dark'
+                    };
+                    const statusBadgeClass = statusBadges[task.status] || 'bg-secondary';
+                    const statusHtml = `<span class="badge ${statusBadgeClass}">${task.status}</span>`;
+
                     tasksHtml += `<li class="list-group-item d-flex justify-content-between align-items-center" data-task-id="${task.id}">
-                                      <span>${task.title}</span>
-                                      <div class="assignment-cell" style="min-width: 250px;">${assignmentHtml}</div>
+                                      <div>${task.title}</div>
+                                      <div class="d-flex align-items-center gap-3">
+                                          ${statusHtml}
+                                          <div class="assignment-cell" style="min-width: 400px;">${assignmentCellHtml}</div>
+                                      </div>
                                   </li>`;
                 });
                 tasksHtml += '</ul>';
                 phaseEl.innerHTML = `<div class="card-header"><h4>${phase.name}</h4></div>${tasksHtml}`;
                 phasesContainer.appendChild(phaseEl);
             });
+            // --- END OF COMPLETION ---
 
             loadingState.style.display = 'none';
             contentContainer.style.display = 'block';
-
         } catch (error) {
-            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+            loadingState.innerHTML = `<p class="text-danger text-center">${error.message}</p>`;
         }
     }
     
+    phasesContainer.addEventListener('click', function(e) {
+        const reviewButton = e.target.closest('.review-actions button');
+        if (reviewButton) {
+            const action = reviewButton.dataset.action;
+            const taskId = reviewButton.closest('li').dataset.taskId;
+            if (action && taskId) {
+                handleReviewAction(taskId, action, reviewButton);
+            }
+        }
+    });
+
     phasesContainer.addEventListener('submit', function(e) {
         if (e.target.classList.contains('assign-task-form')) {
             e.preventDefault();
             const form = e.target;
             const ownerId = form.querySelector('select').value;
+            const dueDate = form.querySelector('input[type="date"]').value; // Get the due date value
             const taskId = form.closest('li').dataset.taskId;
             if (ownerId && taskId) {
-                assignTask(taskId, ownerId, form.querySelector('button'));
+                assignTask(taskId, ownerId, dueDate, form.querySelector('button')); // Pass it to the function
             }
         }
     });

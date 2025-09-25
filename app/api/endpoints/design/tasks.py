@@ -2,6 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, timezone
+from pydantic import Field
+from pydantic import BaseModel
+from typing import Optional, List
 
 from app.api import deps
 from app import models, design_models
@@ -66,3 +69,47 @@ def submit_task(
 
     db.commit()
     return {"message": "Task submitted successfully!", "score": final_score}
+
+
+class TaskReviewData(BaseModel):
+    status: DesignTaskStatus
+    notes: Optional[str] = None
+
+@router.post("/{task_id}/review", tags=["My Tasks"])
+def review_task(
+    task_id: int,
+    review_data: TaskReviewData,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Allows a user with appropriate permissions to review a task."""
+    user_roles = {role.name.value for role in current_user.roles}
+    if "Design Manager" not in user_roles:
+        raise HTTPException(status_code=403, detail="Not authorized to review tasks.")
+
+    task = db.query(design_models.DesignTask).options(
+        joinedload(design_models.DesignTask.score)
+    ).filter(design_models.DesignTask.id == task_id).first()
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found.")
+
+    task.status = review_data.status # e.g., DONE or REVISION_REQUESTED
+    
+    # Apply a penalty if a revision is requested
+    if review_data.status == DesignTaskStatus.REVISION_REQUESTED:
+        if task.score:
+            # Simple 10-point penalty for a revision
+            task.score.score = max(0, task.score.score - 10)
+    
+    # Here you could also add logic to create a new comment with the review notes
+    if review_data.notes:
+        comment = design_models.DesignTaskComment(
+            task_id=task_id,
+            comment_by_id=current_user.id,
+            comment_text=f"QA Note: {review_data.notes}"
+        )
+        db.add(comment)
+
+    db.commit()
+    return {"message": f"Task status updated to {review_data.status.value}"}
