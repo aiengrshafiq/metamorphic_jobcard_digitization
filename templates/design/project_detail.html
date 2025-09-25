@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="loading-state" class="text-center mt-4">
+    <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+    <p class="mt-2 text-muted">Loading project details...</p>
+</div>
+
+<div id="content-container" style="display: none;">
+    <h2 id="project-name" class="mb-1"></h2>
+    <p class="lead text-muted" id="project-client"></p>
+    <hr>
+    <div id="phases-container">
+        </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const projectId = {{ project_id }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+    const phasesContainer = document.getElementById('phases-container');
+    const teamMembers = {{ team_members | tojson }};
+
+    // --- THIS IS THE CORRECTED FUNCTION ---
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    // ------------------------------------
+
+    async function assignTask(taskId, ownerId, button) {
+        const token = getCookie('access_token');
+        button.disabled = true;
+        
+        try {
+            const response = await fetch(`/api/design/tasks/${taskId}/assign`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ owner_id: parseInt(ownerId) }) // Ensure ownerId is an integer
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Assignment failed.');
+            
+            const assignedUser = teamMembers.find(u => u.id === parseInt(ownerId));
+            const formCell = button.closest('.assignment-cell');
+            formCell.innerHTML = `<span class="badge bg-success">${assignedUser.name}</span>`;
+        } catch (error) {
+            alert(error.message);
+            button.disabled = false;
+        }
+    }
+
+    async function fetchProjectDetails() {
+        const token = getCookie('access_token');
+        if (!token) { 
+            loadingState.innerHTML = '<p class="text-danger">Authentication Error. Please log in.</p>';
+            return; 
+        }
+        try {
+            const response = await fetch(`/api/design/${projectId}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            if (!response.ok) throw new Error('Could not load project details.');
+            const project = await response.json();
+
+            document.getElementById('project-name').textContent = project.name;
+            document.getElementById('project-client').textContent = `Client: ${project.client}`;
+            phasesContainer.innerHTML = ''; // Clear previous content before rendering
+
+            project.phases.forEach(phase => {
+                const phaseEl = document.createElement('div');
+                phaseEl.className = 'card mb-4';
+                let tasksHtml = '<ul class="list-group list-group-flush">';
+                phase.tasks.forEach(task => {
+                    let assignmentHtml = '';
+                    if (task.owner) {
+                        assignmentHtml = `<span class="badge bg-success">${task.owner.name}</span>`;
+                    } else {
+                        let options = '<option value="">Assign to...</option>';
+                        teamMembers.forEach(user => {
+                            options += `<option value="${user.id}">${user.name}</option>`;
+                        });
+                        assignmentHtml = `
+                            <form class="assign-task-form d-flex gap-2">
+                                <select class="form-select form-select-sm">${options}</select>
+                                <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                            </form>
+                        `;
+                    }
+                    tasksHtml += `<li class="list-group-item d-flex justify-content-between align-items-center" data-task-id="${task.id}">
+                                      <span>${task.title}</span>
+                                      <div class="assignment-cell" style="min-width: 250px;">${assignmentHtml}</div>
+                                  </li>`;
+                });
+                tasksHtml += '</ul>';
+                phaseEl.innerHTML = `<div class="card-header"><h4>${phase.name}</h4></div>${tasksHtml}`;
+                phasesContainer.appendChild(phaseEl);
+            });
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+    
+    phasesContainer.addEventListener('submit', function(e) {
+        if (e.target.classList.contains('assign-task-form')) {
+            e.preventDefault();
+            const form = e.target;
+            const ownerId = form.querySelector('select').value;
+            const taskId = form.closest('li').dataset.taskId;
+            if (ownerId && taskId) {
+                assignTask(taskId, ownerId, form.querySelector('button'));
+            }
+        }
+    });
+
+    fetchProjectDetails();
+});
+</script>
+{% endblock %}

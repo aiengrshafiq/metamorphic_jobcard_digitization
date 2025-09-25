@@ -417,4 +417,57 @@ async def create_design_project_page(
         
     context["page_title"] = "Create New Design Project"
     return templates.TemplateResponse("design/create_project.html", context)
+    
+
+@router.get("/design/my-tasks", response_class=HTMLResponse, tags=["Pages"])
+async def my_tasks_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context["page_title"] = "My Design Tasks"
+    return templates.TemplateResponse("design/my_tasks.html", context)
+
+
+@router.get("/design/projects", response_class=HTMLResponse, tags=["Pages"])
+async def design_projects_list_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+    context["page_title"] = "Design Projects"
+    return templates.TemplateResponse("design/project_list.html", context)
+
+
+@router.get("/design/projects/{project_id}", response_class=HTMLResponse, tags=["Pages"])
+async def design_project_detail_page(
+    project_id: int,
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context["page_title"] = f"Manage Design Project #{project_id}"
+    context["project_id"] = project_id
+    
+    # Fetch all potential team members
+    team_roles = [
+        models.UserRole.DESIGN_TEAM_MEMBER,
+        models.UserRole.TECH_ENGINEER,
+        models.UserRole.DOC_CONTROLLER
+    ]
+    team_members_objects = db.query(models.User).join(models.User.roles).filter(models.Role.name.in_(team_roles)).all()
+    #team_members_objects = db.query(models.User).all()
+    
+    # --- THIS IS THE FIX ---
+    # Convert the complex SQLAlchemy objects into a simple list of dictionaries
+    team_members_data = [{"id": user.id, "name": user.name} for user in team_members_objects]
+    # -----------------------
+
+    # Pass the simple, JSON-serializable list to the template
+    context["team_members"] = team_members_data
+    
+    return templates.TemplateResponse("design/project_detail.html", context)
 

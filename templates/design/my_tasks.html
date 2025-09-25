@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Project</th>
+                        <th>Phase</th>
+                        <th>Deliverable</th>
+                        <th>Due Date</th>
+                        <th style="width: 35%;">Submit Link</th>
+                    </tr>
+                </thead>
+                <tbody id="tasks-table-body">
+                    </tbody>
+            </table>
+            <p id="loading-state" class="text-center text-muted mt-3">Loading your tasks...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tableBody = document.getElementById('tasks-table-body');
+    const loadingState = document.getElementById('loading-state');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    async function fetchMyTasks() {
+        const token = getCookie('access_token');
+        if (!token) { loadingState.textContent = 'Authentication Error.'; return; }
+
+        try {
+            const response = await fetch('/api/design/tasks/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Failed to load tasks.');
+            
+            const tasks = await response.json();
+            
+            if (tasks.length === 0) {
+                loadingState.innerHTML = '<div class="text-center p-4"><i class="bi bi-check2-circle fs-1 text-success"></i><h5 class="mt-2">Your task list is empty!</h5></div>';
+            } else {
+                loadingState.style.display = 'none';
+                tableBody.innerHTML = '';
+                tasks.forEach(task => {
+                    const row = document.createElement('tr');
+                    row.id = `task-row-${task.id}`;
+                    row.innerHTML = `
+                        <td>${task.phase.project.name}</td>
+                        <td>${task.phase.name}</td>
+                        <td>${task.title}</td>
+                        <td>${formatDate(task.due_date)}</td>
+                        <td>
+                            <form class="submit-task-form d-flex gap-2">
+                                <input type="url" class="form-control form-control-sm" placeholder="Paste file link here..." required>
+                                <button type="submit" class="btn btn-primary btn-sm">Submit</button>
+                            </form>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+
+    // Use event delegation to handle all submit buttons
+    tableBody.addEventListener('submit', async function(e) {
+        if (e.target.classList.contains('submit-task-form')) {
+            e.preventDefault();
+            const form = e.target;
+            const row = form.closest('tr');
+            const taskId = row.id.split('-')[2];
+            const linkInput = form.querySelector('input[type="url"]');
+            const submitBtn = form.querySelector('button[type="submit"]');
+
+            const token = getCookie('access_token');
+            if (!token) { /* Show error */ return; }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+            try {
+                const response = await fetch(`/api/design/tasks/${taskId}/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ file_link: linkInput.value })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Submission failed.');
+
+                // Visually update the row on success
+                row.classList.add('table-success');
+                row.querySelector('td:last-child').innerHTML = `<div class="d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i> Submitted</div>`;
+                
+                // Show success toast
+                document.getElementById('toast-title').innerText = 'Success!';
+                document.getElementById('toast-body').innerText = result.message;
+                toastElement.className = 'toast bg-success text-white';
+                toast.show();
+
+            } catch (error) {
+                // Show error toast
+                document.getElementById('toast-title').innerText = 'Error!';
+                document.getElementById('toast-body').innerText = error.message;
+                toastElement.className = 'toast bg-danger text-white';
+                toast.show();
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit';
+            }
+        }
+    });
+
+    fetchMyTasks();
+});
+</script>
+{% endblock %}

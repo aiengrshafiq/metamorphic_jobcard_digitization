@@ -1,8 +1,9 @@
 # app/api/endpoints/design/design_projects.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Body
+from sqlalchemy.orm import Session, joinedload, selectinload 
 from pydantic import BaseModel
 from typing import List
+from pydantic import conint
 
 from app.api import deps
 from app import models, design_models
@@ -82,3 +83,37 @@ def create_design_project(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+
+@router.get("/", tags=["Design"])
+def get_design_projects(db: Session = Depends(deps.get_db)):
+    """Fetches a list of all Design Projects."""
+    projects = db.query(design_models.DesignProject).order_by(design_models.DesignProject.id.desc()).all()
+    return projects
+
+@router.get("/{project_id}", tags=["Design"])
+def get_design_project_details(project_id: int, db: Session = Depends(deps.get_db)):
+    """Fetches a single Design Project with all its phases and tasks."""
+    project = db.query(design_models.DesignProject).options(
+        selectinload(design_models.DesignProject.phases).selectinload(design_models.DesignPhase.tasks).joinedload(design_models.DesignTask.owner)
+    ).filter(design_models.DesignProject.id == project_id).first()
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Design project not found")
+    
+    return project
+
+@router.post("/tasks/{task_id}/assign", tags=["Design"])
+def assign_design_task(
+    task_id: int,
+    owner_id: conint(gt=0) = Body(..., embed=True), # conint(gt=0) ensures a valid ID is sent
+    db: Session = Depends(deps.get_db)
+):
+    """Assigns a task to a user (owner)."""
+    task = db.query(design_models.DesignTask).filter(design_models.DesignTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.owner_id = owner_id
+    db.commit()
+    
+    return {"message": "Task assigned successfully."}
