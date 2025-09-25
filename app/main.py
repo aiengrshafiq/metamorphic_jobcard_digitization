@@ -13,6 +13,9 @@ from app.admin import MyAuthBackend, create_admin_views
 from app.api.endpoints import pages, job_cards, reports, procurement, uploads, users, approvals, nanny_log, requisition_details, material_receipts, duty_officer_reports, site_officer_reports, job_card_details, notifications 
 from app.auth.router import router as auth_router
 
+#from app.api.endpoints.design import design_projects as design_router
+from app.api.endpoints.design.design_projects import router as design_router
+
 
 from app.api.endpoints.lpo.lpo import router as lpo_router
 
@@ -66,6 +69,8 @@ app.include_router(notifications.router, prefix="/api/notifications", tags=["Not
 # -------------------------------
 
 app.include_router(lpo_router, prefix="/api/lpos", tags=["LPO"])
+
+app.include_router(design_router, prefix="/api/design", tags=["Design"])
 
 
 @app.get("/health", tags=["System"])

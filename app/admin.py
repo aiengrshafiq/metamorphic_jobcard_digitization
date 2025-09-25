@@ -12,6 +12,8 @@ from app.models import (
 from app.auth.security import verify_password
 from app.core.database import SessionLocal
 
+from app.design_models import DesignProject, DesignPhase, DesignTask
+
 class MyAuthBackend(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
         form = await request.form()
@@ -127,6 +129,19 @@ class MaterialAdmin(ModelView, model=Material):
     form_columns = [Material.name, Material.unit]
     name_plural = "Master Materials"
 
+# 2. Add these new classes anywhere inside the file
+class DesignProjectAdmin(ModelView, model=DesignProject):
+    column_list = [DesignProject.id, DesignProject.name, DesignProject.client, DesignProject.status]
+    name_plural = "Design Projects"
+
+class DesignPhaseAdmin(ModelView, model=DesignPhase):
+    column_list = [DesignPhase.id, DesignPhase.name, "project", DesignPhase.status, DesignPhase.due_date]
+    name_plural = "Design Phases"
+
+class DesignTaskAdmin(ModelView, model=DesignTask):
+    column_list = [DesignTask.id, DesignTask.title, "phase", "owner", DesignTask.status, DesignTask.due_date]
+    name_plural = "Design Tasks"
+
 # --- Function to add all views to the admin instance ---
 def create_admin_views(admin: Admin):
     admin.add_view(MaterialAdmin)
@@ -144,3 +159,6 @@ def create_admin_views(admin: Admin):
     admin.add_view(SupervisorAdmin)
     admin.add_view(ForemanAdmin)
     admin.add_view(NannyLogAdmin)
+    admin.add_view(DesignProjectAdmin)
+    admin.add_view(DesignPhaseAdmin)
+    admin.add_view(DesignTaskAdmin)

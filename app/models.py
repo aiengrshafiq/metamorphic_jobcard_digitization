@@ -20,6 +20,10 @@ class UserRole(str, enum.Enum):
     PROCUREMENT = "Procurement"
     QS = "QS"
     FINANCE = "Finance"
+    DESIGN_MANAGER = "Design Manager"
+    DESIGN_TEAM_MEMBER = "Design Team Member"
+    DOC_CONTROLLER = "Document Controller"
+    TECH_ENGINEER = "Technical Engineer"
     USER = "User"
 
 # Association table for the many-to-many relationship between users and roles
@@ -65,6 +69,7 @@ class User(Base):
     mr_comments = relationship("MaterialRequisitionComment", back_populates="comment_by")
     material_receipts = relationship("MaterialReceipt", back_populates="received_by")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan", order_by="Notification.created_at.desc()")
+    design_tasks = relationship("DesignTask", back_populates="owner")
 
     def verify_password(self, plain_password: str) -> bool:
         return pwd_context.verify(plain_password, self.hashed_password)

@@ -401,3 +401,20 @@ async def view_lpo_page(lpo_id: int, context: dict = Depends(deps.get_template_c
     context["lpo_id"] = lpo_id
     return templates.TemplateResponse("lpo/view_lpo.html", context)
 
+
+
+# Start of Design Module Pages
+@router.get("/design/projects/new", response_class=HTMLResponse, tags=["Pages"])
+async def create_design_project_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+    
+    # This page is only for Design Managers
+    if "Design Manager" not in context["user_roles"]:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this page.")
+        
+    context["page_title"] = "Create New Design Project"
+    return templates.TemplateResponse("design/create_project.html", context)
+

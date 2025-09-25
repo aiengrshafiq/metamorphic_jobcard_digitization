@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <h3 class="mb-4">Create New Design Project</h3>
+        <form id="create-project-form" novalidate>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="project_name" class="form-label">Project Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="project_name" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="client_name" class="form-label">Client Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="client_name" required>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Select Project Phases to Include <span class="text-danger">*</span></label>
+                    <div class="form-check">
+                        <input class="form-check-input phase-checkbox" type="checkbox" value="Phase 2 - Initial Design" id="phase2" checked>
+                        <label class="form-check-label" for="phase2"><strong>Phase 2</strong> - Initial Design Development</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input phase-checkbox" type="checkbox" value="Phase 4 - Technical & Authority" id="phase4">
+                        <label class="form-check-label" for="phase4"><strong>Phase 4</strong> - Technical & Authority Review</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input phase-checkbox" type="checkbox" value="Phase 5 - Final Package" id="phase5">
+                        <label class="form-check-label" for="phase5"><strong>Phase 5</strong> - Final Rendering & Package Prep</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Create Project
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('create-project-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const spinner = submitBtn.querySelector('.spinner-border');
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+        
+        const token = getCookie('access_token');
+        if (!token) { /* handle error */ return; }
+
+        // Collect the checked phases
+        const selectedPhases = [];
+        document.querySelectorAll('.phase-checkbox:checked').forEach(checkbox => {
+            selectedPhases.push(checkbox.value);
+        });
+
+        const payload = {
+            name: document.getElementById('project_name').value,
+            client: document.getElementById('client_name').value,
+            phases: selectedPhases
+        };
+
+        try {
+            const response = await fetch('/api/design/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok) { throw new Error(result.detail || 'Failed to create project.'); }
+
+            document.getElementById('toast-title').innerText = 'Success!';
+            document.getElementById('toast-body').innerText = result.message;
+            toastElement.className = 'toast bg-success text-white';
+            toast.show();
+            // Redirect to the new design dashboard after success
+            setTimeout(() => { window.location.href = '/design/dashboard'; }, 1500);
+
+        } catch (error) {
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+        } finally {
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

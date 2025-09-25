@@ -114,10 +114,11 @@
                      
                     </ul>
                     {% endif %}
-
+                    {% if is_privileged %}
                     <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                         <span>Workflows</span>
                     </h6>
+                    {% endif %}
                     <ul class="nav flex-column mb-2">
                         {% if is_privileged or 'Site Engineer' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
                            <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
@@ -174,6 +175,19 @@
 
                  </ul>
                  {% endif %}
+
+                 {% if is_privileged or 'Design Manager' in user_roles %}
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                    <span>Design Studio</span>
+                </h6>
+                <ul class="nav flex-column mb-2">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/design/projects/new">
+                            <i class="bi bi-plus-circle me-2"></i> New Project
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
                 </nav>
             </aside>
 
@@ -292,6 +306,19 @@
 
                  </ul>
                  {% endif %}
+
+                 {% if is_privileged or 'Design Manager' in user_roles %}
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                    <span>Design Studio</span>
+                </h6>
+                <ul class="nav flex-column mb-2">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/design/projects/new">
+                            <i class="bi bi-plus-circle me-2"></i> New Project
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
              </nav>
         </div>
     </div>
