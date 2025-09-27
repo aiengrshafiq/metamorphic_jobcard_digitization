@@ -58,12 +58,17 @@ class DesignTask(Base):
     due_date = Column(Date, nullable=True)
     submitted_at = Column(DateTime, nullable=True)
     file_link = Column(Text, nullable=True)
+
+    verified_at = Column(DateTime, nullable=True)
+    verified_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     
     phase_id = Column(Integer, ForeignKey('design_phases.id'), nullable=False)
     owner_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     
     phase = relationship("DesignPhase", back_populates="tasks")
-    owner = relationship("User", back_populates="design_tasks")
+    
+    owner = relationship("User", back_populates="design_tasks", foreign_keys=[owner_id])
+    verified_by = relationship("User", foreign_keys=[verified_by_id])
     score = relationship("DesignScore", back_populates="task", uselist=False, cascade="all, delete-orphan")
     comments = relationship("DesignTaskComment", back_populates="task", cascade="all, delete-orphan")
 

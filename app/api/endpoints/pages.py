@@ -456,7 +456,8 @@ async def design_project_detail_page(
     team_roles = [
         models.UserRole.DESIGN_TEAM_MEMBER,
         models.UserRole.TECH_ENGINEER,
-        models.UserRole.DOC_CONTROLLER
+        models.UserRole.DOC_CONTROLLER,
+        models.UserRole.DESIGN_MANAGER
     ]
     team_members_objects = db.query(models.User).join(models.User.roles).filter(models.Role.name.in_(team_roles)).all()
     #team_members_objects = db.query(models.User).all()

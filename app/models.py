@@ -69,7 +69,9 @@ class User(Base):
     mr_comments = relationship("MaterialRequisitionComment", back_populates="comment_by")
     material_receipts = relationship("MaterialReceipt", back_populates="received_by")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan", order_by="Notification.created_at.desc()")
-    design_tasks = relationship("DesignTask", back_populates="owner")
+    
+    design_tasks = relationship("DesignTask", back_populates="owner", foreign_keys="[DesignTask.owner_id]")
+    verified_tasks = relationship("DesignTask", foreign_keys="[DesignTask.verified_by_id]")
 
     def verify_password(self, plain_password: str) -> bool:
         return pwd_context.verify(plain_password, self.hashed_password)

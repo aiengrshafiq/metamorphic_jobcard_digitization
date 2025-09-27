@@ -31,7 +31,8 @@ def get_my_tasks(
 @router.post("/{task_id}/submit", tags=["My Tasks"])
 def submit_task(
     task_id: int,
-    file_link: str = Body(..., embed=True),
+    #file_link: str = Body(..., embed=True),
+    file_link: Optional[str] = Body(None, embed=True),
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user)
 ):
@@ -44,9 +45,23 @@ def submit_task(
     if task.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="You are not authorized to submit this task.")
 
+    if task.title != "Ready for QA" and not file_link:
+        raise HTTPException(status_code=400, detail="A file link is required to submit this task.")
+
     task.file_link = file_link
     task.status = DesignTaskStatus.SUBMITTED
     task.submitted_at = datetime.now(timezone.utc)
+
+    # --- NEW TRIGGER LOGIC ---
+    # 2. If this is the "Ready for QA" task, trigger the "DM QA Review" task
+    if task.title == "Ready for QA":
+        qa_review_task = db.query(design_models.DesignTask).filter(
+            design_models.DesignTask.phase_id == task.phase_id,
+            design_models.DesignTask.title == "DM QA Review"
+        ).first()
+        if qa_review_task and qa_review_task.status == DesignTaskStatus.OPEN:
+            qa_review_task.status = DesignTaskStatus.SUBMITTED
+    # -------------------------
     
     lateness_days = 0
     if task.due_date and task.submitted_at.date() > task.due_date:
@@ -83,7 +98,7 @@ def review_task(
     current_user: models.User = Depends(deps.get_current_user)
 ):
     """Allows a user with appropriate permissions to review a task."""
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
     if "Design Manager" not in user_roles:
         raise HTTPException(status_code=403, detail="Not authorized to review tasks.")
 
@@ -113,3 +128,29 @@ def review_task(
 
     db.commit()
     return {"message": f"Task status updated to {review_data.status.value}"}
+
+
+@router.post("/{task_id}/verify", tags=["My Tasks"])
+def verify_task(
+    task_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Allows a Document Controller to verify a submitted task."""
+    user_roles = {role.name for role in current_user.roles}
+    if "Document Controller" not in user_roles:
+        raise HTTPException(status_code=403, detail="Not authorized for this action.")
+
+    task = db.query(design_models.DesignTask).filter(design_models.DesignTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found.")
+
+    if task.status != DesignTaskStatus.SUBMITTED:
+        raise HTTPException(status_code=400, detail="Task must be in 'Submitted' state to be verified.")
+
+    task.status = DesignTaskStatus.VERIFIED
+    task.verified_at = datetime.now(timezone.utc)
+    task.verified_by_id = current_user.id
+    
+    db.commit()
+    return {"message": "Task has been verified successfully."}

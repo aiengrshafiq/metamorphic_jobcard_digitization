@@ -178,13 +178,13 @@
 
                  <!-- Design Team -->
                   {% set all_design_team_roles = ['Design Manager','Design Team Member', 'Technical Engineer', 'Document Controller'] %}
-                 {% set design_team_roles = ['Design Team Member', 'Technical Engineer', 'Document Controller'] %}
+                 {% set design_team_roles = ['Design Team Member', 'Technical Engineer'] %}
                  {% if user_roles | select('in', all_design_team_roles) | list | length > 0 %}
                 <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                     <span>Design Studio</span>
                 </h6>
                 <ul class="nav flex-column mb-2">
-                    {% if 'Design Manager' in user_roles %}
+                    {% if 'Design Manager' in user_roles or 'Document Controller' in user_roles %}
                     
                     <li class="nav-item">
                         <a class="nav-link" href="/design/projects/new">
@@ -327,13 +327,13 @@
                  </ul>
                  {% endif %}
                  {% set all_design_team_roles = ['Design Manager','Design Team Member', 'Technical Engineer', 'Document Controller'] %}
-                 {% set design_team_roles = ['Design Team Member', 'Technical Engineer', 'Document Controller'] %}
+                 {% set design_team_roles = ['Design Team Member', 'Technical Engineer'] %}
                  {% if user_roles | select('in', all_design_team_roles) | list | length > 0 %}
                 <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                     <span>Design Studio</span>
                 </h6>
                 <ul class="nav flex-column mb-2">
-                    {% if 'Design Manager' in user_roles %}
+                    {% if 'Design Manager' in user_roles or 'Document Controller' in user_roles %}
                     <li class="nav-item">
                         <a class="nav-link" href="/design/projects/new">
                             <i class="bi bi-plus-circle me-2"></i> New Project
