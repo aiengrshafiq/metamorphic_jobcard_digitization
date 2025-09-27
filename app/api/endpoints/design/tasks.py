@@ -62,6 +62,18 @@ def submit_task(
         if qa_review_task and qa_review_task.status == DesignTaskStatus.OPEN:
             qa_review_task.status = DesignTaskStatus.SUBMITTED
     # -------------------------
+     # --- ADD THIS TRIGGER LOGIC ---
+    # If the submitted task is "Technical Drawings", find the sibling "Engineer Sign-off"
+    # task in the same phase and set its status to "Submitted".
+    if task.title == "Technical Drawings":
+        sign_off_task = db.query(design_models.DesignTask).filter(
+            design_models.DesignTask.phase_id == task.phase_id,
+            design_models.DesignTask.title == "Engineer Sign-off"
+        ).first()
+        if sign_off_task and sign_off_task.status == DesignTaskStatus.OPEN:
+            sign_off_task.status = DesignTaskStatus.SUBMITTED
+            # (Optional) We could also create a notification for the TE here.
+    # --------------------------------
     
     lateness_days = 0
     if task.due_date and task.submitted_at.date() > task.due_date:
@@ -154,3 +166,35 @@ def verify_task(
     
     db.commit()
     return {"message": "Task has been verified successfully."}
+
+
+# Below is TE sign-off endpoint
+class TaskSignOffData(BaseModel):
+    notes: Optional[str] = None
+
+@router.post("/{task_id}/sign-off", tags=["My Tasks"])
+def sign_off_task(
+    task_id: int,
+    sign_off_data: TaskSignOffData,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Allows a Technical Engineer to sign off on a task."""
+    user_roles = {role.name for role in current_user.roles}
+    if "Technical Engineer" not in user_roles:
+        raise HTTPException(status_code=403, detail="Not authorized for this action.")
+
+    task = db.query(design_models.DesignTask).filter(design_models.DesignTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found.")
+
+    if task.status != DesignTaskStatus.SUBMITTED:
+        raise HTTPException(status_code=400, detail="Task must be in 'Submitted' state for sign-off.")
+
+    task.status = DesignTaskStatus.VERIFIED # A sign-off is a form of verification
+    task.signed_off_at = datetime.now(timezone.utc)
+    task.signed_off_by_id = current_user.id
+    task.sign_off_notes = sign_off_data.notes
+    
+    db.commit()
+    return {"message": "Task has been signed off successfully."}

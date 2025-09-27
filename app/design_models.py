@@ -61,6 +61,10 @@ class DesignTask(Base):
 
     verified_at = Column(DateTime, nullable=True)
     verified_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+
+    signed_off_at = Column(DateTime, nullable=True)
+    sign_off_notes = Column(Text, nullable=True)
+    signed_off_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     
     phase_id = Column(Integer, ForeignKey('design_phases.id'), nullable=False)
     owner_id = Column(Integer, ForeignKey('users.id'), nullable=True)
@@ -69,6 +73,7 @@ class DesignTask(Base):
     
     owner = relationship("User", back_populates="design_tasks", foreign_keys=[owner_id])
     verified_by = relationship("User", foreign_keys=[verified_by_id])
+    signed_off_by = relationship("User", foreign_keys=[signed_off_by_id])
     score = relationship("DesignScore", back_populates="task", uselist=False, cascade="all, delete-orphan")
     comments = relationship("DesignTaskComment", back_populates="task", cascade="all, delete-orphan")
 

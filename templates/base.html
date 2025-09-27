@@ -184,19 +184,19 @@
                     <span>Design Studio</span>
                 </h6>
                 <ul class="nav flex-column mb-2">
-                    {% if 'Design Manager' in user_roles or 'Document Controller' in user_roles %}
-                    
+                    {% if 'Design Manager' in user_roles %}
                     <li class="nav-item">
                         <a class="nav-link" href="/design/projects/new">
                             <i class="bi bi-plus-circle me-2"></i> New Project
                         </a>
                     </li>
+                    {% endif %}
+                    {% if 'Design Manager' in user_roles or 'Document Controller' in user_roles or 'Technical Engineer' in user_roles %}
                     <li class="nav-item">
                         <a class="nav-link" href="/design/projects">
                             <i class="bi bi-folder2-open me-2"></i> Manage Projects
                         </a>
                     </li>
-                    
                    {% endif %}
                     {% if user_roles | select('in', design_team_roles) | list | length > 0 %}
                     <li class="nav-item">
@@ -333,12 +333,14 @@
                     <span>Design Studio</span>
                 </h6>
                 <ul class="nav flex-column mb-2">
-                    {% if 'Design Manager' in user_roles or 'Document Controller' in user_roles %}
+                    {% if 'Design Manager' in user_roles %}
                     <li class="nav-item">
                         <a class="nav-link" href="/design/projects/new">
                             <i class="bi bi-plus-circle me-2"></i> New Project
                         </a>
                     </li>
+                    {% endif %}
+                    {% if 'Design Manager' in user_roles or 'Document Controller' in user_roles or 'Technical Engineer' in user_roles %}
                     <li class="nav-item">
                         <a class="nav-link" href="/design/projects">
                             <i class="bi bi-folder2-open me-2"></i> Manage Projects

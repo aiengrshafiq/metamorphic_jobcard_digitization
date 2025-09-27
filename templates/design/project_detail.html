@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentUserId = {{ user.id }};
     const isDesignManager = {{ ('Design Manager' in user_roles) | tojson }};
     const isDocController = {{ ('Document Controller' in user_roles) | tojson }};
+    const isTechEngineer = {{ ('Technical Engineer' in user_roles) | tojson }};
     const loadingState = document.getElementById('loading-state');
     const contentContainer = document.getElementById('content-container');
     const phasesContainer = document.getElementById('phases-container');
@@ -119,6 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const dueDateForInput = formatDateForInput(task.due_date);
                     const dueDateForDisplay = formatDateForDisplay(task.due_date);
                     const isDcTask = task.title === 'Handoff to DC' || task.title === 'DC Compile & Release';
+                    const isTeTask = task.title === 'Engineer Sign-off'; // Define the TE task
 
                     if (task.title === 'Ready for QA' && task.status === 'Open' && task.owner_id === currentUserId) {
                         assignmentCellHtml = `<form class="submit-trigger-form"><button type="submit" class="btn btn-info btn-sm">Submit for QA Review</button></form>`;
@@ -126,9 +128,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         assignmentCellHtml = `<div class="btn-group btn-group-sm review-actions"><button type="button" class="btn btn-success" data-action="Done">Approve</button><button type="button" class="btn btn-warning" data-action="Revision Requested">Revise</button></div>`;
                     } else if (task.status === 'Submitted' && isDcTask && isDocController) {
                         assignmentCellHtml = `<button type="button" class="btn btn-info btn-sm verify-btn">Verify</button>`;
+                    } else if (task.status === 'Submitted' && isTeTask && isTechEngineer) {
+                        // NEW: Show sign-off button for the TE
+                        assignmentCellHtml = `<button type="button" class="btn btn-primary btn-sm sign-off-btn">Sign Off</button>`;
                     } else if (task.owner) {
                         assignmentCellHtml = `<div>${task.owner.name}</div><small class="text-muted">Due: ${dueDateForDisplay}</small>`;
-                    } else {
+                    }else {
                         let options = '<option value="">Assign to...</option>';
                         teamMembers.forEach(user => { options += `<option value="${user.id}">${user.name}</option>`; });
                         assignmentCellHtml = `
@@ -167,6 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
     phasesContainer.addEventListener('click', function(e) {
         const reviewButton = e.target.closest('.review-actions button');
         const verifyButton = e.target.closest('.verify-btn');
+        const signOffButton = e.target.closest('.sign-off-btn');
 
         if (reviewButton) {
             const action = reviewButton.dataset.action;
@@ -177,6 +183,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (verifyButton) {
             const taskId = verifyButton.closest('li').dataset.taskId;
             handleAction(`/api/design/tasks/${taskId}/verify`, 'POST', null, 'Task verified.', verifyButton);
+        }
+        
+        if (signOffButton) {
+            const taskId = signOffButton.closest('li').dataset.taskId;
+            // Optionally, prompt for notes
+            const notes = prompt("Enter any sign-off notes (optional):");
+            handleAction(`/api/design/tasks/${taskId}/sign-off`, 'POST', { notes: notes }, 'Task signed off.', signOffButton);
         }
     });
 
