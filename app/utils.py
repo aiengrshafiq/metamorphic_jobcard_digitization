@@ -6,6 +6,8 @@ from azure.storage.blob import generate_blob_sas, BlobSasPermissions
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from app.core.config import settings
+import base64
+from pathlib import Path
 
 def generate_job_card_number(db: Session, site_location: str) -> str:
     """Generates a new, sequential job card number for a given site and date."""
@@ -62,3 +64,18 @@ def generate_sas_url(blob_url: str) -> str:
     except Exception as e:
         print(f"Error generating SAS URL: {e}")
         return blob_url # Fallback to the original URL on error
+
+
+# Add this new function to the bottom of the file
+def image_to_data_uri(filepath: str) -> str | None:
+    """Reads an image file and returns it as a Base64 data URI."""
+    try:
+        path = Path(filepath)
+        if not path.is_file():
+            return None
+        with open(path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+            mime_type = f"image/{path.suffix.lstrip('.')}"
+            return f"data:{mime_type};base64,{encoded_string}"
+    except Exception:
+        return None

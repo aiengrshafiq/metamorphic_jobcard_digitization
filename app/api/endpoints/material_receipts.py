@@ -9,6 +9,7 @@ from app.api import deps
 from app import models
 from app.core.config import settings
 from azure.storage.blob import BlobServiceClient
+from app.utils import generate_sas_url
 
 router = APIRouter()
 
@@ -25,15 +26,26 @@ def get_pending_mrs_for_project(project_id: int, db: Session = Depends(deps.get_
 def get_mr_details(req_id: int, db: Session = Depends(deps.get_db)):
     """Fetches specific details for a single Material Requisition."""
     req = db.query(models.MaterialRequisition).options(
-        joinedload(models.MaterialRequisition.supplier)
+        # CORRECTED: Each joinedload is a separate argument to .options()
+        joinedload(models.MaterialRequisition.supplier),
+        joinedload(models.MaterialRequisition.items).joinedload(models.RequisitionItem.material)
     ).filter(models.MaterialRequisition.id == req_id).first()
+
     if not req:
         raise HTTPException(status_code=404, detail="Requisition not found")
+        
     return {
         "material_type": req.material_type,
-        "material_with_quantity": req.material_with_quantity,
         "supplier": req.supplier.name if req.supplier else "N/A",
-        "lpo_number": req.lpo_number or "N/A"
+        "lpo_number": req.lpo_number or "N/A",
+        "items": [
+            {
+                "name": item.material.name,
+                "quantity": item.quantity,
+                "unit": item.material.unit
+            }
+            for item in req.items
+        ]
     }
 
 @router.post("/upload-image", response_class=JSONResponse, tags=["Material Receipts"])
@@ -57,7 +69,10 @@ async def upload_receipt_image(file: UploadFile = File(...), db: Session = Depen
     db.add(new_image)
     db.commit()
     db.refresh(new_image)
-    return {"image_id": new_image.id}
+    return {
+    "image_id": new_image.id,
+    "blob_url": generate_sas_url(new_image.blob_url)
+    }
 
 @router.post("/", response_class=JSONResponse, tags=["Material Receipts"])
 async def create_material_receipt(

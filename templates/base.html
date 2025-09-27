@@ -124,7 +124,7 @@
                            <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
                         {% endif %}
                         {% if (is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles) and 'Project Manager' not in user_roles %}
-                           <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
+                           <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Pending MR</a></li>
                         {% endif %}
                        
                         {% if is_privileged or 'QS' in user_roles %}
@@ -155,7 +155,7 @@
                  </h6>
                  <ul class="nav flex-column mb-2">
                     {% if is_privileged or 'Procurement' in user_roles %}
-                        <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions-delivered"><i class="bi bi-cart-check me-2"></i> Delivered Procurement</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions-delivered"><i class="bi bi-cart-check me-2"></i> Delivered MR</a></li>
                      {% endif %}
                      {% if is_privileged or 'Foreman/Duty Officer' in user_roles %}
                         <li class="nav-item">
@@ -281,7 +281,7 @@
                         <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
                      {% endif %}
                      {% if (is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles) and 'Project Manager' not in user_roles %}
-                        <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Procurement</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Pending MR</a></li>
                      {% endif %}
                      
                      {% if is_privileged or 'QS' in user_roles %}
@@ -312,7 +312,7 @@
                  </h6>
                  <ul class="nav flex-column mb-2">
                     {% if is_privileged or 'Procurement' in user_roles %}
-                        <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions-delivered"><i class="bi bi-cart-check me-2"></i> Delivered Procurement</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions-delivered"><i class="bi bi-cart-check me-2"></i> Delivered MR</a></li>
                      {% endif %}
                      {% if is_privileged or 'Foreman/Duty Officer' in user_roles %}
                     <li class="nav-item">

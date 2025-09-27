@@ -4,103 +4,43 @@
     <meta charset="UTF-8">
     <title>LPO {{ lpo.lpo_number }}</title>
     <style>
-        @page {
-            size: A4;
-            margin: 1cm;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 9pt;
-            color: #333;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 5px;
-        }
-        .header-table {
-            margin-bottom: 20px;
-        }
-        .company-name {
-            font-size: 22pt;
-            font-weight: bold;
-            color: #333;
-        }
-        .lpo-title {
-            font-size: 24pt;
-            font-weight: bold;
-            text-align: right;
-            color: #666;
-            vertical-align: bottom;
-        }
-        .info-table {
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-        }
-        .info-table th {
-            background-color: #f2f2f2;
-            text-align: left;
-            padding: 8px;
-            font-size: 10pt;
-        }
-        .info-table td {
-            padding: 8px;
-            vertical-align: top;
-        }
-        .items-table {
-            margin-top: 20px;
-        }
-        .items-table thead th {
-            background-color: #333;
-            color: #fff;
-            padding: 8px;
-            border: 1px solid #333;
-            text-align: left;
-        }
-        .items-table tbody td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            vertical-align: top;
-        }
-        .items-table .text-right {
-            text-align: right;
-        }
-        .totals-section {
-            margin-top: 20px;
-            width: 100%;
-        }
-        .totals-table {
-            width: 45%;
-            float: right;
-        }
-        .totals-table td {
-            padding: 6px 8px;
-        }
-        .totals-table .total-label {
-            font-weight: bold;
-        }
-        .totals-table .grand-total {
-            font-weight: bold;
-            font-size: 11pt;
-            border-top: 2px solid #333;
-        }
-        .footer-notes {
-            margin-top: 30px;
-        }
-        .signature-area {
-            margin-top: 60px;
-        }
+        @page { size: A4; margin: 1cm; }
+        body { font-family: Arial, sans-serif; font-size: 9pt; color: #333; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 5px; }
+        .header-table { margin-bottom: 20px; }
+        .logo { max-width: 180px; max-height: 70px; margin-bottom: 10px; }
+        .company-address { font-size: 8pt; color: #555; }
+        .lpo-title { font-size: 24pt; font-weight: bold; text-align: right; color: #666; vertical-align: bottom; }
+        .info-table { margin-bottom: 20px; border: 1px solid #ddd; }
+        .info-table th { background-color: #f2f2f2; text-align: left; padding: 6px 8px; font-size: 10pt; }
+        .info-table td { padding: 8px; vertical-align: top; }
+        .items-table { margin-top: 20px; }
+        .items-table thead th { background-color: #333; color: #fff; padding: 8px; border: 1px solid #333; text-align: left; }
+        .items-table tbody td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+        .items-table .text-right { text-align: right; }
+        .totals-section { margin-top: 20px; width: 100%; }
+        .totals-table { width: 45%; float: right; }
+        .totals-table td { padding: 6px 8px; }
+        .totals-table .total-label { font-weight: bold; }
+        .totals-table .grand-total { font-weight: bold; font-size: 11pt; border-top: 2px solid #333; }
+        .footer-notes { margin-top: 30px; font-size: 8pt; color: #555; }
+        .signature-area { margin-top: 40pt; text-align: center; font-style: italic; color: #888; }
     </style>
 </head>
 <body>
     <table class="header-table">
         <tr>
-            <td style="width: 60%;">
-                <div class="company-name">Metamorphic Contracting LLC</div>
-                <div>Office No. 2901 API Trio Tower, Al Barsha-1, SZR, Dubai</div>
-                <div>+971 4 385 8103 | info@metamorphic.ae</div>
+            <td style="width: 60%; vertical-align: top;">
+                {% if logo_data_uri %}
+                    <img src="{{ logo_data_uri }}" class="logo">
+                {% endif %}
+                <div class="company-address">
+                    <strong>Metamorphic Building Contracting LLC</strong><br>
+                    Office No. 2901 API Trio Tower,<br>
+                    Al Barsha-1, SZR, Dubai, 391351, ARE<br>
+                    +971 4 385 8103 | info@metamorphic.ae
+                </div>
             </td>
             <td class="lpo-title">
                 Purchase Order
@@ -111,8 +51,9 @@
     <table class="info-table">
         <thead>
             <tr>
-                <th style="width: 50%;">SUPPLIER</th>
-                <th style="width: 50%;">LPO DETAILS</th>
+                <th style="width: 33%;">SUPPLIER</th>
+                <th style="width: 33%;">SHIP TO</th>
+                <th style="width: 34%;">LPO DETAILS</th>
             </tr>
         </thead>
         <tbody>
@@ -123,19 +64,15 @@
                     {% if lpo.supplier.phone %}<br>{{ lpo.supplier.phone }}{% endif %}
                 </td>
                 <td>
+                    <strong>{{ lpo.project.name }}</strong><br>
+                    c/o Metamorphic Contracting LLC<br>
+                    Site Location as per Project
+                </td>
+                <td>
                     <table>
-                        <tr>
-                            <td style="padding: 0; border: 0;"><strong>DATE:</strong></td>
-                            <td style="padding: 0; border: 0;">{{ lpo.lpo_date.strftime('%d/%m/%Y') }}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 0; border: 0;"><strong>LPO #:</strong></td>
-                            <td style="padding: 0; border: 0;">{{ lpo.lpo_number }}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 0; border: 0;"><strong>PROJECT:</strong></td>
-                            <td style="padding: 0; border: 0;">{{ lpo.project.name }}</td>
-                        </tr>
+                        <tr><td style="padding: 0; border: 0;"><strong>DATE:</strong></td><td style="padding: 0; border: 0;">{{ lpo.lpo_date.strftime('%d/%m/%Y') }}</td></tr>
+                        <tr><td style="padding: 0; border: 0;"><strong>LPO #:</strong></td><td style="padding: 0; border: 0;">{{ lpo.lpo_number }}</td></tr>
+                        <tr><td style="padding: 0; border: 0;"><strong>PROJECT:</strong></td><td style="padding: 0; border: 0;">{{ lpo.project.name }}</td></tr>
                     </table>
                 </td>
             </tr>
@@ -145,11 +82,11 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 35%;">ITEM</th>
-                <th style="width: 35%;">DESCRIPTION</th>
+                <th>ITEM</th>
+                <th>DESCRIPTION</th>
                 <th class="text-right">QTY</th>
-                <th class="text-right">RATE</th>
-                <th class="text-right">AMOUNT</th>
+                <th class="text-right">RATE (AED)</th>
+                <th class="text-right">AMOUNT (AED)</th>
             </tr>
         </thead>
         <tbody>
@@ -162,9 +99,7 @@
                 <td class="text-right">{{ "%.2f"|format(item.quantity * item.rate) }}</td>
             </tr>
             {% else %}
-            <tr>
-                <td colspan="5" style="text-align: center;">No items found.</td>
-            </tr>
+            <tr><td colspan="5" style="text-align: center;">No items found.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -172,18 +107,9 @@
     <div class="totals-section">
         <table class="totals-table">
             <tbody>
-                <tr>
-                    <td class="total-label">SUBTOTAL</td>
-                    <td class="text-right">{{ "%.2f"|format(lpo.subtotal) }}</td>
-                </tr>
-                <tr>
-                    <td class="total-label">VAT ({{ (lpo.items[0].tax_rate * 100) if lpo.items else 5 }}%)</td>
-                    <td class="text-right">{{ "%.2f"|format(lpo.tax_total) }}</td>
-                </tr>
-                <tr class="grand-total">
-                    <td class="total-label">TOTAL</td>
-                    <td class="text-right">AED {{ "%.2f"|format(lpo.grand_total) }}</td>
-                </tr>
+                <tr><td class="total-label">SUBTOTAL</td><td class="text-right">{{ "%.2f"|format(lpo.subtotal) }} AED</td></tr>
+                <tr><td class="total-label">VAT (5%)</td><td class="text-right">{{ "%.2f"|format(lpo.tax_total) }} AED</td></tr>
+                <tr class="grand-total"><td class="total-label">TOTAL</td><td class="text-right">{{ "%.2f"|format(lpo.grand_total) }} AED</td></tr>
             </tbody>
         </table>
     </div>
@@ -196,11 +122,14 @@
         <p>{{ lpo.message_to_supplier }}</p>
     </div>
     {% endif %}
+    
+    <div class="footer-notes">
+        <strong>Terms & Conditions:</strong>
+        <p>1. All deliveries to be made to the project site as specified. <br>2. Payment terms are 30 days net from date of invoice.</p>
+    </div>
 
     <div class="signature-area">
-        <strong>Approved By:</strong>
-        <br><br><br>
-        <p>_________________________</p>
+        <p>This is a system-generated document and does not require a signature.</p>
     </div>
 
 </body>

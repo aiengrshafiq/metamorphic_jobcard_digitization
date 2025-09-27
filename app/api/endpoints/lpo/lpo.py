@@ -17,6 +17,7 @@ from app.api import deps
 from app import models
 from app.core.config import settings
 from azure.storage.blob import BlobServiceClient
+from app.utils import generate_sas_url, image_to_data_uri
 
 router = APIRouter()
 pdf_templates = Jinja2Templates(directory="templates")
@@ -187,9 +188,10 @@ def generate_lpo_pdf(lpo_id: int, db: Session = Depends(deps.get_db)):
     if not lpo:
         raise HTTPException(status_code=404, detail="LPO not found")
 
+    logo_data_uri = image_to_data_uri("static/img/logo.png")
     # Render an HTML template with the LPO data
     # Note: We use a separate template designed specifically for the PDF layout
-    html_string = pdf_templates.get_template("lpo/lpo_pdf.html").render({"lpo": lpo})
+    html_string = pdf_templates.get_template("lpo/lpo_pdf.html").render({"lpo": lpo, "logo_data_uri": logo_data_uri})
 
     # Use WeasyPrint to convert the HTML to a PDF in memory
     pdf_bytes = HTML(string=html_string).write_pdf()
