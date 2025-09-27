@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="loading-state" class="text-center mt-4">
+    <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+    <p class="mt-2 text-muted">Loading dashboard data...</p>
+</div>
+
+<div id="content-container" style="display: none;">
+    <h3 class="mb-3">At-Risk Tasks <span class="badge bg-danger" id="at-risk-count"></span></h3>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div id="at-risk-list"></div>
+        </div>
+    </div>
+
+    <h3 class="mb-3">Team Productivity (Last 30 Days)</h3>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Team Member</th>
+                            <th class="text-center">Avg. Score</th>
+                            <th class="text-center">On-Time Rate</th>
+                            <th class="text-center">Tasks Completed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productivity-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+    const atRiskCount = document.getElementById('at-risk-count');
+    const atRiskList = document.getElementById('at-risk-list');
+    const productivityTableBody = document.getElementById('productivity-table-body');
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    async function fetchDashboardData() {
+        const token = getCookie('access_token');
+        if (!token) { /* handle error */ return; }
+        
+        try {
+            const response = await fetch('/api/design/dashboard/', { headers: { 'Authorization': `Bearer ${token}` }});
+            if (!response.ok) throw new Error('Could not load dashboard data.');
+            const data = await response.json();
+
+            // Render At-Risk Tasks
+            atRiskCount.textContent = data.at_risk_tasks.length;
+            if (data.at_risk_tasks.length > 0) {
+                let atRiskHtml = '<ul class="list-group list-group-flush">';
+                data.at_risk_tasks.forEach(task => {
+                    const dueDate = new Date(task.due_date).toLocaleDateString();
+                    atRiskHtml += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="/design/projects/${task.phase.project.id}" class="text-decoration-none">${task.title}</a>
+                                <small class="d-block text-muted">${task.phase.project.name} | Owner: ${task.owner.name}</small>
+                            </div>
+                            <span class="badge bg-danger">Due: ${dueDate}</span>
+                        </li>`;
+                });
+                atRiskHtml += '</ul>';
+                atRiskList.innerHTML = atRiskHtml;
+            } else {
+                atRiskList.innerHTML = '<p class="text-muted text-center mb-0">No overdue tasks. Great job!</p>';
+            }
+
+            // Render Team Productivity
+            if (data.team_productivity.length > 0) {
+                let productivityHtml = '';
+                data.team_productivity.forEach(member => {
+                    productivityHtml += `
+                        <tr>
+                            <td>${member.user_name}</td>
+                            <td class="text-center">${Math.round(member.avg_score)} / 100</td>
+                            <td class="text-center">${Math.round(member.on_time_rate)}%</td>
+                            <td class="text-center">${member.throughput}</td>
+                        </tr>`;
+                });
+                productivityTableBody.innerHTML = productivityHtml;
+            } else {
+                productivityTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No completed tasks in the last 30 days.</td></tr>';
+            }
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+    
+    fetchDashboardData();
+});
+</script>
+{% endblock %}

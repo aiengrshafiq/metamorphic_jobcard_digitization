@@ -113,6 +113,12 @@ document.addEventListener('DOMContentLoaded', function() {
             project.phases.forEach(phase => {
                 const phaseEl = document.createElement('div');
                 phaseEl.className = 'card mb-4';
+                let closeButtonHtml = '';
+                if (isDesignManager && phase.status !== 'Completed') {
+                    closeButtonHtml = `<button class="btn btn-sm btn-success close-phase-btn" data-phase-id="${phase.id}">Close Phase</button>`;
+                } else if (phase.status === 'Completed') {
+                    closeButtonHtml = `<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i> Completed</span>`;
+                }
                 let tasksHtml = '<ul class="list-group list-group-flush">';
                 
                 phase.tasks.forEach(task => {
@@ -157,7 +163,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                   </li>`;
                 });
                 tasksHtml += '</ul>';
-                phaseEl.innerHTML = `<div class="card-header"><h4>${phase.name}</h4></div>${tasksHtml}`;
+                //phaseEl.innerHTML = `<div class="card-header"><h4>${phase.name}</h4></div>${tasksHtml}`;
+                phaseEl.innerHTML = `
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>${phase.name}</h4>
+                        <div>${closeButtonHtml}</div>
+                    </div>
+                    ${tasksHtml}
+                `;
                 phasesContainer.appendChild(phaseEl);
             });
 
@@ -173,6 +186,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const reviewButton = e.target.closest('.review-actions button');
         const verifyButton = e.target.closest('.verify-btn');
         const signOffButton = e.target.closest('.sign-off-btn');
+        const closePhaseButton = e.target.closest('.close-phase-btn');
+
+        if (closePhaseButton) {
+            const phaseId = closePhaseButton.dataset.phaseId;
+            if (confirm('Are you sure you want to close this phase? This action cannot be undone.')) {
+                handleAction(`/api/design/phases/${phaseId}/close`, 'POST', null, 'Phase closed successfully.', closePhaseButton);
+            }
+        }
 
         if (reviewButton) {
             const action = reviewButton.dataset.action;

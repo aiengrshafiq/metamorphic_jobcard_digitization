@@ -17,6 +17,8 @@ from app.auth.router import router as auth_router
 
 from app.api.endpoints.design.design_projects import router as design_router
 from app.api.endpoints.design.tasks import router as design_tasks_router
+from app.api.endpoints.design.dashboard import router as design_dashboard_router
+from app.api.endpoints.design.phases import router as design_phases_router
 
 
 from app.api.endpoints.lpo.lpo import router as lpo_router
@@ -74,6 +76,8 @@ app.include_router(lpo_router, prefix="/api/lpos", tags=["LPO"])
 
 app.include_router(design_router, prefix="/api/design", tags=["Design"])
 app.include_router(design_tasks_router, prefix="/api/design/tasks", tags=["My Tasks"])
+app.include_router(design_dashboard_router, prefix="/api/design/dashboard", tags=["Design Dashboard"])
+app.include_router(design_phases_router, prefix="/api/design/phases", tags=["Design Phases"])
 
 
 @app.get("/health", tags=["System"])

@@ -503,3 +503,19 @@ async def design_project_detail_page(
     
     return templates.TemplateResponse("design/project_detail.html", context)
 
+
+@router.get("/design/dashboard", response_class=HTMLResponse, tags=["Pages"])
+async def design_dashboard_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+    
+    # Simple check to ensure only relevant people see this
+    allowed_roles = {'Design Manager', 'Admin', 'Super Admin'}
+    if not allowed_roles.intersection(context["user_roles"]):
+        raise HTTPException(status_code=403, detail="Access denied.")
+        
+    context["page_title"] = "Design Dashboard"
+    return templates.TemplateResponse("design/dashboard.html", context)
+
