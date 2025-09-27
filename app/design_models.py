@@ -72,7 +72,8 @@ class DesignTask(Base):
     phase = relationship("DesignPhase", back_populates="tasks")
     
     owner = relationship("User", back_populates="design_tasks", foreign_keys=[owner_id])
-    verified_by = relationship("User", foreign_keys=[verified_by_id])
+    #verified_by = relationship("User", foreign_keys=[verified_by_id])
+    verified_by = relationship("User", back_populates="verified_tasks", foreign_keys=[verified_by_id])
     signed_off_by = relationship("User", foreign_keys=[signed_off_by_id])
     score = relationship("DesignScore", back_populates="task", uselist=False, cascade="all, delete-orphan")
     comments = relationship("DesignTaskComment", back_populates="task", cascade="all, delete-orphan")

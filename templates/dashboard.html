@@ -3,12 +3,13 @@
 {% block content %}
 <div class="container-fluid px-0">
 
-    {% if pending_job_cards is defined and pending_job_cards %}
+    {% if (pending_job_cards is defined and pending_job_cards) or (avg_score is defined) %}
     
     <div class="row g-4">
         <div class="col-lg-7">
             <h3 class="mb-3">Available Forms</h3>
             <div class="row row-cols-1 row-cols-md-2 g-4">
+                
                 {% if 'Foreman/Duty Officer' in user_roles %}
                 <div class="col">
                     <div class="card h-100 shadow-sm border-0">
@@ -50,6 +51,33 @@
         </div>
 
         <div class="col-lg-5">
+            {% if avg_score is defined %}
+            <h3 class="mb-3">My Performance</h3>
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div>
+                        <div class="d-flex justify-content-between">
+                            <span>Average Score</span>
+                            <strong>{{ avg_score }}/100</strong>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ avg_score }}%;" aria-valuenow="{{ avg_score }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between">
+                            <span>On-Time Rate</span>
+                            <strong>{{ on_time_rate }}%</strong>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ on_time_rate }}%;" aria-valuenow="{{ on_time_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if pending_job_cards is defined and pending_job_cards %}
             <h3 class="mb-3">Your Pending Job Cards</h3>
             <div class="list-group shadow-sm">
                 {% for jc in pending_job_cards %}
@@ -62,13 +90,13 @@
                 </a>
                 {% endfor %}
             </div>
+            {% endif %}
         </div>
     </div>
 
     {% else %}
-    {% if is_privileged %}
+    
     <p class="lead mb-4">Select a form to begin the job card process.</p>
-    {% endif %}
     <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
         {% if is_privileged %}
         <div class="col">
@@ -80,7 +108,7 @@
                         </div>
                         <h5 class="card-title mb-0 text-truncate">Job Card (Assignment)</h5>
                     </div>
-                    <p class="card-text text-muted">Create a new master record for a site job. This is the first step in the process.</p>
+                    <p class="card-text text-muted">Create a new master record for a site job.</p>
                     <div class="mt-auto">
                         <a href="/job-card-form" class="btn btn-primary w-100">Open Form A</a>
                     </div>
@@ -98,7 +126,7 @@
                         </div>
                         <h5 class="card-title mb-0 text-truncate">Duty Officer Progress</h5>
                     </div>
-                    <p class="card-text text-muted">For Foremen and Duty Officers to report their daily progress against assigned tasks.</p>
+                    <p class="card-text text-muted">For Foremen to report daily progress.</p>
                     <div class="mt-auto">
                         <a href="/duty-officer-form" class="btn btn-primary w-100">Open Form B</a>
                     </div>
@@ -116,7 +144,7 @@
                         </div>
                         <h5 class="card-title mb-0 text-truncate">Daily Progress Report</h5>
                     </div>
-                    <p class="card-text text-muted">For Site Officers to create a comprehensive daily report of site activities and progress.</p>
+                    <p class="card-text text-muted">For Site Officers to create a daily site report.</p>
                     <div class="mt-auto">
                         <a href="/site-officer-form" class="btn btn-primary w-100">Open Form C</a>
                     </div>

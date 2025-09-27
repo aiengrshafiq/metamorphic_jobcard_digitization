@@ -11,6 +11,8 @@ from sqlalchemy import or_
 
 from app.api import deps
 from app import models
+from app import design_models
+from app.design_models import DesignTaskStatus
 from app.utils import generate_job_card_number
 
 router = APIRouter()
@@ -59,6 +61,30 @@ async def dashboard(context: dict = Depends(deps.get_template_context),db: Sessi
         # Add the list to the context
         context["pending_job_cards"] = pending_job_cards
     # ----------------------------------------------
+     # --- NEW: DESIGN TEAM MEMBER PERFORMANCE STATS LOGIC ---
+    design_team_roles = {'Design Team Member', 'Technical Engineer', 'Document Controller'}
+    if any(role in user_roles for role in design_team_roles):
+        # Find all completed tasks with scores for this user
+        scored_tasks = db.query(design_models.DesignTask).join(
+            design_models.DesignScore
+        ).filter(
+            design_models.DesignTask.owner_id == current_user.id,
+            design_models.DesignTask.status.in_([
+                DesignTaskStatus.SUBMITTED, DesignTaskStatus.VERIFIED, DesignTaskStatus.DONE
+            ])
+        ).all()
+
+        if scored_tasks:
+            total_tasks = len(scored_tasks)
+            on_time_tasks = sum(1 for task in scored_tasks if task.score.lateness_days == 0)
+            total_score = sum(task.score.score for task in scored_tasks)
+            
+            context["on_time_rate"] = round((on_time_tasks / total_tasks) * 100)
+            context["avg_score"] = round(total_score / total_tasks)
+        else:
+            context["on_time_rate"] = 100
+            context["avg_score"] = 100
+    # ----------------------------------------------------
     return templates.TemplateResponse("dashboard.html", context)
 
 
@@ -459,8 +485,13 @@ async def design_project_detail_page(
         models.UserRole.DOC_CONTROLLER,
         models.UserRole.DESIGN_MANAGER
     ]
-    team_members_objects = db.query(models.User).join(models.User.roles).filter(models.Role.name.in_(team_roles)).all()
-    #team_members_objects = db.query(models.User).all()
+    #team_members_objects = db.query(models.User).join(models.User.roles).filter(models.Role.name.in_(team_roles)).all()
+
+    team_members_objects = db.query(models.User).join(models.User.roles).filter(
+        models.Role.name.in_(team_roles),
+        models.User.is_active == True
+    ).order_by(models.User.name).all()
+    
     
     # --- THIS IS THE FIX ---
     # Convert the complex SQLAlchemy objects into a simple list of dictionaries

@@ -71,7 +71,9 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan", order_by="Notification.created_at.desc()")
     
     design_tasks = relationship("DesignTask", back_populates="owner", foreign_keys="[DesignTask.owner_id]")
-    verified_tasks = relationship("DesignTask", foreign_keys="[DesignTask.verified_by_id]")
+    #verified_tasks = relationship("DesignTask", foreign_keys="[DesignTask.verified_by_id]")
+    verified_tasks = relationship("DesignTask", back_populates="verified_by", foreign_keys="[DesignTask.verified_by_id]")
+    signed_off_tasks = relationship("DesignTask", back_populates="signed_off_by", foreign_keys="[DesignTask.signed_off_by_id]")
 
     def verify_password(self, plain_password: str) -> bool:
         return pwd_context.verify(plain_password, self.hashed_password)
