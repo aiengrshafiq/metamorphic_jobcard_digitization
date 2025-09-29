@@ -1,13 +1,14 @@
 # app/admin.py
-from sqladmin import Admin, ModelView
+from sqladmin import Admin, ModelView, action, expose
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 from sqlalchemy.orm import joinedload
+from starlette.responses import RedirectResponse
 
 
 from app.models import (
     User, Role, UserRole, JobCard, Task, Project, SiteEngineer, Supervisor, Foreman,
-    DutyOfficerProgress, SiteOfficerReport, MaterialRequisition, Supplier, ToolboxVideo, SiteImage, NannyLog,Material
+    DutyOfficerProgress, SiteOfficerReport, MaterialRequisition, Supplier, ToolboxVideo, SiteImage, NannyLog,Material,AuthLog 
 )
 from app.auth.security import verify_password
 from app.core.database import SessionLocal
@@ -54,10 +55,55 @@ class MyAuthBackend(AuthenticationBackend):
 
 class UserAdmin(ModelView, model=User):
     column_list = [User.id, User.name, User.email, User.is_active, User.roles]
-    # Add the new 'material_requisitions' relationship here for viewing
-    column_details_list = [User.id, User.name, User.email, User.is_active, User.roles, User.material_requisitions]
+    column_details_list = [User.id, User.name, User.email, User.is_active, User.roles, User.material_requisitions, User.verified_tasks]
     form_columns = [User.name, User.email, User.is_active, User.roles]
     name_plural = "Users"
+
+    @action(
+        name="change_password",
+        label="Change Password",
+        add_in_detail=True,
+        add_in_list=True
+    )
+    def action_change_password(self, request: Request):
+        pks = request.query_params.get("pks", "").split(",")
+        
+        # --- FIX #1: Handle the case where no user is selected ---
+        # Instead of returning None, redirect back to the list page.
+        if not pks or not pks[0]:
+            return RedirectResponse(request.url_for("admin:list", identity="user"))
+        # --------------------------------------------------------
+
+        base_url = "/admin/user/change-password"
+        url = f"{base_url}?pk={pks[0]}"
+        
+        return RedirectResponse(url)
+
+    # --- FIX #2: Correct the path in the expose decorator ---
+    # Remove the redundant "/user" prefix.
+    @expose("/change-password", methods=["GET", "POST"])
+    # ----------------------------------------------------
+    async def change_password_page(self, request: Request):
+        pk = request.query_params.get("pk")
+        db = SessionLocal()
+        user = db.query(User).filter(User.id == pk).first()
+
+        if request.method == "POST":
+            form = await request.form()
+            new_password = form.get("new_password")
+            if new_password and user:
+                user.set_password(new_password)
+                db.commit()
+                # Close the session after use
+                db.close()
+                return RedirectResponse(request.url_for("admin:list", identity="user"), status_code=303)
+        
+        # Close the session after use
+        db.close()
+
+        return await self.templates.TemplateResponse(
+            request, "change_password.html", {"user": user}
+        )
 
 class RoleAdmin(ModelView, model=Role):
     column_list = [Role.id, Role.name]
@@ -142,6 +188,15 @@ class DesignTaskAdmin(ModelView, model=DesignTask):
     column_list = [DesignTask.id, DesignTask.title, "phase", "owner", DesignTask.status, DesignTask.due_date]
     name_plural = "Design Tasks"
 
+class AuthLogAdmin(ModelView, model=AuthLog):
+    column_list = [
+        AuthLog.timestamp, AuthLog.event_type, "user_id", 
+        AuthLog.ip_address, AuthLog.browser, AuthLog.os, AuthLog.device
+    ]
+    can_create = False
+    can_edit = False
+    can_delete = False
+
 # --- Function to add all views to the admin instance ---
 def create_admin_views(admin: Admin):
     admin.add_view(MaterialAdmin)
@@ -162,3 +217,4 @@ def create_admin_views(admin: Admin):
     admin.add_view(DesignProjectAdmin)
     admin.add_view(DesignPhaseAdmin)
     admin.add_view(DesignTaskAdmin)
+    admin.add_view(AuthLogAdmin)

@@ -6,6 +6,9 @@ from passlib.context import CryptContext
 import enum
 from sqlalchemy import Table, Enum as SQLAlchemyEnum
 
+import uuid
+from sqlalchemy.dialects.postgresql import UUID
+
 Base = declarative_base()
 
 # Define the user roles
@@ -61,6 +64,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    session_id = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
 
     job_card_comments = relationship("JobCardComment", back_populates="comment_by")
 
@@ -74,6 +78,8 @@ class User(Base):
     #verified_tasks = relationship("DesignTask", foreign_keys="[DesignTask.verified_by_id]")
     verified_tasks = relationship("DesignTask", back_populates="verified_by", foreign_keys="[DesignTask.verified_by_id]")
     signed_off_tasks = relationship("DesignTask", back_populates="signed_off_by", foreign_keys="[DesignTask.signed_off_by_id]")
+    
+    
 
     def verify_password(self, plain_password: str) -> bool:
         return pwd_context.verify(plain_password, self.hashed_password)
@@ -575,3 +581,18 @@ class LPOAttachment(Base):
     lpo_id = Column(Integer, ForeignKey('lpos.id'), nullable=True)
 
     lpo = relationship("LPO", back_populates="attachments")
+
+
+class AuthLog(Base):
+    __tablename__ = 'auth_logs'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    event_type = Column(String, nullable=False) # e.g., 'Login Success', 'Login Failure'
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True) # Contains browser/device info
+    # --- ADD THESE NEW COLUMNS ---
+    browser = Column(String, nullable=True)
+    os = Column(String, nullable=True)
+    device = Column(String, nullable=True)
+    # -----------------------------
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())

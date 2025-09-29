@@ -31,7 +31,8 @@ app = FastAPI(title="Metamorphic Job Card App V2")
 # --- Setup Admin Panel ---
 # Note: Ensure SECRET_KEY is set in your .env file for session management
 authentication_backend = MyAuthBackend(secret_key=settings.SECRET_KEY)
-admin = Admin(app, engine, authentication_backend=authentication_backend)
+#admin = Admin(app, engine, authentication_backend=authentication_backend)
+admin = Admin(app, engine, authentication_backend=authentication_backend, templates_dir="templates/admin")
 create_admin_views(admin)
 # -------------------------
 

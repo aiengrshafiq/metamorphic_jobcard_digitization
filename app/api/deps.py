@@ -36,14 +36,15 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
-        if email is None:
+        jti: str = payload.get("jti") # Get the session ID from the token
+        if email is None or jti is None:
             raise credentials_exception
         token_data = schemas.TokenData(email=email)
     except JWTError:
         raise credentials_exception
         
     user = db.query(models.User).filter(models.User.email == token_data.email).first()
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or str(user.session_id) != jti:
         raise credentials_exception
     return user
 

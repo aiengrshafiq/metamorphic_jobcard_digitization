@@ -74,3 +74,6 @@ passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
 WeasyPrint
+pyyaml 
+ua-parser 
+user-agents
