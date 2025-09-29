@@ -89,7 +89,7 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">QS Approval</label>
+                            <label class="form-label">Commercial Approval</label>
                              <select class="form-select" name="qs_approval">
                                 {% for s in approval_statuses %}<option value="{{ s }}" {% if req.qs_approval == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
                             </select>

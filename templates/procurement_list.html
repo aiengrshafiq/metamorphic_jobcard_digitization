@@ -57,9 +57,9 @@
                                 <i class="bi bi-eye-fill"></i>
                             </a>
                             {% if req.pm_approval == 'Approved' and req.qs_approval == 'Approved' %}
-                            <a href="/procurement/material-requisition/{{ req.id }}" class="btn btn-primary btn-sm" title="Process">
+                            <!-- <a href="/procurement/material-requisition/{{ req.id }}" class="btn btn-primary btn-sm" title="Process">
                                 <i class="bi bi-pencil-square"></i>
-                            </a>
+                            </a> -->
                             {% endif %}
                             {% if is_privileged or 'Procurement' in user_roles %}
                             <button class="btn btn-success btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Approved" title="Approve">
