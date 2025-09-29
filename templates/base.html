@@ -132,7 +132,7 @@
                             <a class="nav-link {% if page_title == 'My Approvals' %}active{% endif %}" href="/approvals"><i class="bi bi-check2-square me-2"></i> My Approvals</a>
                         </li>
                         {% endif %}
-                        {% if is_privileged or 'Foreman/Duty Officer' in user_roles %}
+                        {% if is_privileged or 'Foreman/Duty Officer' in user_roles or 'Supervisor/Site Officer' in user_roles %}
                         <li class="nav-item">
                             <a class="nav-link" href="/receive-mr-form">
                                 <i class="bi bi-box-arrow-in-down me-2"></i> Receive MR
@@ -289,7 +289,7 @@
                          <a class="nav-link {% if page_title == 'My Approvals' %}active{% endif %}" href="/approvals"><i class="bi bi-check2-square me-2"></i> My Approvals</a>
                      </li>
                      {% endif %}
-                     {% if is_privileged or 'Foreman/Duty Officer' in user_roles %}
+                     {% if is_privileged or 'Foreman/Duty Officer' in user_roles or 'Supervisor/Site Officer' in user_roles %}
                         <li class="nav-item">
                             <a class="nav-link" href="/receive-mr-form">
                                 <i class="bi bi-box-arrow-in-down me-2"></i> Receive MR
