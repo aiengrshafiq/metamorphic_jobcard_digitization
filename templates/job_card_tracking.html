@@ -58,12 +58,7 @@
 
 {% block scripts_extra %}
 <script>
-    // Helper function to read a cookie by name
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+   
 
     document.addEventListener('DOMContentLoaded', function () {
         const statusSelects = document.querySelectorAll('.task-status-select');
@@ -87,23 +82,15 @@
                 toastElement.classList.remove('bg-danger', 'bg-success');
 
                 // 1. Get the auth token from the cookie
-                const token = getCookie('access_token');
-                if (!token) {
-                    toastElement.classList.add('bg-danger', 'text-white');
-                    toastTitle.innerText = 'Authentication Error';
-                    toastBody.innerText = 'You are not logged in. Please log in again.';
-                    toast.show();
-                    this.value = originalValue; // Revert dropdown
-                    return;
-                }
+               
 
                 try {
                     // 2. Corrected URL and added Authorization header
-                    const response = await fetch(`/job-cards/api/tasks/${taskId}/update-status`, {
+                    const response = await fetchWithAuth(`/job-cards/api/tasks/${taskId}/update-status`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'Authorization': `Bearer ${token}`
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                            
                         },
                         body: `status=${newStatus}`
                     });

@@ -47,11 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const contentContainer = document.getElementById('content-container');
     const mainColumn = document.getElementById('details-main-column');
 
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+    
 
     // Function to create a detail card
     function createDetailCard(title, details) {
@@ -70,15 +66,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function fetchReportDetails() {
-        const token = getCookie('access_token');
-        if (!token) {
-            loadingState.innerHTML = '<p class="text-danger">Authentication Error. Please log in.</p>';
-            return;
-        }
+        
         try {
-            const response = await fetch(`/api/duty-officer-reports/${reportId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await fetchWithAuth(`/api/duty-officer-reports/${reportId}`);
             if (!response.ok) {
                 const err = await response.json();
                 throw new Error(err.detail || 'Could not load report details.');

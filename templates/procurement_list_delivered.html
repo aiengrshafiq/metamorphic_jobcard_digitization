@@ -3,8 +3,11 @@
 {% block content %}
 <div class="card shadow-sm border-0">
     <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Pending Material Requisitions</h5>
+        <h5 class="mb-0">Delivered Material Requisitions</h5>
         <!-- We can add filters here later if needed -->
+         <div class="col-12 col-md-4">
+        <input type="search" id="search-input" class="form-control form-control-sm" placeholder="Search by Project or MR Number...">
+    </div>
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -72,24 +75,49 @@ document.addEventListener('DOMContentLoaded', function () {
     const tableBody = document.querySelector('tbody');
     const toastElement = document.getElementById('responseToast');
     const toast = new bootstrap.Toast(toastElement);
+     const searchInput = document.getElementById('search-input');
+    const originalContent = tableBody.innerHTML; // Store original rows
+    let searchTimeout;
+    searchInput.addEventListener('input', function () {
+        const query = this.value.toLowerCase();
+        clearTimeout(searchTimeout);
 
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+        searchTimeout = setTimeout(() => {
+            // If search box is empty, restore original content
+            if (!query) {
+                tableBody.innerHTML = originalContent;
+                return;
+            }
+
+            const rows = tableBody.querySelectorAll('tr');
+            rows.forEach(row => {
+                const projectCell = row.querySelector('td:nth-child(4)');
+                const mrNumberCell = row.querySelector('td:nth-child(2)');
+                
+                const projectText = projectCell ? projectCell.textContent.toLowerCase() : '';
+                const mrNumberText = mrNumberCell ? mrNumberCell.textContent.toLowerCase() : '';
+
+                if (projectText.includes(query) || mrNumberText.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }, 300); // Debounce for 300ms
+         });
+
+    
 
     async function handleApprovalAction(reqId, newStatus, button) {
-        const token = getCookie('access_token');
-        if (!token) { /* Show error toast */ return; }
+       
         
         button.disabled = true;
 
         try {
-            const response = await fetch(`/api/approvals/${reqId}/status`, {
+            const response = await fetchWithAuth(`/api/approvals/${reqId}/status`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                   // 'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({

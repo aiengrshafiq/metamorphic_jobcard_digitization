@@ -23,6 +23,7 @@ assigned_crew_options:
   - Internal
   - External Vendor
   - External Skilled Labor
+  - Internal & External
 
 # --- Form B Specific ---
 equipment_conditions:

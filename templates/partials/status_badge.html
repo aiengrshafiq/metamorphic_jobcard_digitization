@@ -1,0 +1,9 @@
+{# templates/partials/status_badge.html #}
+{% set status_text = status or 'Pending' %}
+{% if status_text == 'Approved' %}
+    <span class="badge bg-success">{{ status_text }}</span>
+{% elif status_text == 'Rejected' %}
+    <span class="badge bg-danger">{{ status_text }}</span>
+{% else %}
+    <span class="badge bg-warning text-dark">{{ status_text }}</span>
+{% endif %}

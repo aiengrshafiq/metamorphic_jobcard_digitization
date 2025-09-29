@@ -49,11 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // The improved, robust action handler with UI safeguards
     async function handleAction(url, method = 'POST', body = null, successMessage = 'Action successful!', triggerEl = null) {
-        const token = getCookie('access_token');
-        if (!token) {
-            alert('Authentication error. Please log in again.');
-            return;
-        }
+        
 
         let originalHtml;
         if (triggerEl) {
@@ -63,15 +59,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            const options = {
-                method: method,
-                headers: { 'Authorization': `Bearer ${token}` }
-            };
+            const options = { method: method };
             if (body) {
-                options.headers['Content-Type'] = 'application/json';
+                options.headers = { 'Content-Type': 'application/json' };
                 options.body = JSON.stringify(body);
             }
-            const response = await fetch(url, options);
+            const response = await fetchWithAuth(url, options); 
             const result = await response.json();
             if (!response.ok) throw new Error(result.detail || 'Action failed.');
             
@@ -93,13 +86,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function fetchProjectDetails() {
-        const token = getCookie('access_token');
-        if (!token) { 
-            loadingState.innerHTML = '<p class="text-danger">Authentication Error. Please log in.</p>';
-            return; 
-        }
+        
         try {
-            const response = await fetch(`/api/design/${projectId}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const response = await fetchWithAuth(`/api/design/${projectId}`);
             if (!response.ok) {
                  const errData = await response.json();
                  throw new Error(errData.detail || 'Could not load project details.');

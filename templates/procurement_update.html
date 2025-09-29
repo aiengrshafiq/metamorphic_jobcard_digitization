@@ -126,12 +126,7 @@
 {% block scripts_extra %}
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
-    // Helper function to read a cookie by name
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+    
 
     document.addEventListener('DOMContentLoaded', function () {
         const formSelects = document.querySelectorAll('#procurement-update-form select');
@@ -157,27 +152,14 @@
             const toastTitle = document.getElementById('toast-title');
             toastElement.classList.remove('bg-danger', 'bg-success');
 
-            // 1. Get the auth token from the cookie
-            const token = getCookie('access_token');
-            if (!token) {
-                toastElement.classList.add('bg-danger', 'text-white');
-                toastTitle.innerText = 'Authentication Error';
-                toastBody.innerText = 'You are not logged in. Please log in again.';
-                toast.show();
-                spinner.style.display = 'none';
-                submitBtn.disabled = false;
-                return;
-            }
+           
 
             const formData = new FormData(form);
             const reqId = {{ req.id }};
             try {
                 // 2. Corrected URL and added Authorization header
-                const response = await fetch(`/procurement/api/material-requisitions/${reqId}`, {
+                const response = await fetchWithAuth(`/procurement/api/material-requisitions/${reqId}`, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    },
                     body: formData
                 });
                 

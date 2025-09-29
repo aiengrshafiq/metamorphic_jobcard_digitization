@@ -17,69 +17,71 @@
                         <th>Project</th>
                         <th>Requested By</th>
                         <th>Urgency</th>
+                        <th>Approvals</th>
                         <th class="text-end">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for req in requisitions %}
-                    <tr>
-                        <td>{{ req.id }}</td>
-                        <td>
-                            {% if req.mr_number %}
-                                <span class="badge bg-secondary">{{ req.mr_number }}</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">Not Assigned</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ req.request_date.strftime('%d-%b-%Y') }}</td>
-                        <td>{{ req.project.name }}</td>
-                        <td>{{ req.requested_by.name }}</td>
-                        <td>
-                            {% if req.urgency == 'Critical' %}
-                                <span class="badge bg-danger">{{ req.urgency }}</span>
-                            {% elif req.urgency == 'Urgent' %}
-                                <span class="badge bg-warning text-dark">{{ req.urgency }}</span>
-                            {% else %}
-                                <span class="badge bg-info">{{ req.urgency }}</span>
-                            {% endif %}
-                        </td>
-                        <!-- <td class="text-end">
-                            <a href="/requisition-details/{{ req.id }}" class="btn btn-outline-secondary btn-sm" title="View Details">
-                                <i class="bi bi-eye-fill"></i>
-                            </a>
-                            <a href="/procurement/material-requisition/{{ req.id }}" class="btn btn-primary btn-sm">
-                                <i class="bi bi-pencil-square me-1"></i> Process
-                            </a>
-                        </td> -->
-                        <td class="text-end">
-                        <div class="btn-group" role="group" aria-label="Actions">
-                            <a href="/requisition-details/{{ req.id }}" class="btn btn-outline-secondary btn-sm" title="View Details">
-                                <i class="bi bi-eye-fill"></i>
-                            </a>
-                            {% if req.pm_approval == 'Approved' and req.qs_approval == 'Approved' %}
-                            <!-- <a href="/procurement/material-requisition/{{ req.id }}" class="btn btn-primary btn-sm" title="Process">
-                                <i class="bi bi-pencil-square"></i>
-                            </a> -->
-                            {% endif %}
-                            {% if is_privileged or 'Procurement' in user_roles %}
-                            <button class="btn btn-success btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Approved" title="Approve">
-                                <i class="bi bi-check-lg"></i>
-                            </button>
-                            <button class="btn btn-danger btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Rejected" title="Reject">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                            {% endif %}
-                        </div>
-                    </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
-                            No pending material requisitions found.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+    {% for req in requisitions %}
+    <tr>
+        <td>{{ req.id }}</td>
+        <td>
+            {% if req.mr_number %}
+                <span class="badge bg-secondary">{{ req.mr_number }}</span>
+            {% else %}
+                <span class="badge bg-warning text-dark">Not Assigned</span>
+            {% endif %}
+        </td>
+        <td>{{ req.request_date.strftime('%d-%b-%Y') }}</td>
+        <td>{{ req.project.name }}</td>
+        <td>{{ req.requested_by.name }}</td>
+        <td>
+            {% if req.urgency == 'Critical' %}
+                <span class="badge bg-danger">{{ req.urgency }}</span>
+            {% elif req.urgency == 'Urgent' %}
+                <span class="badge bg-warning text-dark">{{ req.urgency }}</span>
+            {% else %}
+                <span class="badge bg-info">{{ req.urgency }}</span>
+            {% endif %}
+        </td>
+        <td>
+            <a tabindex="0" class="btn btn-sm btn-outline-secondary" role="button" data-bs-toggle="popover" data-bs-trigger="focus" data-bs-title="Approval Status" data-bs-html="true"
+               data-bs-content='
+                 <ul class="list-unstyled mb-0">
+                   <li class="d-flex justify-content-between">MR:&nbsp; {% set status = req.mr_approval %}{% include "partials/status_badge.html" %}</li>
+                   <li class="d-flex justify-content-between">PM:&nbsp; {% set status = req.pm_approval %}{% include "partials/status_badge.html" %}</li>
+                   <li class="d-flex justify-content-between">QS:&nbsp; {% set status = req.qs_approval %}{% include "partials/status_badge.html" %}</li>
+                 </ul>
+               '>
+              <i class="bi bi-card-checklist"></i>
+            </a>
+        </td>
+        <td class="text-end">
+            <div class="btn-group" role="group" aria-label="Actions">
+                <a href="/requisition-details/{{ req.id }}" class="btn btn-outline-secondary btn-sm" title="View Details">
+                    <i class="bi bi-eye-fill"></i>
+                </a>
+                
+
+                {% if (is_privileged or 'Procurement' in user_roles) and req.mr_approval == 'Pending' %}
+                <button class="btn btn-success btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Approved" title="Approve">
+                    <i class="bi bi-check-lg"></i>
+                </button>
+                <button class="btn btn-danger btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Rejected" title="Reject">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                {% endif %}
+            </div>
+        </td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="8" class="text-center text-muted py-4">
+            No pending material requisitions found.
+        </td>
+    </tr>
+    {% endfor %}
+</tbody>
             </table>
         </div>
     </div>
@@ -92,23 +94,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const toastElement = document.getElementById('responseToast');
     const toast = new bootstrap.Toast(toastElement);
 
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    const popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+
+    
 
     async function handleApprovalAction(reqId, newStatus, button) {
-        const token = getCookie('access_token');
-        if (!token) { /* Show error toast */ return; }
+        
         
         button.disabled = true;
 
         try {
-            const response = await fetch(`/api/approvals/${reqId}/status`, {
+            const response = await fetchWithAuth(`/api/approvals/${reqId}/status`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    //'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({

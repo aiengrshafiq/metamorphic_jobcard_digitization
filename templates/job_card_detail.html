@@ -148,11 +148,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const changeNotesText = document.getElementById('change_notes');
     const saveReassignmentBtn = document.getElementById('save-reassignment-btn');
 
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+    // function getCookie(name) {
+    //     const value = `; ${document.cookie}`;
+    //     const parts = value.split(`; ${name}=`);
+    //     if (parts.length === 2) return parts.pop().split(';').shift();
+    // }
 
     function renderComments(comments) {
         commentList.innerHTML = '';
@@ -198,11 +198,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function populatePersonnelDropdowns(currentSupervisorId, currentForemanId) {
-        const token = getCookie('access_token');
-        if (!token) return;
+        
         try {
-            const response = await fetch('/api/job-card-details/personnel', {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const response = await fetchWithAuth('/api/job-card-details/personnel', {
+               // headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
             newSupervisorSelect.innerHTML = '<option value="">Select Supervisor...</option>';
@@ -219,11 +218,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     async function fetchJobCardDetails() {
-        const token = getCookie('access_token');
-        if (!token) { loadingState.innerHTML = '<p class="text-danger">Authentication Error.</p>'; return; }
+       
         try {
-            const response = await fetch(`/api/job-card-details/${jcId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const response = await fetchWithAuth(`/api/job-card-details/${jcId}`, {
+               // headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) {
                 const err = await response.json();
@@ -280,16 +278,15 @@ document.addEventListener('DOMContentLoaded', function () {
     
     commentForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        const token = getCookie('access_token');
-        if (!token) { return; }
+        
         
         const spinner = submitCommentBtn.querySelector('.spinner-border');
         submitCommentBtn.disabled = true;
         spinner.style.display = 'inline-block';
         try {
-            const response = await fetch(`/api/job-card-details/${jcId}/comments`, {
+            const response = await fetchWithAuth(`/api/job-card-details/${jcId}/comments`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
+                //headers: { 'Authorization': `Bearer ${token}` },
                 body: new FormData(commentForm)
             });
             const result = await response.json();
@@ -305,17 +302,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     saveReassignmentBtn.addEventListener('click', async function() {
-        const token = getCookie('access_token');
-        if (!token) { return; }
+      
         const payload = {
             supervisor_user_id: parseInt(newSupervisorSelect.value),
             foreman_user_id: parseInt(newForemanSelect.value),
             notes: changeNotesText.value
         };
         try {
-            const response = await fetch(`/api/job-card-details/${jcId}/reassign`, {
+            const response = await fetchWithAuth(`/api/job-card-details/${jcId}/reassign`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const result = await response.json();

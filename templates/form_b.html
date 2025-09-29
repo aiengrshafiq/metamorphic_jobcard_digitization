@@ -113,12 +113,7 @@
 {% block scripts_extra %}
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
-    // Helper function to read a cookie by name
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+    
 
     document.addEventListener('DOMContentLoaded', function() {
         // --- UPDATED VIDEO RECORDER LOGIC with Camera Toggling ---
@@ -200,12 +195,7 @@
         }
 
         async function uploadVideo() {
-            const token = getCookie('access_token');
-            if (!token) {
-                videoStatus.textContent = `❌ Upload failed: Authentication error. Please log in.`;
-                retakeBtn.style.display = 'inline-block';
-                return;
-            }
+           
 
             const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
             videoPreview.srcObject = null;
@@ -218,9 +208,9 @@
             formData.append('video', videoBlob, 'toolbox-talk.webm');
             
             try {
-                const response = await fetch('/uploads/api/videos/upload', { 
+                const response = await fetchWithAuth('/uploads/api/videos/upload', { 
                     method: 'POST', 
-                    headers: { 'Authorization': `Bearer ${token}` },
+                    //headers: { 'Authorization': `Bearer ${token}` },
                     body: formData 
                 });
                 const result = await response.json();
@@ -276,11 +266,7 @@
         imageUploadInput.addEventListener('change', function(event) {
             const files = event.target.files;
             if (!files.length) return;
-            const token = getCookie('access_token');
-            if (!token) {
-                alert('Authentication error. Please log in to upload images.');
-                return;
-            }
+            
             imagePreviewContainer.innerHTML = '';
             let uploadedImageIds = [];
             hiddenImageIdsInput.value = '';
@@ -300,9 +286,9 @@
                 reader.readAsDataURL(file);
                 const formData = new FormData();
                 formData.append('files', file);
-                fetch('/uploads/api/images/upload', { 
+                fetchWithAuth('/uploads/api/images/upload', { 
                     method: 'POST', 
-                    headers: { 'Authorization': `Bearer ${token}` },
+                    //headers: { 'Authorization': `Bearer ${token}` },
                     body: formData 
                 })
                 .then(response => {
@@ -343,8 +329,8 @@
                     return;
                 }
                 try {
-                    const response = await fetch(`/job-cards/api/job-cards/${jobCardId}/tasks`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
+                    const response = await fetchWithAuth(`/job-cards/api/job-cards/${jobCardId}/tasks`, {
+                       // headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (!response.ok) throw new Error('Could not fetch tasks.');
                    const tasks = await response.json();
@@ -387,22 +373,13 @@
             const toastTitle = document.getElementById('toast-title');
             toastElement.classList.remove('bg-danger', 'bg-success');
             
-            const token = getCookie('access_token');
-            if (!token) {
-                toastElement.classList.add('bg-danger', 'text-white');
-                toastTitle.innerText = 'Authentication Error';
-                toastBody.innerText = 'You are not logged in to submit the form.';
-                toast.show();
-                spinner.style.display = 'none';
-                submitBtn.disabled = false;
-                return;
-            }
+            
 
             const formData = new FormData(form);
             try {
-                const response = await fetch('/reports/duty-officer-progress/', { 
+                const response = await fetchWithAuth('/reports/duty-officer-progress/', { 
                     method: 'POST', 
-                    headers: { 'Authorization': `Bearer ${token}` },
+                   // headers: { 'Authorization': `Bearer ${token}` },
                     body: formData 
                 });
 

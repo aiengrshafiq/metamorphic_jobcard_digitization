@@ -130,11 +130,7 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
     // Helper function to read a cookie by name
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+    
 
     document.addEventListener('DOMContentLoaded', function () {
         new Choices('#nanny_id', { searchEnabled: true, removeItemButton: false, itemSelectText: '' });
@@ -161,16 +157,7 @@
             const toastTitle = document.getElementById('toast-title');
             toastElement.classList.remove('bg-danger', 'bg-success');
             
-            const token = getCookie('access_token');
-            if (!token) {
-                toastElement.classList.add('bg-danger', 'text-white');
-                toastTitle.innerText = 'Authentication Error';
-                toastBody.innerText = 'You are not logged in.';
-                toast.show();
-                spinner.style.display = 'none';
-                submitBtn.disabled = false;
-                return;
-            }
+           
 
             // Manually handle boolean radio/checkbox values
             const formData = new FormData(form);
@@ -184,9 +171,9 @@
             if (outdoorPlay) formData.set('outdoor_play_completed', outdoorPlay.value);
             
             try {
-                const response = await fetch('/nanny-log/', {
+                const response = await fetchWithAuth('/nanny-log/', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
+                    
                     body: formData
                 });
                 const result = await response.json();

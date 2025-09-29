@@ -148,11 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const toastElement = document.getElementById('responseToast');
     const toast = new bootstrap.Toast(toastElement);
 
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+    
     
     function formatApprovalStatus(status) {
         if (status === 'Approved') return `<span class="badge bg-success">${status}</span>`;
@@ -232,16 +228,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function fetchRequisitionDetails() {
-        const token = getCookie('access_token');
-        if (!token) {
-            loadingState.innerHTML = '<p class="text-danger">Authentication Error. Please log in.</p>';
-            return;
-        }
+        
 
         try {
-            const response = await fetch(`/api/requisition-details/${reqId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await fetchWithAuth(`/api/requisition-details/${reqId}`);
             if (!response.ok) throw new Error('Could not load requisition details.');
             
             const data = await response.json();
@@ -281,21 +271,19 @@ document.addEventListener('DOMContentLoaded', function () {
     
     commentForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        const token = getCookie('access_token');
-        if (!token) { /* handle error */ return; }
+        
         
         const spinner = submitCommentBtn.querySelector('.spinner-border');
         submitCommentBtn.disabled = true;
         spinner.style.display = 'inline-block';
 
-        const formData = new FormData();
-        formData.append('comment_text', commentText.value);
+        // const formData = new FormData();
+        // formData.append('comment_text', commentText.value);
 
         try {
-            const response = await fetch(`/api/requisition-details/${reqId}/comments`, {
+            const response = await fetchWithAuth(`/api/requisition-details/${reqId}/comments`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
+                body: new FormData(commentForm)
             });
             const newComment = await response.json();
             if (!response.ok) throw new Error(newComment.detail || 'Failed to post comment.');

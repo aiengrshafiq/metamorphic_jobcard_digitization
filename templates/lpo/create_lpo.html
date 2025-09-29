@@ -97,12 +97,7 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
-
+   
     // --- INITIAL SETUP ---
     const choicesConfig = { searchEnabled: true, removeItemButton: false, itemSelectText: '' };
     new Choices('#supplier_id', choicesConfig);
@@ -176,8 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
     attachmentsInput.addEventListener('change', function(e) {
         const files = e.target.files;
         if (!files.length) return;
-        const token = getCookie('access_token');
-        if (!token) { alert('Authentication error.'); return; }
+       
 
         Array.from(files).forEach(file => {
             const attachmentEl = document.createElement('div');
@@ -188,9 +182,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const formData = new FormData();
             formData.append('file', file);
             
-            fetch('/api/lpos/attachments', {
+            fetchWithAuth('/api/lpos/attachments', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             })
             .then(response => response.ok ? response.json() : Promise.reject('Upload failed'))

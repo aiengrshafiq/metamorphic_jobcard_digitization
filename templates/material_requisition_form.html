@@ -204,21 +204,12 @@
             const toastTitle = document.getElementById('toast-title');
             toastElement.classList.remove('bg-danger', 'bg-success');
             
-            const token = getCookie('access_token');
-            if (!token) {
-                toastElement.classList.add('bg-danger', 'text-white');
-                toastTitle.innerText = 'Authentication Error';
-                toastBody.innerText = 'You are not logged in.';
-                toast.show();
-                spinner.style.display = 'none';
-                submitBtn.disabled = false;
-                return;
-            }
+           
 
             try {
-                const response = await fetch('/procurement/material-requisitions/', {
+                const response = await fetchWithAuth('/procurement/material-requisitions/', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
+                   
                     body: new FormData(form)
                 });
                 const result = await response.json();

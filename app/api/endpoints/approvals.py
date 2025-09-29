@@ -35,7 +35,7 @@ def get_pending_approvals(
     if models.UserRole.PROJECT_MANAGER in user_roles:
         pm_pending = query.filter(
             models.MaterialRequisition.pm_approval == 'Pending',
-            models.MaterialRequisition.mr_approval == 'Approved'  # <-- ADD THIS CONDITION
+           # models.MaterialRequisition.mr_approval == 'Approved'  # <-- ADD THIS CONDITION
         ).all()
         for item in pm_pending:
             item.pending_for = 'PM'

@@ -50,67 +50,64 @@ document.addEventListener('DOMContentLoaded', function () {
     const toastElement = document.getElementById('responseToast');
     const toast = new bootstrap.Toast(toastElement);
 
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
+    
+
+form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
     }
 
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        if (!form.checkValidity()) {
-            form.classList.add('was-validated');
-            return;
-        }
+    const spinner = submitBtn.querySelector('.spinner-border');
+    spinner.style.display = 'inline-block';
+    submitBtn.disabled = true;
+    
+    // Collect the checked phases
+    const selectedPhases = [];
+    document.querySelectorAll('.phase-checkbox:checked').forEach(checkbox => {
+        selectedPhases.push(checkbox.value);
+    });
 
-        const spinner = submitBtn.querySelector('.spinner-border');
-        spinner.style.display = 'inline-block';
-        submitBtn.disabled = true;
-        
-        const token = getCookie('access_token');
-        if (!token) { /* handle error */ return; }
+    const payload = {
+        name: document.getElementById('project_name').value,
+        client: document.getElementById('client_name').value,
+        phases: selectedPhases
+    };
 
-        // Collect the checked phases
-        const selectedPhases = [];
-        document.querySelectorAll('.phase-checkbox:checked').forEach(checkbox => {
-            selectedPhases.push(checkbox.value);
+    try {
+        // UPDATED: Use fetchWithAuth and remove manual Authorization header
+        const response = await fetchWithAuth('/api/design/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
         });
 
-        const payload = {
-            name: document.getElementById('project_name').value,
-            client: document.getElementById('client_name').value,
-            phases: selectedPhases
-        };
+        // The 401 redirect is now handled automatically by fetchWithAuth.
+        // We only need to handle other potential errors.
+        const result = await response.json();
+        if (!response.ok) { throw new Error(result.detail || 'Failed to create project.'); }
 
-        try {
-            const response = await fetch('/api/design/', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            if (!response.ok) { throw new Error(result.detail || 'Failed to create project.'); }
+        document.getElementById('toast-title').innerText = 'Success!';
+        document.getElementById('toast-body').innerText = result.message;
+        toastElement.className = 'toast bg-success text-white';
+        toast.show();
+        
+        // Redirect to the design dashboard after success
+        setTimeout(() => { window.location.href = '/design/dashboard'; }, 1500);
 
-            document.getElementById('toast-title').innerText = 'Success!';
-            document.getElementById('toast-body').innerText = result.message;
-            toastElement.className = 'toast bg-success text-white';
-            toast.show();
-            // Redirect to the new design dashboard after success
-            setTimeout(() => { window.location.href = '/design/dashboard'; }, 1500);
-
-        } catch (error) {
-            document.getElementById('toast-title').innerText = 'Error!';
-            document.getElementById('toast-body').innerText = error.message;
-            toastElement.className = 'toast bg-danger text-white';
-            toast.show();
-        } finally {
-            spinner.style.display = 'none';
-            submitBtn.disabled = false;
-        }
-    });
+    } catch (error) {
+        document.getElementById('toast-title').innerText = 'Error!';
+        document.getElementById('toast-body').innerText = error.message;
+        toastElement.className = 'toast bg-danger text-white';
+        toast.show();
+    } finally {
+        spinner.style.display = 'none';
+        submitBtn.disabled = false;
+    }
+});
 });
 </script>
 {% endblock %}

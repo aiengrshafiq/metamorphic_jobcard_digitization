@@ -60,11 +60,11 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
     // Helper function to read a cookie by name
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
+    // function getCookie(name) {
+    //     const value = `; ${document.cookie}`;
+    //     const parts = value.split(`; ${name}=`);
+    //     if (parts.length === 2) return parts.pop().split(';').shift();
+    // }
 
     document.addEventListener('DOMContentLoaded', function() {
         const choicesConfig = { searchEnabled: true, removeItemButton: false, itemSelectText: '', allowHTML: false };
@@ -109,7 +109,7 @@
             if (!this.value) return;
             try {
                 // NOTE: The URL for this API call may also need updating if you moved it
-                const response = await fetch(`/job-cards/api/generate-job-card-no?site_location=${this.value}`);
+                const response = await fetchWithAuth(`/job-cards/api/generate-job-card-no?site_location=${this.value}`);
                 if (!response.ok) throw new Error('Network response was not ok.');
                 const data = await response.json();
                 jobCardNoInput.value = data.job_card_no;
@@ -130,23 +130,14 @@
             const toastTitle = document.getElementById('toast-title');
             toastElement.classList.remove('bg-danger', 'bg-success');
 
-            const token = getCookie('access_token');
-            if (!token) {
-                toastElement.classList.add('bg-danger', 'text-white');
-                toastTitle.innerText = 'Authentication Error';
-                toastBody.innerText = 'You are not logged in. Please log in to submit the form.';
-                toast.show();
-                spinner.style.display = 'none';
-                submitBtn.disabled = false;
-                return;
-            }
+            
 
             const formData = new FormData(form);
 
             try {
-                const response = await fetch('/job-cards/', {
+                const response = await fetchWithAuth('/job-cards/', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
+                    //headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
                 });
 

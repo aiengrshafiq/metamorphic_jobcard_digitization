@@ -10,6 +10,7 @@ import yaml
 from pathlib import Path
 import os
 from typing import List
+from sqlalchemy import or_
 
 from app.api import deps
 from app import models
@@ -76,7 +77,8 @@ async def list_material_requisitions(
 @router.get("/material-requisitions-delivered", response_class=HTMLResponse, tags=["Procurement"])
 async def list_material_requisitions_delivered(
     context: dict = Depends(deps.get_template_context),
-    db: Session = Depends(deps.get_db)
+    db: Session = Depends(deps.get_db),
+    search: Optional[str] = None
 ):
     if isinstance(context, RedirectResponse):
         return context
@@ -90,6 +92,17 @@ async def list_material_requisitions_delivered(
         joinedload(models.MaterialRequisition.requested_by)
     )
 
+     # --- 2. ADD THIS SEARCH LOGIC ---
+    if search:
+        search_term = f"%{search}%"
+        query = query.join(models.Project).filter(
+            or_(
+                models.MaterialRequisition.mr_number.ilike(search_term),
+                models.Project.name.ilike(search_term)
+            )
+        )
+    # --------------------------------
+
     # Define roles that can see ALL requisitions
     privileged_roles = {
         'Super Admin', 'Admin', 'Operation Mananger', 
@@ -102,6 +115,8 @@ async def list_material_requisitions_delivered(
         # This will apply to roles like 'Supervisor/Site Officer'
         current_user_id = context["user"].id
         query = query.filter(models.MaterialRequisition.requested_by_id == current_user_id)
+
+    
     
     # Execute the final query
     requisitions = query.order_by(models.MaterialRequisition.request_date).all()
