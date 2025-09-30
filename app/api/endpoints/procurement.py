@@ -129,8 +129,36 @@ async def list_material_requisitions_delivered(
     return templates.TemplateResponse("procurement_list_delivered.html", context)
 
 
-@router.get("/material-requisition/{req_id}", response_class=HTMLResponse, tags=["Procurement"])
-async def process_material_requisition_form(
+# @router.get("/material-requisition/{req_id}", response_class=HTMLResponse, tags=["Procurement"])
+# async def process_material_requisition_form(
+#     req_id: int,
+#     context: dict = Depends(deps.get_template_context),
+#     db: Session = Depends(deps.get_db)
+# ):
+#     if isinstance(context, RedirectResponse):
+#         return context
+
+#     req = db.query(models.MaterialRequisition).options(
+#         joinedload(models.MaterialRequisition.project),
+#         joinedload(models.MaterialRequisition.requested_by),
+#         joinedload(models.MaterialRequisition.items).joinedload(models.RequisitionItem.material)
+#     ).filter(models.MaterialRequisition.id == req_id).first()
+
+#     if not req:
+#         raise HTTPException(status_code=404, detail="Requisition not found")
+
+#     context.update({
+#         "page_title": f"Process Requisition #{req.id}",
+#         "req": req,
+#         "suppliers": db.query(models.Supplier).order_by(models.Supplier.name).all(),
+#         "approval_statuses": app_config.get('approval_statuses', []),
+#         "requisition_statuses": app_config.get('requisition_statuses', []),
+#     })
+#     return templates.TemplateResponse("procurement_update.html", context)
+
+
+@router.get("/material-requisition/{req_id}/process", response_class=HTMLResponse, tags=["Procurement"])
+async def process_or_finalize_requisition_form(
     req_id: int,
     context: dict = Depends(deps.get_template_context),
     db: Session = Depends(deps.get_db)
@@ -140,21 +168,27 @@ async def process_material_requisition_form(
 
     req = db.query(models.MaterialRequisition).options(
         joinedload(models.MaterialRequisition.project),
-        joinedload(models.MaterialRequisition.requested_by),
-        joinedload(models.MaterialRequisition.items).joinedload(models.RequisitionItem.material)
+        joinedload(models.MaterialRequisition.requested_by)
     ).filter(models.MaterialRequisition.id == req_id).first()
 
     if not req:
         raise HTTPException(status_code=404, detail="Requisition not found")
 
-    context.update({
-        "page_title": f"Process Requisition #{req.id}",
-        "req": req,
-        "suppliers": db.query(models.Supplier).order_by(models.Supplier.name).all(),
-        "approval_statuses": app_config.get('approval_statuses', []),
-        "requisition_statuses": app_config.get('requisition_statuses', []),
-    })
-    return templates.TemplateResponse("procurement_update.html", context)
+    # Determine which page to show based on the MR status
+    if req.status == "Draft":
+        template_name = "procurement_finalize.html"
+        context["page_title"] = f"Finalize Draft MR #{req.id}"
+        # Fetch materials needed for the finalize form
+        context["materials"] = db.query(models.Material).order_by(models.Material.name).all()
+    else:
+        template_name = "procurement_update.html"
+        context["page_title"] = f"Process Requisition #{req.id}"
+        context["suppliers"] = db.query(models.Supplier).order_by(models.Supplier.name).all()
+        context["approval_statuses"] = app_config.get('approval_statuses', [])
+        context["requisition_statuses"] = app_config.get('requisition_statuses', [])
+
+    context["req"] = req
+    return templates.TemplateResponse(template_name, context)
 
 
 # --- API POST Routes (Unchanged - Already Correct) ---
@@ -167,12 +201,13 @@ async def create_material_requisition(
     project_id: int = Form(...),
     requested_by_id: int = Form(...),
     material_type: str = Form(...),
-    #material_with_quantity: str = Form(...),
     urgency: str = Form(...),
     required_delivery_date: date = Form(...),
     job_card_ids: List[int] = Form(None),
-    material_ids: List[int] = Form(...),
-    quantities: List[float] = Form(...)
+    material_ids: List[str] = Form(...),
+    quantities: List[str] = Form(...),
+    special_notes: Optional[str] = Form(None),
+    submit_action: str = Form(...) 
 ):
     try:
          # --- NEW: MR Number Generation Logic ---
@@ -191,7 +226,16 @@ async def create_material_requisition(
         if "Project Manager" in user_roles:
             pm_status = "Approved"
         # ------------------------------------
-        # ------------------------------------
+        # --- NEW: Logic to handle Draft vs. Final Submission ---
+        is_draft = submit_action == "save_draft"
+
+        # Line items are only required if it's NOT a draft
+        if not is_draft and not material_ids:
+            raise HTTPException(status_code=400, detail="At least one material item is required for final submission.")
+        if not is_draft and len(material_ids) != len(quantities):
+            raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
+        # ----------------------------------------------------
+
         requisition = models.MaterialRequisition(
             mr_number=new_mr_number,
             request_date=request_date,
@@ -201,8 +245,26 @@ async def create_material_requisition(
             #material_with_quantity=material_with_quantity,
             urgency=urgency,
             required_delivery_date=required_delivery_date,
-            pm_approval=pm_status
+            pm_approval=pm_status,
+            special_notes=special_notes,
+            created_by_id=current_user.id,
+            status="Draft" if is_draft else "Pending",
         )
+
+        if not is_draft:
+            # If it's a final submission, items are required.
+            if not material_ids or not material_ids[0]:
+                raise HTTPException(status_code=400, detail="At least one material item is required for final submission.")
+            
+            try:
+                # Convert string lists to number lists
+                final_material_ids = [int(mid) for mid in material_ids if mid]
+                final_quantities = [float(qty) for qty in quantities if qty]
+                if len(final_material_ids) != len(final_quantities):
+                    raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid number format for materials or quantities.")
+               
          # --- NEW: Link the selected Job Cards ---
         if job_card_ids:
             job_cards_to_link = db.query(models.JobCard).filter(models.JobCard.id.in_(job_card_ids)).all()
@@ -212,14 +274,15 @@ async def create_material_requisition(
         if len(material_ids) != len(quantities):
             raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
 
-        for mat_id, qty in zip(material_ids, quantities):
-            if not mat_id or not qty:
-                continue
-            item = models.RequisitionItem(
-                material_id=mat_id,
-                quantity=qty
-            )
-            requisition.items.append(item)
+        if material_ids and quantities:
+            for mat_id, qty in zip(material_ids, quantities):
+                if not mat_id or not qty:
+                    continue
+                item = models.RequisitionItem(
+                    material_id=mat_id,
+                    quantity=qty
+                )
+                requisition.items.append(item)
         # -----------------------------------------------------------
         db.add(requisition)
         db.commit()
@@ -263,3 +326,54 @@ async def update_material_requisition(
     except Exception as e:
         db.rollback()
         return JSONResponse(status_code=500, content={"message": f"An unexpected error occurred: {e}"})
+
+
+@router.post("/{req_id}/finalize", response_class=JSONResponse, tags=["Procurement"])
+async def finalize_material_requisition(
+    req_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user),
+    material_ids: List[int] = Form(...),
+    quantities: List[float] = Form(...)
+):
+    # Security check can be added here to ensure only Admins can do this
+
+    req = db.query(models.MaterialRequisition).filter(models.MaterialRequisition.id == req_id).first()
+    if not req or req.status != "Draft":
+        raise HTTPException(status_code=404, detail="Draft requisition not found.")
+
+    # Clear existing items to prevent duplicates
+    req.items.clear()
+
+    # Add the new, finalized items
+    for mat_id, qty in zip(material_ids, quantities):
+        if mat_id and qty:
+            item = models.RequisitionItem(material_id=mat_id, quantity=qty)
+            req.items.append(item)
+
+    req.status = "Pending" # Change status to enter the approval flow
+    db.commit()
+    return JSONResponse(status_code=200, content={"message": "Requisition has been finalized and submitted for approval."})
+
+
+@router.get("/material-requisitions-drafts", response_class=HTMLResponse, tags=["Procurement"])
+async def list_draft_requisitions(
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+
+    # Query for requisitions with the "Draft" status
+    draft_requisitions = db.query(models.MaterialRequisition).filter(
+        models.MaterialRequisition.status == 'Draft'
+    ).options(
+        joinedload(models.MaterialRequisition.project),
+        joinedload(models.MaterialRequisition.requested_by)
+    ).order_by(models.MaterialRequisition.request_date.desc()).all()
+
+    context.update({
+        "page_title": "Draft Material Requisitions",
+        "requisitions": draft_requisitions
+    })
+    return templates.TemplateResponse("procurement_list_drafts.html", context)

@@ -126,6 +126,13 @@
                         {% if (is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles) and 'Project Manager' not in user_roles %}
                            <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Pending MR</a></li>
                         {% endif %}
+                        {% if is_privileged or 'Procurement' in user_roles %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="/procurement/material-requisitions-drafts">
+                                    <i class="bi bi-pencil-fill me-2"></i> Draft Requisitions
+                                </a>
+                            </li>
+                        {% endif %}
                        
                         {% if is_privileged or 'QS' in user_roles %}
                         <li class="nav-item">
@@ -283,6 +290,14 @@
                      {% if (is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles) and 'Project Manager' not in user_roles %}
                         <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Pending MR</a></li>
                      {% endif %}
+
+                     {% if is_privileged or 'Procurement' in user_roles %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="/procurement/material-requisitions-drafts">
+                                    <i class="bi bi-pencil-fill me-2"></i> Draft Requisitions
+                                </a>
+                            </li>
+                    {% endif %}
                      
                      {% if is_privileged or 'QS' in user_roles %}
                      <li class="nav-item">

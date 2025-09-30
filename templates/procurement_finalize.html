@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    .choices__inner { background-color: var(--bs-body-bg); border-radius: var(--bs-border-radius); border: var(--bs-border-width) solid var(--bs-border-color); }
+</style>
+{% endblock %}
+
+{% block content %}
+<form id="finalize-mr-form" novalidate>
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-secondary text-white"><h5 class="mb-0">Draft Details (Req #{{ req.id }})</h5></div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">Request Date:</dt><dd class="col-sm-7">{{ req.request_date.strftime('%d-%b-%Y') }}</dd>
+                        <dt class="col-sm-5">Project:</dt><dd class="col-sm-7">{{ req.project.name }}</dd>
+                        <dt class="col-sm-5">Requested By:</dt><dd class="col-sm-7">{{ req.requested_by.name }}</dd>
+                        <hr class="my-3">
+                        <dt class="col-12">Special Notes from Site Officer:</dt>
+                        <dd class="col-12"><pre class="bg-light p-2 rounded">{{ req.special_notes or 'No special notes provided.' }}</pre></dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-primary text-white"><h5 class="mb-0">Finalize Requisition</h5></div>
+                <div class="card-body">
+                    <label class="form-label fw-bold">Add Materials & Quantities <span class="text-danger">*</span></label>
+                    <div id="line-items-container"></div>
+                    <button type="button" class="btn btn-secondary btn-sm mt-2" id="add-item-btn"><i class="bi bi-plus-circle me-1"></i> Add Item</button>
+                </div>
+                <div class="card-footer text-end">
+                    <a href="/procurement/material-requisitions-drafts" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-success" id="submit-btn">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                        Finalize & Submit for Approval
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const lineItemsContainer = document.getElementById('line-items-container');
+    const addItemBtn = document.getElementById('add-item-btn');
+
+    function createItemRow() {
+        const itemRow = document.createElement('div');
+        itemRow.className = 'row g-2 mb-2 align-items-center item-row';
+        itemRow.innerHTML = `
+            <div class="col-sm-7"><select name="material_ids" required><option value="">Select a material...</option>{% for material in materials %}<option value="{{ material.id }}">{{ material.name }} ({{ material.unit }})</option>{% endfor %}</select></div>
+            <div class="col-sm-4"><input type="number" step="0.01" class="form-control" name="quantities" placeholder="Quantity" required></div>
+            <div class="col-sm-1 text-end"><button type="button" class="btn btn-danger btn-sm remove-item-btn" title="Remove Item">&times;</button></div>
+        `;
+        lineItemsContainer.appendChild(itemRow);
+        new Choices(itemRow.querySelector('select'), { searchEnabled: true, removeItemButton: false });
+    }
+
+    addItemBtn.addEventListener('click', createItemRow);
+    lineItemsContainer.addEventListener('click', e => { if (e.target.matches('.remove-item-btn')) e.target.closest('.item-row').remove(); });
+    createItemRow();
+
+    const form = document.getElementById('finalize-mr-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+
+        const spinner = submitBtn.querySelector('.spinner-border');
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        try {
+            const response = await fetchWithAuth(`/procurement/{{ req.id }}/finalize`, {
+                method: 'POST',
+                body: new FormData(form)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Finalization failed.');
+
+            document.getElementById('toast-title').innerText = 'Success!';
+            document.getElementById('toast-body').innerText = result.message;
+            toastElement.className = 'toast bg-success text-white';
+            toast.show();
+            setTimeout(() => { window.location.href = '/procurement/material-requisitions-drafts'; }, 1500);
+
+        } catch (error) {
+            // ... (error handling)
+        } finally {
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

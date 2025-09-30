@@ -65,6 +65,10 @@
                     </select>
                 </div>
                 <div class="col-12">
+                    <label class="form-label">Special Notes (Optional)</label>
+                    <textarea class="form-control" name="special_notes" rows="3" placeholder="Write materials here if you can not find in below list and save as Draft"></textarea>
+                </div>
+                <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <label class="form-label mb-0">Materials & Quantities <span class="text-danger">*</span></label>
                     <button type="button" class="btn btn-success btn-sm" id="add-item-btn">
@@ -77,6 +81,7 @@
             </div>
 
             <div class="mt-4 text-end">
+                <button type="button" class="btn btn-secondary btn-lg" id="draft-btn">Save as Draft</button>
                 <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                     Submit Request
@@ -104,6 +109,7 @@
         const submitBtn = document.getElementById('submit-btn');
         const spinner = submitBtn.querySelector('.spinner-border');
         const toastElement = document.getElementById('responseToast');
+        const draftBtn = document.getElementById('draft-btn');
         const toast = new bootstrap.Toast(toastElement);
 
         document.querySelector('input[name="request_date"]').valueAsDate = new Date();
@@ -186,54 +192,114 @@
         createItemRow();
 
         // --- 4. FORM SUBMISSION LOGIC ---
-        form.addEventListener('submit', async function(e) {
+        // --- UPDATE EVENT LISTENERS ---
+        form.addEventListener('submit', function(e) {
             e.preventDefault();
-            if (!form.checkValidity()) {
-                form.classList.add('was-validated');
-                return;
-            }
-            spinner.style.display = 'inline-block';
-            submitBtn.disabled = true;
+            handleFormSubmit('submit_request');
+        });
 
-            const toastBody = document.getElementById('toast-body');
-            const toastTitle = document.getElementById('toast-title');
-            toastElement.classList.remove('bg-danger', 'bg-success');
+        draftBtn.addEventListener('click', function() {
+            handleFormSubmit('save_draft');
+        });
+        
+    async function handleFormSubmit(action) {
+        // For final submission, validate the form. For drafts, don't.
+        if (action === 'submit_request' && !form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+        draftBtn.disabled = true;
+
+        const formData = new FormData(form);
+        formData.append('submit_action', action); // Add which button was clicked
+
+            
+
+        const toastBody = document.getElementById('toast-body');
+        const toastTitle = document.getElementById('toast-title');
+        toastElement.classList.remove('bg-danger', 'bg-success');
+
+        try {
+            const response = await fetchWithAuth('/procurement/material-requisitions/', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (!response.ok) { throw new Error(result.detail || 'An error occurred.'); }
+
+            // ... (your existing success toast logic)
+            toastElement.classList.add('bg-success', 'text-white');
+            toastTitle.innerText = 'Success!';
+            toastBody.innerText = result.message;
+
+            // Redirect to the appropriate list page
+            setTimeout(() => {
+                window.location.href = action === 'save_draft' ? '/procurement/material-requisitions-drafts' : '/procurement/material-requisitions';
+            }, 1500);
+
+        } catch (error) {
+            // ... (your existing error toast logic)
+            toastElement.classList.add('bg-danger', 'text-white');
+            toastTitle.innerText = 'Error!';
+            toastBody.innerText = error.message;
+        } finally {
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+            draftBtn.disabled = false;
+        }
+    }
+
+        // form.addEventListener('submit', async function(e) {
+        //     e.preventDefault();
+        //     if (!form.checkValidity()) {
+        //         form.classList.add('was-validated');
+        //         return;
+        //     }
+        //     spinner.style.display = 'inline-block';
+        //     submitBtn.disabled = true;
+
+        //     const toastBody = document.getElementById('toast-body');
+        //     const toastTitle = document.getElementById('toast-title');
+        //     toastElement.classList.remove('bg-danger', 'bg-success');
             
            
 
-            try {
-                const response = await fetchWithAuth('/procurement/material-requisitions/', {
-                    method: 'POST',
+        //     try {
+        //         const response = await fetchWithAuth('/procurement/material-requisitions/', {
+        //             method: 'POST',
                    
-                    body: new FormData(form)
-                });
-                const result = await response.json();
-                if (!response.ok) { throw new Error(result.detail || result.message || 'An error occurred.'); }
+        //             body: new FormData(form)
+        //         });
+        //         const result = await response.json();
+        //         if (!response.ok) { throw new Error(result.detail || result.message || 'An error occurred.'); }
 
-                toastElement.classList.add('bg-success', 'text-white');
-                toastTitle.innerText = 'Success!';
-                toastBody.innerText = result.message;
+        //         toastElement.classList.add('bg-success', 'text-white');
+        //         toastTitle.innerText = 'Success!';
+        //         toastBody.innerText = result.message;
                 
-                // Full form reset
-                form.reset();
-                form.classList.remove('was-validated');
-                document.querySelector('input[name="request_date"]').valueAsDate = new Date();
-                Object.values(choicesInstances).forEach(instance => instance.clearStore());
-                if (jobCardChoices) jobCardChoices.clearStore();
-                jobCardsWrapper.style.display = 'none';
-                lineItemsContainer.innerHTML = '';
-                createItemRow(); // Add back one empty row
+        //         // Full form reset
+        //         form.reset();
+        //         form.classList.remove('was-validated');
+        //         document.querySelector('input[name="request_date"]').valueAsDate = new Date();
+        //         Object.values(choicesInstances).forEach(instance => instance.clearStore());
+        //         if (jobCardChoices) jobCardChoices.clearStore();
+        //         jobCardsWrapper.style.display = 'none';
+        //         lineItemsContainer.innerHTML = '';
+        //         createItemRow(); // Add back one empty row
 
-            } catch (error) {
-                toastElement.classList.add('bg-danger', 'text-white');
-                toastTitle.innerText = 'Error!';
-                toastBody.innerText = error.message;
-            } finally {
-                toast.show();
-                spinner.style.display = 'none';
-                submitBtn.disabled = false;
-            }
-        });
+        //     } catch (error) {
+        //         toastElement.classList.add('bg-danger', 'text-white');
+        //         toastTitle.innerText = 'Error!';
+        //         toastBody.innerText = error.message;
+        //     } finally {
+        //         toast.show();
+        //         spinner.style.display = 'none';
+        //         submitBtn.disabled = false;
+        //     }
+        // });
     });
 </script>
 {% endblock %}
