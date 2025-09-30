@@ -420,6 +420,7 @@ async def create_lpo_page(context: dict = Depends(deps.get_template_context), db
     context["suppliers"] = db.query(models.Supplier).order_by(models.Supplier.name).all()
     context["projects"] = db.query(models.Project).order_by(models.Project.name).all()
     context["materials"] = db.query(models.Material).order_by(models.Material.name).all()
+    context["payment_modes"] = app_config.get('payment_modes', [])
     return templates.TemplateResponse("lpo/create_lpo.html", context)
 
 @router.get("/lpos/{lpo_id}", response_class=HTMLResponse, tags=["Pages"])

@@ -45,6 +45,7 @@ def create_lpo(
     project_id: int = Form(...),
     message_to_supplier: Optional[str] = Form(None),
     memo: Optional[str] = Form(None),
+    payment_mode: Optional[str] = Form(None),
     items_json: str = Form(...),
     subtotal: float = Form(...),
     tax_total: float = Form(...),
@@ -56,6 +57,7 @@ def create_lpo(
 
         new_lpo = models.LPO(
             lpo_number=get_next_lpo_number(db),
+            payment_mode=payment_mode,
             supplier_id=supplier_id, lpo_date=lpo_date, project_id=project_id,
             message_to_supplier=message_to_supplier, memo=memo,
             created_by_id=current_user.id, status="Pending",

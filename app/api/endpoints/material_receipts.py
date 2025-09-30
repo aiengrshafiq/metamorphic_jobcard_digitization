@@ -81,7 +81,8 @@ async def create_material_receipt(
     requisition_id: int = Form(...),
     delivery_status: str = Form(...),
     notes: Optional[str] = Form(None),
-    image_ids: Optional[str] = Form(None)
+    image_ids: Optional[str] = Form(None),
+    acknowledged: bool = Form(...)
 ):
     """Creates the final Material Receipt record and links the images."""
     # 1. Create the receipt
@@ -89,6 +90,7 @@ async def create_material_receipt(
         requisition_id=requisition_id,
         delivery_status=delivery_status,
         notes=notes,
+        acknowledged_by_receiver=acknowledged,
         received_by_id=current_user.id
     )
     db.add(new_receipt)

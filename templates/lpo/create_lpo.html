@@ -30,10 +30,17 @@
                     </select>
                 </div>
                 <div class="col-lg-3">
-                    <label for="project_id" class="form-label">Main Project <span class="text-danger">*</span></label>
+                    <label for="project_id" class="form-label">Project <span class="text-danger">*</span></label>
                     <select id="project_id" name="project_id" required>
                          <option value="">Select a project...</option>
                          {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                 <div class="col-lg-3">
+                    <label for="payment_mode" class="form-label">Payment Mode</label>
+                    <select id="payment_mode" name="payment_mode">
+                        <option value="">Select mode...</option>
+                        {% for mode in payment_modes %}<option value="{{ mode }}">{{ mode }}</option>{% endfor %}
                     </select>
                 </div>
                  <div class="col-lg-3">
@@ -102,6 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const choicesConfig = { searchEnabled: true, removeItemButton: false, itemSelectText: '' };
     new Choices('#supplier_id', choicesConfig);
     new Choices('#project_id', choicesConfig);
+    new Choices('#payment_mode', choicesConfig);
     document.getElementById('lpo_date').valueAsDate = new Date();
 
     const lineItemsBody = document.getElementById('line-items-body');

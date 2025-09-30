@@ -465,6 +465,7 @@ class MaterialReceipt(Base):
 
     requisition_id = Column(Integer, ForeignKey('material_requisitions.id'), nullable=False)
     received_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    acknowledged_by_receiver = Column(Boolean, nullable=False, server_default='false')
 
     requisition = relationship("MaterialRequisition", back_populates="receipts")
     received_by = relationship("User", back_populates="material_receipts")
@@ -548,6 +549,8 @@ class LPO(Base):
     message_to_supplier = Column(Text, nullable=True)
     memo = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now())
+
+    payment_mode = Column(String, nullable=True)
 
     supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False)
     project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)

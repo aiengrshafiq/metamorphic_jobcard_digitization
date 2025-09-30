@@ -86,3 +86,8 @@ task_statuses:
   - Pending
   - Processing
   - Done
+
+payment_modes:
+  - Cash
+  - Credit
+  - PDC
