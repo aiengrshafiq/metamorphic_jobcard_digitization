@@ -83,8 +83,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Populate side info
             document.getElementById('info-report-id').textContent = data.id;
-            document.getElementById('info-job-card').textContent = data.job_card.job_card_no;
-            document.getElementById('info-project').textContent = data.job_card.project.name;
+            if (data.job_cards && data.job_cards.length > 0) {
+                const jcHtml = data.job_cards.map(jc => `<span class="badge bg-secondary">${jc.job_card_no}</span>`).join(' ');
+                document.getElementById('info-job-card').innerHTML = jcHtml;
+                // Display the first project name for simplicity
+                document.getElementById('info-project').textContent = data.job_cards[0].project.name;
+            } else {
+                document.getElementById('info-job-card').textContent = 'N/A';
+                document.getElementById('info-project').textContent = 'N/A';
+            }
             document.getElementById('info-date').textContent = new Date(data.date).toLocaleDateString();
             document.getElementById('info-site-officer').textContent = data.site_officer_user ? data.site_officer_user.name : 'N/A';
             document.getElementById('info-duty-officer').textContent = data.duty_officer_user ? data.duty_officer_user.name : 'N/A';

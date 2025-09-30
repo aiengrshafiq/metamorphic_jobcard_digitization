@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 //headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('Failed to load data.');
+
+           
             
             const reports = await response.json();
             
@@ -48,12 +50,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 loadingState.style.display = 'none';
                 tableBody.innerHTML = '';
                 reports.forEach(report => {
-                    const row = document.createElement('tr');
+                     const row = document.createElement('tr');
                     const reportDate = new Date(report.date).toLocaleDateString();
+
+                    // --- NEW LOGIC TO HANDLE MULTIPLE JOB CARDS ---
+                    let jcHtml = 'No Job Cards Linked';
+                    if (report.job_cards && report.job_cards.length > 0) {
+                        jcHtml = report.job_cards.map(jc => 
+                            `<span class="badge bg-secondary me-1">${jc.job_card_no}</span>`
+                        ).join(' ');
+                    }
+                    // We'll just display the first project name for simplicity in the list view
+                    const projectName = report.job_cards.length > 0 ? report.job_cards[0].project.name : 'N/A';
+                    // ----------------------------------------------
                     row.innerHTML = `
                         <td>${report.id}</td>
-                        <td>${report.job_card.job_card_no}</td>
-                        <td>${report.job_card.project.name}</td>
+                        <td>${jcHtml}</td>
+                        <td>${projectName}</td>
                         <td>${reportDate}</td>
                         <td>${report.created_by.name}</td>
                         <td class="text-end">
