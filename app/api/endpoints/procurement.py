@@ -64,7 +64,7 @@ async def list_material_requisitions(
         query = query.filter(models.MaterialRequisition.requested_by_id == current_user_id)
     
     # Execute the final query
-    requisitions = query.order_by(models.MaterialRequisition.request_date).all()
+    requisitions = query.order_by(models.MaterialRequisition.request_date.desc()).all()
     # ------------------------------------
     
     context.update({
@@ -119,7 +119,7 @@ async def list_material_requisitions_delivered(
     
     
     # Execute the final query
-    requisitions = query.order_by(models.MaterialRequisition.request_date).all()
+    requisitions = query.order_by(models.MaterialRequisition.request_date.desc()).all()
     # ------------------------------------
     
     context.update({
@@ -184,6 +184,13 @@ async def create_material_requisition(
         
         # Format the new MR number
         new_mr_number = f"MR-{next_mr_num:06d}"
+
+        # --- NEW: Auto-approval logic for PM ---
+        user_roles = {role.name for role in current_user.roles}
+        pm_status = "Pending" # Default status
+        if "Project Manager" in user_roles:
+            pm_status = "Approved"
+        # ------------------------------------
         # ------------------------------------
         requisition = models.MaterialRequisition(
             mr_number=new_mr_number,
@@ -193,7 +200,8 @@ async def create_material_requisition(
             material_type=material_type,
             #material_with_quantity=material_with_quantity,
             urgency=urgency,
-            required_delivery_date=required_delivery_date
+            required_delivery_date=required_delivery_date,
+            pm_approval=pm_status
         )
          # --- NEW: Link the selected Job Cards ---
         if job_card_ids:

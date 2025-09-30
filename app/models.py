@@ -342,6 +342,8 @@ class MaterialRequisition(Base):
     mr_approval = Column(String, nullable=True, default='Pending')
     payment_status = Column(String, nullable=True)
     remarks = Column(Text, nullable=True)
+    technical_spec = Column(Text, nullable=True)
+    boq_mapping = Column(Text, nullable=True)
     items = relationship("RequisitionItem", back_populates="requisition", cascade="all, delete-orphan")
     project = relationship("Project", back_populates="material_requisitions")
     requested_by = relationship("User", back_populates="material_requisitions")

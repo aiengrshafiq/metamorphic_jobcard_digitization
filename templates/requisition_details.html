@@ -10,6 +10,11 @@
     </div>
 
     <div id="content-container" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+        <h2 class="h2 mb-0" id="mr-number-header"></h2>
+        <div id="page-actions-container" class="btn-toolbar mb-2 mb-md-0">
+            </div>
+    </div>
         <div class="row g-4">
             <div class="col-lg-8">
                 <div class="card shadow-sm">
@@ -54,6 +59,26 @@
                         </dl>
                     </div>
                 </div>
+                 <div class="card shadow-sm mt-4">
+                <div class="card-header"><h5 class="mb-0">Additional Details</h5></div>
+                <div class="card-body">
+                    {% if is_privileged or 'Procurement' in user_roles or 'Project Manager' in user_roles or 'QS' in user_roles %}
+                    <div class="mb-3">
+                        <label for="technical-spec" class="form-label">Technical Specification (PM)</label>
+                        <textarea id="technical-spec" class="form-control" rows="4"></textarea>
+                        <button class="btn btn-sm btn-outline-primary mt-2 save-mr-details-btn" data-field="technical_spec">Save Spec</button>
+                    </div>
+                    {% endif %}
+
+                    {% if is_privileged or 'Procurement' in user_roles or 'QS' in user_roles or 'Project Manager' in user_roles %}
+                    <div class="mb-3">
+                        <label for="boq-mapping" class="form-label">BOQ Mapping (QS)</label>
+                        <textarea id="boq-mapping" class="form-control" rows="4"></textarea>
+                        <button class="btn btn-sm btn-outline-primary mt-2 save-mr-details-btn" data-field="boq_mapping">Save BOQ</button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
                 <div class="card shadow-sm mt-4">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="bi bi-chat-dots-fill me-2"></i>Comments</h5>
@@ -208,14 +233,29 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
      // --- NEW FUNCTION TO RENDER THE MATERIALS TABLE ---
-    function renderMaterials(items) {
+    function renderMaterials(items, historyData) {
         materialsTableBody.innerHTML = '';
         if (items && items.length > 0) {
             items.forEach(item => {
                 const row = document.createElement('tr');
+                const materialId = item.material.id;
+                let historyHtml = '';
+
+                // Check if there is history for this material
+                if (historyData && historyData[materialId]) {
+                    const history = historyData[materialId];
+                    const historyDate = new Date(history.request_date).toLocaleDateString();
+                    historyHtml = `
+                        <br>
+                        <small class="text-muted fst-italic">
+                            Last ordered: ${parseFloat(history.quantity).toFixed(2)} ${history.unit} for ${history.project_name} on ${historyDate}
+                        </small>
+                    `;
+                }
+
                 row.innerHTML = `
-                    <td>${item.material.name}</td>
-                    <td class="text-end">${item.quantity}</td>
+                    <td>${item.material.name}${historyHtml}</td>
+                    <td class="text-end">${parseFloat(item.quantity).toFixed(2)}</td>
                     <td>${item.material.unit}</td>
                 `;
                 materialsTableBody.appendChild(row);
@@ -236,6 +276,32 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const data = await response.json();
             
+
+            // --- NEW: Step 2: Fetch order history for the items in this requisition ---
+            let historyData = {};
+            if (data.items && data.items.length > 0) {
+                const materialIds = data.items.map(item => item.material.id);
+                const historyResponse = await fetchWithAuth('/api/materials/last-order-info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ material_ids: materialIds, current_req_id: reqId })
+                });
+                if (historyResponse.ok) {
+                    historyData = await historyResponse.json();
+                }
+            }
+            // -------------------------------------------------------------------------
+
+            const techSpecEl = document.getElementById('technical-spec');
+            if (techSpecEl) {
+                techSpecEl.value = data.technical_spec || '';
+            }
+            const boqMappingEl = document.getElementById('boq-mapping');
+            if (boqMappingEl) {
+                boqMappingEl.value = data.boq_mapping || '';
+            }
+
+
             // Populate main fields
             document.getElementById('mr-number').textContent = data.mr_number || 'N/A';
             document.getElementById('status').innerHTML = `<span class="badge bg-primary">${data.status}</span>`;
@@ -259,7 +325,20 @@ document.addEventListener('DOMContentLoaded', function () {
             // Render dynamic sections
             renderComments(data.comments);
             renderReceipts(data.receipts); // <-- CALL THE NEW FUNCTION
-            renderMaterials(data.items);
+            renderMaterials(data.items, historyData);
+
+             // --- NEW: LOGIC TO SHOW "CREATE LPO" BUTTON ---
+            const actionsContainer = document.getElementById('page-actions-container');
+            actionsContainer.innerHTML = ''; // Clear previous buttons
+
+            if (data.mr_approval === 'Approved' && data.pm_approval === 'Approved' && data.qs_approval === 'Approved') {
+                const createLpoBtn = document.createElement('a');
+                createLpoBtn.href = '/lpos/new';
+                createLpoBtn.className = 'btn btn-primary';
+                createLpoBtn.innerHTML = '<i class="bi bi-plus-circle me-1"></i> Create LPO';
+                actionsContainer.appendChild(createLpoBtn);
+            }
+            // --- END OF NEW LOGIC ---
 
             loadingState.style.display = 'none';
             contentContainer.style.display = 'block';
@@ -299,6 +378,44 @@ document.addEventListener('DOMContentLoaded', function () {
         } finally {
             submitCommentBtn.disabled = false;
             spinner.style.display = 'none';
+        }
+    });
+
+    contentContainer.addEventListener('click', async function(e) {
+        if (e.target.classList.contains('save-mr-details-btn')) {
+            const button = e.target;
+            const fieldName = button.dataset.field;
+            const textarea = document.getElementById(fieldName.replace('_', '-'));
+            
+            const payload = {};
+            payload[fieldName] = textarea.value;
+
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            
+            try {
+                const response = await fetchWithAuth(`/api/requisition-details/${reqId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Failed to save.');
+
+                document.getElementById('toast-title').innerText = 'Success!';
+                document.getElementById('toast-body').innerText = result.message;
+                toastElement.className = 'toast bg-success text-white';
+                toast.show();
+
+            } catch (error) {
+                 document.getElementById('toast-title').innerText = 'Error!';
+                document.getElementById('toast-body').innerText = error.message;
+                toastElement.className = 'toast bg-danger text-white';
+                toast.show();
+            } finally {
+                button.disabled = false;
+                button.innerHTML = `Save ${fieldName === 'technical_spec' ? 'Spec' : 'BOQ'}`;
+            }
         }
     });
 

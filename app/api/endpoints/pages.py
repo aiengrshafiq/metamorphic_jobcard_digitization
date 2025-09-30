@@ -252,11 +252,13 @@ async def read_material_requisition_form(
         return context
         
     all_materials = db.query(models.Material).order_by(models.Material.name).all()
+    all_users = db.query(models.User).filter(models.User.is_active == True).order_by(models.User.name).all()
+    #all_users = db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.SUPERVISOR).all()
 
     context.update({
         "page_title": "Material Requisition Form",
         "projects": db.query(models.Project).order_by(models.Project.name).all(),
-        "supervisors": db.query(models.User).join(models.User.roles).filter(models.Role.name == models.UserRole.SUPERVISOR).all(),
+        "supervisors": all_users,
         "material_types": app_config.get('material_types', []),
         "urgency_levels": app_config.get('urgency_levels', []),
         "materials": all_materials,
