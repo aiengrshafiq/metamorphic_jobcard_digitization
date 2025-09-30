@@ -27,10 +27,11 @@
 
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingOne"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">Section 1: General Information</button></h2>
-                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#formCAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">Date <span class="text-danger">*</span></label><input type="date" class="form-control" name="date" required></div><div class="col-md-6"><label class="form-label">Site Location <span class="text-danger">*</span></label><select class="form-select" name="site_location" required><option value="">Select...</option>{% for loc in site_locations %}<option value="{{ loc }}">{{ loc }}</option>{% endfor %}</select></div>
+                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#formCAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">Date <span class="text-danger">*</span></label><input type="date" class="form-control" name="date" required></div>
+                    <div class="col-md-6"><label class="form-label">Site Location </label><select class="form-select" name="site_location" ><option value="">Select...</option>{% for loc in site_locations %}<option value="{{ loc }}">{{ loc }}</option>{% endfor %}</select></div>
                     <div class="col-md-6">
-        <label class="form-label">Name of Site Officer <span class="text-danger">*</span></label>
-        <select class="form-select" name="site_officer_user_id" required>
+        <label class="form-label">Name of Site Officer </label>
+        <select class="form-select" name="site_officer_user_id" >
             <option value="">Select...</option>
             {% for so in supervisors %}
             <option value="{{ so.id }}">{{ so.name }}</option>
@@ -39,8 +40,8 @@
     </div>
 
     <div class="col-md-6">
-        <label class="form-label">Name of Duty Officer/Foreman <span class="text-danger">*</span></label>
-        <select class="form-select" name="duty_officer_user_id" required>
+        <label class="form-label">Name of Duty Officer/Foreman </label>
+        <select class="form-select" name="duty_officer_user_id" >
             <option value="">Select...</option>
             {% for f in foremen %}
             <option value="{{ f.id }}">{{ f.name }}</option>
@@ -98,7 +99,9 @@
 
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingThree"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">Section 3: Job Card Mapping</button></h2>
-                    <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#formCAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-12"><label class="form-label">Select Job Card <span class="text-danger">*</span></label><select class="form-select" name="job_card_id" required><option value="">Select...</option>{% for jc in job_cards %}<option value="{{ jc.id }}">{{ jc.job_card_no }} ({{ jc.project.name }})</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">Have you ensured all duty officers completed Form B?</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="form_b_completed_check" value="true"></div></div><div class="col-md-6"><label class="form-label">Are progress pictures submitted by WhatsApp?</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="progress_pictures_check" value="true"></div></div><div class="col-12"><label class="form-label">Any dependency mark (with Job Card number)</label><input type="text" class="form-control" name="dependency_notes"></div></div></div></div>
+                    <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#formCAccordion"><div class="accordion-body"><div class="row g-3">
+                        <div class="col-12"><label class="form-label">Select Job Card(s) <span class="text-danger">*</span></label><select class="form-select" name="job_card_ids" required multiple><option value="">Select...</option>{% for jc in job_cards %}<option value="{{ jc.id }}">{{ jc.job_card_no }} ({{ jc.project.name }})</option>{% endfor %}</select></div>
+                        <div class="col-md-6"><label class="form-label">Have you ensured all duty officers completed Form B?</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="form_b_completed_check" value="true"></div></div><div class="col-md-6"><label class="form-label">Are progress pictures submitted by WhatsApp?</label><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" name="progress_pictures_check" value="true"></div></div><div class="col-12"><label class="form-label">Any dependency mark (with Job Card number)</label><input type="text" class="form-control" name="dependency_notes"></div></div></div></div>
                 </div>
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingFour"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">Section 4: Site Management</button></h2>
@@ -118,7 +121,9 @@
                 </div>
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingNine"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNine" aria-expanded="false" aria-controls="collapseNine">Section 9: Summary & Action Points</button></h2>
-                    <div id="collapseNine" class="accordion-collapse collapse" aria-labelledby="headingNine" data-bs-parent="#formCAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">Overall Site Health</label><select class="form-select" name="sa_overall_site_health"><option value="">Select...</option>{% for opt in overall_site_health_options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">Responsible Person</label><input type="text" class="form-control" name="sa_responsible_person"></div><div class="col-md-6"><label class="form-label">Immediate Actions Required</label><textarea class="form-control" name="sa_immediate_actions" rows="2"></textarea></div><div class="col-md-6"><label class="form-label">Critical Actions(Required)</label><textarea class="form-control" name="sa_critical_actions" rows="2"></textarea></div><div class="col-md-6"><label class="form-label">Deadline for Action(Required)<span class="text-danger">*</span></label><input type="date" class="form-control" name="sa_action_deadline"></div><div class="col-md-6"><label class="form-label">Approved drawings/NOCs for all projects?</label><select class="form-select" name="sa_approved_drawings_check"><option value="">Select...</option>{% for opt in yes_no_help_options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div><div class="col-12"><label class="form-label">If Help Required, Please mention</label><input type="text" class="form-control" name="sa_drawing_help_details"></div></div></div></div>
+                    <div id="collapseNine" class="accordion-collapse collapse" aria-labelledby="headingNine" data-bs-parent="#formCAccordion"><div class="accordion-body"><div class="row g-3"><div class="col-md-6"><label class="form-label">Overall Site Health</label><select class="form-select" name="sa_overall_site_health"><option value="">Select...</option>{% for opt in overall_site_health_options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">Responsible Person</label><input type="text" class="form-control" name="sa_responsible_person"></div><div class="col-md-6"><label class="form-label">Immediate Actions Required</label><textarea class="form-control" name="sa_immediate_actions" rows="2"></textarea></div><div class="col-md-6"><label class="form-label">Critical Actions(Required)</label><textarea class="form-control" name="sa_critical_actions" rows="2"></textarea></div><div class="col-md-6"><label class="form-label">Deadline for Action(Required)<span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="sa_action_deadline"  id="sa_action_deadline">
+                    </div><div class="col-md-6"><label class="form-label">Approved drawings/NOCs for all projects?</label><select class="form-select" name="sa_approved_drawings_check"><option value="">Select...</option>{% for opt in yes_no_help_options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}</select></div><div class="col-12"><label class="form-label">If Help Required, Please mention</label><input type="text" class="form-control" name="sa_drawing_help_details"></div></div></div></div>
                 </div>
 
             </div>
@@ -140,6 +145,8 @@
    
 
     document.addEventListener('DOMContentLoaded', function () {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById("sa_action_deadline").value = today;
         // --- UPDATED VIDEO RECORDER LOGIC with Camera Toggling ---
         const recordBtn = document.getElementById('record-btn');
         const stopBtn = document.getElementById('stop-btn');

@@ -44,6 +44,12 @@ mr_jc_association_table = Table(
     Column('job_card_id', Integer, ForeignKey('job_cards.id'), primary_key=True)
 )
 
+report_jc_association_table = Table(
+    'report_jc_association', Base.metadata,
+    Column('report_id', Integer, ForeignKey('site_officer_reports.id'), primary_key=True),
+    Column('job_card_id', Integer, ForeignKey('job_cards.id'), primary_key=True)
+)
+
 class Role(Base):
     __tablename__ = 'roles'
     id = Column(Integer, primary_key=True, index=True)
@@ -165,13 +171,13 @@ class SiteOfficerReport(Base):
     duty_officer_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     # --------------------------
     date = Column(Date, nullable=False)
-    site_location = Column(String, nullable=False)
-    site_officer_id = Column(Integer, ForeignKey('supervisors.id'), nullable=False)
-    duty_officer_id = Column(Integer, ForeignKey('foremen.id'), nullable=False)
+    site_location = Column(String, nullable=True)
+    site_officer_id = Column(Integer, ForeignKey('supervisors.id'), nullable=True)
+    duty_officer_id = Column(Integer, ForeignKey('foremen.id'), nullable=True)
     tbt_attendance = Column(Text)
     tbt_topic_discussed = Column(String)
     tbt_key_points = Column(Text)
-    job_card_id = Column(Integer, ForeignKey('job_cards.id'), nullable=False)
+    #job_card_id = Column(Integer, ForeignKey('job_cards.id'), nullable=False)
     form_b_completed_check = Column(Boolean, default=False)
     dependency_notes = Column(Text)
     progress_pictures_check = Column(Boolean, default=False)
@@ -211,9 +217,11 @@ class SiteOfficerReport(Base):
     
     site_officer = relationship("Supervisor", back_populates="site_officer_reports")
     duty_officer = relationship("Foreman", back_populates="site_officer_reports")
-    job_card = relationship("JobCard", back_populates="site_officer_reports")
+    #job_card = relationship("JobCard", back_populates="site_officer_reports")
     material_requisition_project = relationship("Project", back_populates="site_officer_reports")
     toolbox_videos = relationship("ToolboxVideo")
+
+    job_cards = relationship("JobCard", secondary=report_jc_association_table, back_populates="site_officer_reports")
 
     # ADDED: Relationship to images
     site_images = relationship("SiteImage")
@@ -293,7 +301,8 @@ class JobCard(Base):
     foreman = relationship("Foreman", back_populates="job_cards")
     tasks = relationship("Task", back_populates="job_card", cascade="all, delete-orphan")
     progress_reports = relationship("DutyOfficerProgress", back_populates="job_card", cascade="all, delete-orphan")
-    site_officer_reports = relationship("SiteOfficerReport", back_populates="job_card", cascade="all, delete-orphan")
+    #site_officer_reports = relationship("SiteOfficerReport", back_populates="job_card", cascade="all, delete-orphan")
+    site_officer_reports = relationship("SiteOfficerReport", secondary=report_jc_association_table, back_populates="job_cards")
      # --- ADD THESE RELATIONSHIPS ---
     created_by = relationship("User", foreign_keys=[created_by_id])
     site_engineer_user = relationship("User", foreign_keys=[site_engineer_user_id])

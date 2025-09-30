@@ -129,7 +129,7 @@ class DutyOfficerProgressAdmin(ModelView, model=DutyOfficerProgress):
 class SiteOfficerReportAdmin(ModelView, model=SiteOfficerReport):
     column_list = [SiteOfficerReport.id, SiteOfficerReport.date, "job_card"]
     column_formatters = {"job_card": lambda m, a: m.job_card.job_card_no if m.job_card else ""}
-    column_details_list = [c.name for c in SiteOfficerReport.__table__.c] + [SiteOfficerReport.site_officer, SiteOfficerReport.duty_officer, SiteOfficerReport.job_card, SiteOfficerReport.material_requisition_project, SiteOfficerReport.toolbox_videos, SiteOfficerReport.site_images]
+    column_details_list = [c.name for c in SiteOfficerReport.__table__.c] + [SiteOfficerReport.site_officer, SiteOfficerReport.duty_officer, SiteOfficerReport.material_requisition_project, SiteOfficerReport.toolbox_videos, SiteOfficerReport.site_images]
     name_plural = "Site Officer Reports (Form C)"
 
 class JobCardAdmin(ModelView, model=JobCard):

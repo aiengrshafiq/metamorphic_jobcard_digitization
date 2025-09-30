@@ -2,8 +2,9 @@
 from fastapi import APIRouter, Depends, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional,List
 from datetime import date
+from sqlalchemy.orm import Session, joinedload
 
 from app.api import deps
 from app import models
@@ -92,18 +93,19 @@ async def create_site_officer_report(
     toolbox_video_id: Optional[str] = Form(None),
     site_image_ids: Optional[str] = Form(None),
     date: date = Form(...),
-    site_location: str = Form(...),
+    site_location: Optional[str] = Form(None),
     # UPDATED: Accept the new user IDs from the form
-    site_officer_user_id: int = Form(...),
-    duty_officer_user_id: int = Form(...),
-    job_card_id: int = Form(...),
+    
+    site_officer_user_id: Optional[str] = Form(None),
+    duty_officer_user_id: Optional[str] = Form(None),
+    job_card_ids: List[int] = Form(...),
     # ... all other form fields remain the same ...
     tbt_attendance: Optional[str] = Form(None), tbt_topic_discussed: Optional[str] = Form(None),
     tbt_key_points: Optional[str] = Form(None), form_b_completed_check: bool = Form(False),
     dependency_notes: Optional[str] = Form(None), progress_pictures_check: bool = Form(False),
     sm_manpower_availability: Optional[str] = Form(None), sm_subcontractor_coordination: Optional[str] = Form(None),
     sm_coordination_issues: Optional[str] = Form(None), sm_other_notes: Optional[str] = Form(None),
-    material_requisition_project_id: Optional[int] = Form(None), commercial_delivery_check: bool = Form(False),
+    material_requisition_project_id: Optional[str] = Form(None), commercial_delivery_check: bool = Form(False),
     delivery_comments: Optional[str] = Form(None), qc_steps_explained: bool = Form(False),
     qc_steps_details: Optional[str] = Form(None), qc_drawing_mismatches: Optional[str] = Form(None),
     re_delays_flagged_reason: Optional[str] = Form(None), re_support_needed: Optional[str] = Form(None),
@@ -116,15 +118,21 @@ async def create_site_officer_report(
     sa_approved_drawings_check: Optional[str] = Form(None), sa_drawing_help_details: Optional[str] = Form(None)
 ):
     try:
+        # --- MANUALLY CONVERT STRINGS TO INTEGERS ---
+        # This gives us full control and prevents validation errors.
+        site_officer_id_int = int(site_officer_user_id) if site_officer_user_id else None
+        duty_officer_id_int = int(duty_officer_user_id) if duty_officer_user_id else None
+        mr_project_id_int = int(material_requisition_project_id) if material_requisition_project_id else None
+        # -------------------------------------------
         report = models.SiteOfficerReport(
             # --- V3 FIELD UPDATES ---
             created_by_id=current_user.id,
-            site_officer_user_id=site_officer_user_id,
-            duty_officer_user_id=duty_officer_user_id,
+            site_officer_user_id=site_officer_id_int,
+            duty_officer_user_id=duty_officer_id_int,
             site_officer_id=1, # Placeholder for old required field
             duty_officer_id=1,  # Placeholder for old required field
             # --------------------------
-            date=date, site_location=site_location, job_card_id=job_card_id,
+            date=date, site_location=site_location,
             # ... all other fields are the same ...
             tbt_attendance=tbt_attendance, tbt_topic_discussed=tbt_topic_discussed,
             tbt_key_points=tbt_key_points, form_b_completed_check=form_b_completed_check,
@@ -132,7 +140,7 @@ async def create_site_officer_report(
             sm_manpower_availability=sm_manpower_availability,
             sm_subcontractor_coordination=sm_subcontractor_coordination,
             sm_coordination_issues=sm_coordination_issues, sm_other_notes=sm_other_notes,
-            material_requisition_project_id=material_requisition_project_id,
+            material_requisition_project_id=mr_project_id_int,
             commercial_delivery_check=commercial_delivery_check, delivery_comments=delivery_comments,
             qc_steps_explained=qc_steps_explained, qc_steps_details=qc_steps_details,
             qc_drawing_mismatches=qc_drawing_mismatches, re_delays_flagged_reason=re_delays_flagged_reason,
@@ -145,6 +153,12 @@ async def create_site_officer_report(
             sa_action_deadline=sa_action_deadline, sa_critical_actions=sa_critical_actions,
             sa_approved_drawings_check=sa_approved_drawings_check, sa_drawing_help_details=sa_drawing_help_details
         )
+
+        # --- NEW LOGIC TO LINK MULTIPLE JOB CARDS ---
+        if job_card_ids:
+            job_cards_to_link = db.query(models.JobCard).filter(models.JobCard.id.in_(job_card_ids)).all()
+            report.job_cards.extend(job_cards_to_link)
+        # --------------------------------------------
         db.add(report)
         db.flush()
 
