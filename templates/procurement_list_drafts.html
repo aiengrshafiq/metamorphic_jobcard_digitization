@@ -27,9 +27,11 @@
                         <td>{{ req.requested_by.name }}</td>
                         <td>{{ req.special_notes|truncate(50) }}</td>
                         <td class="text-end">
+                            {% if is_privileged or 'Procurement' in user_roles or 'QS' in user_roles or 'Project Manager' in user_roles %}
                             <a href="/procurement/material-requisition/{{ req.id }}/process" class="btn btn-primary btn-sm">
                                 <i class="bi bi-pencil-square me-1"></i> Finalize
                             </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}
