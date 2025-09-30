@@ -86,7 +86,8 @@ async def list_material_requisitions_delivered(
     # --- V3 DATA FILTERING LOGIC ---
     # Start with a base query
     query = db.query(models.MaterialRequisition).filter(
-        models.MaterialRequisition.status == 'Delivered'
+        # models.MaterialRequisition.status == 'Delivered'
+         models.MaterialRequisition.mr_approval == 'Approved'
     ).options(
         joinedload(models.MaterialRequisition.project),
         joinedload(models.MaterialRequisition.requested_by)
