@@ -23,7 +23,7 @@
                 <div class="col-md-4"><label for="site_engineer_id" class="form-label">Site Engineer <span class="text-danger">*</span></label><select class="form-select" id="site_engineer_user_id" name="site_engineer_user_id" required>
                 <option value="">Select Site Engineer...</option>
                 {% for engineer in site_engineers %}
-                <option value="{{ engineer.id }}">{{ engineer.name }}</option>
+                <option value="{{ engineer.id }}" selected>{{ engineer.name }}</option>
                 {% endfor %}
             </select></div>
                 <div class="col-md-4"><label for="supervisor_id" class="form-label">Supervisor / Site Officer <span class="text-danger">*</span></label>

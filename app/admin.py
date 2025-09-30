@@ -33,7 +33,8 @@ class MyAuthBackend(AuthenticationBackend):
                     UserRole.SUPER_ADMIN, 
                     UserRole.ADMIN, 
                     UserRole.OPERATION_MANAGER, 
-                    UserRole.PROJECT_MANAGER
+                    UserRole.PROJECT_MANAGER,
+                    UserRole.PROCUREMENT
                 }
 
                 if user_roles.intersection(allowed_roles):

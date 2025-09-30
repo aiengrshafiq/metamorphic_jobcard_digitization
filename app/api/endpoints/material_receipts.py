@@ -38,6 +38,7 @@ def get_mr_details(req_id: int, db: Session = Depends(deps.get_db)):
         "material_type": req.material_type,
         "supplier": req.supplier.name if req.supplier else "N/A",
         "lpo_number": req.lpo_number or "N/A",
+        "technical_spec": req.technical_spec or "N/A",
         "items": [
             {
                 "name": item.material.name,
