@@ -19,9 +19,18 @@
                     <label class="form-label">Request Date <span class="text-danger">*</span></label>
                     <input type="date" class="form-control" name="request_date" required>
                 </div>
+                 <div class="col-md-6">
+                    <label class="form-label">Urgency <span class="text-danger">*</span></label>
+                    <select class="form-select" id="urgency-select" name="urgency" required>
+                        <option value="">Select urgency...</option>
+                        {% for level in urgency_levels %}
+                        <option value="{{ level }}">{{ level }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="col-md-6">
                     <label class="form-label">Required Delivery Date <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control" name="required_delivery_date" required>
+                    <input type="date" class="form-control" id="delivery-date-input" name="required_delivery_date" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Project Code <span class="text-danger">*</span></label>
@@ -55,15 +64,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label">Urgency <span class="text-danger">*</span></label>
-                    <select class="form-select" name="urgency" required>
-                        <option value="">Select urgency...</option>
-                        {% for level in urgency_levels %}
-                        <option value="{{ level }}">{{ level }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+               
                 <div class="col-12">
                     <label class="form-label">Special Notes (Optional)</label>
                     <textarea class="form-control" name="special_notes" rows="3" placeholder="Write materials here if you can not find in below list and save as Draft"></textarea>
@@ -109,11 +110,63 @@
             choicesInstances[select.name] = new Choices(select, { searchEnabled: true, removeItemButton: false, itemSelectText: '' });
         });
 
+        // --- NEW: Date Logic Elements ---
+        // --- NEW: Date Logic Elements ---
+        const urgencySelect = document.getElementById('urgency-select');
+        const deliveryDateInput = document.getElementById('delivery-date-input');
+
+        // Helper to format a Date object into YYYY-MM-DD
+        function toYYYYMMDD(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function updateDeliveryDateRules() {
+            const urgency = urgencySelect.value;
+            if (!urgency) return;
+
+            // --- THIS IS THE CORRECTED TIME LOGIC ---
+            // Get the current date
+            const now = new Date();
+            
+            // Get the current hour in UTC, then add 4 for GST (UTC+4)
+            // The modulo % 24 handles wraparound (e.g., 22:00 UTC + 4 hours = 02:00 GST next day)
+            const gstHour = (now.getUTCHours() + 4) % 24;
+            
+            // Use a new date object for calculations to not affect the original 'now'
+            let minDate = new Date(); 
+            // ------------------------------------------
+            
+            if (urgency === 'Critical') {
+                if (gstHour >= 9) { // After 9 AM GST
+                    minDate.setDate(minDate.getDate() + 1); // Minimum is tomorrow
+                }
+                // If before 9 AM, minimum is today, which is the default for 'minDate'.
+                deliveryDateInput.min = toYYYYMMDD(minDate);
+                deliveryDateInput.value = toYYYYMMDD(minDate);
+            } else if (urgency === 'Normal' || urgency === 'Urgent') {
+                let daysToAdd = 3;
+                if (gstHour >= 9) { // After 9 AM GST
+                    minDate.setDate(minDate.getDate() + 1); // Start counting from tomorrow
+                }
+                minDate.setDate(minDate.getDate() + (daysToAdd - 1)); // Add the remaining days
+                deliveryDateInput.min = toYYYYMMDD(minDate);
+                deliveryDateInput.value = toYYYYMMDD(minDate);
+            }
+        }
+        
+        // Add event listener to the urgency dropdown
+        urgencySelect.addEventListener('change', updateDeliveryDateRules);
+        // Initialize once on page load in case a value is already selected
+        updateDeliveryDateRules();
+        // --- END OF NEW DATE LOGIC ---
+
         const form = document.getElementById('material-requisition-form');
         const submitBtn = document.getElementById('submit-btn');
-        const spinner = submitBtn.querySelector('.spinner-border');
-        const toastElement = document.getElementById('responseToast');
         const draftBtn = document.getElementById('draft-btn');
+        //const spinner = submitBtn.querySelector('.spinner-border');
+        const spinner = draftBtn.querySelector('.spinner-border');
+        const toastElement = document.getElementById('responseToast');
+       
         const toast = new bootstrap.Toast(toastElement);
 
         document.querySelector('input[name="request_date"]').valueAsDate = new Date();

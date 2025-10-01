@@ -70,7 +70,7 @@ material_types:
   - MEP
 urgency_levels:
   - Normal
-  - Urgent
+  #- Urgent
   - Critical
 
 # --- Procurement Workflow Specific (NEW) ---
