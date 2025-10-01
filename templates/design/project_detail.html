@@ -129,7 +129,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         // NEW: Show sign-off button for the TE
                         assignmentCellHtml = `<button type="button" class="btn btn-primary btn-sm sign-off-btn">Sign Off</button>`;
                     } else if (task.owner) {
-                        assignmentCellHtml = `<div>${task.owner.name}</div><small class="text-muted">Due: ${dueDateForDisplay}</small>`;
+                        //assignmentCellHtml = `<div>${task.owner.name}</div><small class="text-muted">Due: ${dueDateForDisplay}</small>`;
+                        assignmentCellHtml = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div>${task.owner.name}</div>
+                                    <small class="text-muted">Due: ${dueDateForDisplay}</small>
+                                </div>
+                                ${isDesignManager ? `<button class="btn btn-sm btn-outline-secondary reassign-btn"><i class="bi bi-pencil-fill"></i></button>` : ''}
+                            </div>
+                        `;
                     }else {
                         let options = '<option value="">Assign to...</option>';
                         teamMembers.forEach(user => { options += `<option value="${user.id}">${user.name}</option>`; });
@@ -185,6 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const verifyButton = e.target.closest('.verify-btn');
         const signOffButton = e.target.closest('.sign-off-btn');
         const closePhaseButton = e.target.closest('.close-phase-btn');
+        const reassignButton = e.target.closest('.reassign-btn');
 
         if (closePhaseButton) {
             const phaseId = closePhaseButton.dataset.phaseId;
@@ -209,6 +219,27 @@ document.addEventListener('DOMContentLoaded', function() {
             // Optionally, prompt for notes
             const notes = prompt("Enter any sign-off notes (optional):");
             handleAction(`/api/design/tasks/${taskId}/sign-off`, 'POST', { notes: notes }, 'Task signed off.', signOffButton);
+        }
+        if (reassignButton) {
+            const cell = reassignButton.closest('.assignment-cell');
+            const taskId = reassignButton.closest('li').dataset.taskId;
+            const projectData = JSON.parse(localStorage.getItem('currentProjectData'));
+            let currentTask;
+            if (projectData) {
+                projectData.phases.forEach(p => { const f = p.tasks.find(t => t.id == taskId); if(f) currentTask = f; });
+            }
+            let options = '<option value="">Assign to...</option>';
+            teamMembers.forEach(user => {
+                const selected = currentTask && user.id === currentTask.owner_id ? 'selected' : '';
+                options += `<option value="${user.id}" ${selected}>${user.name}</option>`;
+            });
+            const dueDateForInput = formatDateForInput(currentTask ? currentTask.due_date : '');
+            cell.innerHTML = `
+                <form class="assign-task-form d-flex flex-wrap gap-2">
+                    <select class="form-select form-select-sm" style="flex: 2;">${options}</select>
+                    <input type="date" class="form-control form-control-sm" value="${dueDateForInput}" style="flex: 1.5;">
+                    <button type="submit" class="btn btn-primary btn-sm" style="flex: 1;">Update</button>
+                </form>`;
         }
     });
 
