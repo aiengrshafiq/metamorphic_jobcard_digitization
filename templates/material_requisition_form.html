@@ -66,10 +66,10 @@
                 </div>
                
                 <div class="col-12">
-                    <label class="form-label">Special Notes (Optional)</label>
+                    <label class="form-label">Material List</label>
                     <textarea class="form-control" name="special_notes" rows="3" placeholder="Write materials here if you can not find in below list and save as Draft"></textarea>
                 </div>
-                <div class="col-12">
+                <!-- <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <label class="form-label mb-0">Materials & Quantities <span class="text-danger">*</span></label>
                     <button type="button" class="btn btn-success btn-sm" id="add-item-btn">
@@ -78,14 +78,14 @@
                 </div>
                 <div id="line-items-container">
                     </div>
-            </div>
+            </div> -->
             </div>
 
             <div class="mt-4 text-end">
                 <button type="button" class="btn btn-primary btn-lg" id="draft-btn">
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
-                    <!-- Save as Draft -->
-                     Submit Request
+                    Save as Draft
+                     
                 </button>
                 <!-- <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
@@ -237,16 +237,16 @@
             new Choices(itemRow.querySelector('select'), { searchEnabled: true, removeItemButton: false, itemSelectText: '' });
         }
 
-        addItemBtn.addEventListener('click', createItemRow);
+        //addItemBtn.addEventListener('click', createItemRow);
         
-        lineItemsContainer.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('remove-item-btn')) {
-                e.target.closest('.item-row').remove();
-            }
-        });
+        // lineItemsContainer.addEventListener('click', function(e) {
+        //     if (e.target && e.target.classList.contains('remove-item-btn')) {
+        //         e.target.closest('.item-row').remove();
+        //     }
+        // });
         
         // Add one line item row to start with
-        createItemRow();
+        //createItemRow();
 
         // --- 4. FORM SUBMISSION LOGIC ---
         // --- UPDATE EVENT LISTENERS ---
@@ -304,7 +304,7 @@
             toastBody.innerText = error.message;
         } finally {
             spinner.style.display = 'none';
-            submitBtn.disabled = false;
+            //submitBtn.disabled = false;
             draftBtn.disabled = false;
         }
     }

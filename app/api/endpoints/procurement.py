@@ -205,8 +205,8 @@ async def create_material_requisition(
     urgency: str = Form(...),
     required_delivery_date: date = Form(...),
     job_card_ids: List[int] = Form(None),
-    material_ids: List[str] = Form(...),
-    quantities: List[str] = Form(...),
+    #material_ids: Optional[str] = Form(...),
+    #quantities: Optional[str] = Form(...),
     special_notes: Optional[str] = Form(None),
     submit_action: str = Form(...) 
 ):
@@ -231,10 +231,10 @@ async def create_material_requisition(
         is_draft = submit_action == "save_draft"
 
         # Line items are only required if it's NOT a draft
-        if not is_draft and not material_ids:
-            raise HTTPException(status_code=400, detail="At least one material item is required for final submission.")
-        if not is_draft and len(material_ids) != len(quantities):
-            raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
+        # if not is_draft and not material_ids:
+        #     raise HTTPException(status_code=400, detail="At least one material item is required for final submission.")
+        # if not is_draft and len(material_ids) != len(quantities):
+        #     raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
         # ----------------------------------------------------
 
         requisition = models.MaterialRequisition(
@@ -252,19 +252,19 @@ async def create_material_requisition(
             status="Draft" if is_draft else "Pending",
         )
 
-        if not is_draft:
-            # If it's a final submission, items are required.
-            if not material_ids or not material_ids[0]:
-                raise HTTPException(status_code=400, detail="At least one material item is required for final submission.")
+        # if not is_draft:
+        #     # If it's a final submission, items are required.
+        #     if not material_ids or not material_ids[0]:
+        #         raise HTTPException(status_code=400, detail="At least one material item is required for final submission.")
             
-            try:
-                # Convert string lists to number lists
-                final_material_ids = [int(mid) for mid in material_ids if mid]
-                final_quantities = [float(qty) for qty in quantities if qty]
-                if len(final_material_ids) != len(final_quantities):
-                    raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid number format for materials or quantities.")
+        #     try:
+        #         # Convert string lists to number lists
+        #         final_material_ids = [int(mid) for mid in material_ids if mid]
+        #         final_quantities = [float(qty) for qty in quantities if qty]
+        #         if len(final_material_ids) != len(final_quantities):
+        #             raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
+        #     except ValueError:
+        #         raise HTTPException(status_code=400, detail="Invalid number format for materials or quantities.")
                
          # --- NEW: Link the selected Job Cards ---
         if job_card_ids:
@@ -272,18 +272,18 @@ async def create_material_requisition(
             requisition.job_cards.extend(job_cards_to_link)
         # ------------------------------------
         # --- NEW: Create RequisitionItem objects from the form data ---
-        if len(material_ids) != len(quantities):
-            raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
+        # if len(material_ids) != len(quantities):
+        #     raise HTTPException(status_code=400, detail="Mismatch between materials and quantities.")
 
-        if material_ids and quantities:
-            for mat_id, qty in zip(material_ids, quantities):
-                if not mat_id or not qty:
-                    continue
-                item = models.RequisitionItem(
-                    material_id=mat_id,
-                    quantity=qty
-                )
-                requisition.items.append(item)
+        # if material_ids and quantities:
+        #     for mat_id, qty in zip(material_ids, quantities):
+        #         if not mat_id or not qty:
+        #             continue
+        #         item = models.RequisitionItem(
+        #             material_id=mat_id,
+        #             quantity=qty
+        #         )
+        #         requisition.items.append(item)
         # -----------------------------------------------------------
         db.add(requisition)
         db.commit()
