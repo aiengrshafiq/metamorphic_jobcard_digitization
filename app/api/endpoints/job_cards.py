@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import date
+from sqlalchemy import or_
 
 from app.api import deps
 from app import models
@@ -158,3 +159,32 @@ def get_job_cards_by_project(project_id: int, db: Session = Depends(deps.get_db)
         models.JobCard.status == 'Pending'
     ).all()
     return job_cards
+
+
+@router.get("/api/all-done", tags=["Job Cards"])
+def get_all_done_job_cards(
+    db: Session = Depends(deps.get_db),
+    skip: int = 0,
+    limit: int = 20,
+    search: Optional[str] = None
+):
+    """
+    Fetches a paginated and searchable list of all Job Cards with 'Done' status.
+    """
+    query = db.query(models.JobCard).filter(models.JobCard.status == 'Done').options(
+        joinedload(models.JobCard.project)
+    )
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.join(models.Project).filter(
+            or_(
+                models.JobCard.job_card_no.ilike(search_term),
+                models.Project.name.ilike(search_term)
+            )
+        )
+
+    total_count = query.count()
+    job_cards = query.order_by(models.JobCard.id.desc()).offset(skip).limit(limit).all()
+    
+    return {"total_count": total_count, "job_cards": job_cards}

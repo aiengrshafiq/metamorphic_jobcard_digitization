@@ -31,7 +31,10 @@
                 <div class="card-header bg-primary text-white"><h5 class="mb-0">Finalize Requisition</h5></div>
                 <div class="card-body">
                     <label class="form-label fw-bold">Add Materials & Quantities <span class="text-danger">*</span></label>
-                    <div id="line-items-container"></div>
+                    <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
+                            <i class="bi bi-plus-square-dotted me-1"></i> Add New Material
+                        </button>
+                    <div id="line-items-container" class="mt-2"></div>
                     <button type="button" class="btn btn-secondary btn-sm mt-2" id="add-item-btn"><i class="bi bi-plus-circle me-1"></i> Add Item</button>
                 </div>
                 <div class="card-footer text-end">
@@ -45,6 +48,33 @@
         </div>
     </div>
 </form>
+<div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addMaterialModalLabel">Add New Master Material</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="new-material-form">
+            <div id="modal-error-alert" class="alert alert-danger" style="display: none;"></div>
+            <div class="mb-3">
+                <label for="new-material-name" class="form-label">Material Name</label>
+                <input type="text" class="form-control" id="new-material-name" required>
+            </div>
+            <div class="mb-3">
+                <label for="new-material-unit" class="form-label">Unit (e.g., nos, kg, m)</label>
+                <input type="text" class="form-control" id="new-material-unit" required>
+            </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="save-new-material-btn">Save Material</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -53,6 +83,14 @@
 document.addEventListener('DOMContentLoaded', function () {
     const lineItemsContainer = document.getElementById('line-items-container');
     const addItemBtn = document.getElementById('add-item-btn');
+    let choicesInstances = [];
+
+    // --- NEW: Modal Elements ---
+    const addMaterialModal = new bootstrap.Modal(document.getElementById('addMaterialModal'));
+    const saveNewMaterialBtn = document.getElementById('save-new-material-btn');
+    const newMaterialForm = document.getElementById('new-material-form');
+    const modalErrorAlert = document.getElementById('modal-error-alert');
+
 
     function createItemRow() {
         const itemRow = document.createElement('div');
@@ -63,12 +101,53 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="col-sm-1 text-end"><button type="button" class="btn btn-danger btn-sm remove-item-btn" title="Remove Item">&times;</button></div>
         `;
         lineItemsContainer.appendChild(itemRow);
-        new Choices(itemRow.querySelector('select'), { searchEnabled: true, removeItemButton: false });
+        const choices = new Choices(itemRow.querySelector('select'), { searchEnabled: true, removeItemButton: false });
+        choicesInstances.push(choices);
     }
 
     addItemBtn.addEventListener('click', createItemRow);
     lineItemsContainer.addEventListener('click', e => { if (e.target.matches('.remove-item-btn')) e.target.closest('.item-row').remove(); });
     createItemRow();
+
+    // --- NEW: Logic for "Add New Material" Modal ---
+    saveNewMaterialBtn.addEventListener('click', async function() {
+        const name = document.getElementById('new-material-name').value;
+        const unit = document.getElementById('new-material-unit').value;
+        modalErrorAlert.style.display = 'none';
+
+        if (!name || !unit) {
+            modalErrorAlert.textContent = 'Both Name and Unit are required.';
+            modalErrorAlert.style.display = 'block';
+            return;
+        }
+
+        try {
+            const response = await fetchWithAuth('/api/materials/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, unit: unit })
+            });
+            const newMaterial = await response.json();
+            if (!response.ok) throw new Error(newMaterial.detail || 'Failed to save material.');
+            
+            // On success, add the new option to all existing dropdowns
+            const newChoice = {
+                value: newMaterial.id,
+                label: `${newMaterial.name} (${newMaterial.unit})`,
+                selected: false
+            };
+            choicesInstances.forEach(instance => {
+                instance.setChoices([newChoice], 'value', 'label', false);
+            });
+            
+            addMaterialModal.hide();
+            newMaterialForm.reset();
+
+        } catch (error) {
+            modalErrorAlert.textContent = error.message;
+            modalErrorAlert.style.display = 'block';
+        }
+    });
 
     const form = document.getElementById('finalize-mr-form');
     const submitBtn = document.getElementById('submit-btn');

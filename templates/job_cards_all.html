@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h5 class="mb-0">Completed Job Cards</h5>
+        <div class="col-12 col-md-4">
+            <input type="search" id="search-input" class="form-control form-control-sm" placeholder="Search by Job Card # or Project...">
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Job Card #</th>
+                        <th>Project</th>
+                        <th>Date Issued</th>
+                        <th>Site Location</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="jc-table-body">
+                    </tbody>
+            </table>
+            <p id="loading-state" class="text-center text-muted mt-3">Loading completed job cards...</p>
+        </div>
+        <nav id="pagination-container" aria-label="Job Card Pagination" class="d-flex justify-content-end mt-3"></nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tableBody = document.getElementById('jc-table-body');
+    const loadingState = document.getElementById('loading-state');
+    const searchInput = document.getElementById('search-input');
+    const paginationContainer = document.getElementById('pagination-container');
+    
+    const ITEMS_PER_PAGE = 20;
+    let currentPage = 1;
+    let currentSearch = "";
+    let searchTimeout;
+
+    async function fetchJobCards(page = 1, search = "") {
+        currentPage = page;
+        currentSearch = search;
+        loadingState.style.display = 'block';
+        loadingState.textContent = 'Loading...';
+        tableBody.innerHTML = '';
+        
+        const skip = (page - 1) * ITEMS_PER_PAGE;
+        const url = `/job-cards/api/all-done?skip=${skip}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(search)}`;
+        
+        try {
+            const response = await fetchWithAuth(url);
+            if (!response.ok) throw new Error('Failed to load job cards.');
+            const data = await response.json();
+            
+            if (data.job_cards.length === 0) {
+                loadingState.textContent = 'No completed job cards found.';
+            } else {
+                loadingState.style.display = 'none';
+                data.job_cards.forEach(jc => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${jc.job_card_no}</td>
+                        <td>${jc.project.name}</td>
+                        <td>${new Date(jc.date_issued).toLocaleDateString()}</td>
+                        <td>${jc.site_location}</td>
+                        <td class="text-end">
+                            <a href="/job-card-details/${jc.id}" class="btn btn-outline-secondary btn-sm" title="View Details">
+                                <i class="bi bi-eye-fill"></i> View
+                            </a>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+            renderPagination(data.total_count);
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+
+    function renderPagination(totalItems) {
+        paginationContainer.innerHTML = '';
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        if (totalPages <= 1) return;
+
+        const ul = document.createElement('ul');
+        ul.className = 'pagination';
+
+        for (let i = 1; i <= totalPages; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+            ul.appendChild(li);
+        }
+        paginationContainer.appendChild(ul);
+    }
+
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            fetchJobCards(1, searchInput.value);
+        }, 300); // Debounce search
+    });
+
+    paginationContainer.addEventListener('click', e => {
+        e.preventDefault();
+        if (e.target.matches('.page-link')) {
+            const page = parseInt(e.target.dataset.page);
+            if (page !== currentPage) {
+                fetchJobCards(page, currentSearch);
+            }
+        }
+    });
+    
+    fetchJobCards(); // Initial load
+});
+</script>
+{% endblock %}

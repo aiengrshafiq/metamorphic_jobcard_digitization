@@ -121,7 +121,7 @@
                     {% endif %}
                     <ul class="nav flex-column mb-2">
                         {% if is_privileged or 'Site Engineer' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
-                           <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
+                           <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> Pending Job Cards</a></li>
                         {% endif %}
                         {% if (is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles) and 'Project Manager' not in user_roles %}
                            <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Pending MR</a></li>
@@ -161,6 +161,13 @@
                      <span>List</span>
                  </h6>
                  <ul class="nav flex-column mb-2">
+                    {% if is_privileged  %}
+                     <li class="nav-item">
+                        <a class="nav-link" href="/job-cards/all">
+                            <i class="bi bi-archive-fill me-2"></i> All Job Cards
+                        </a>
+                    </li>
+                    {% endif %}
                     {% if is_privileged or 'Procurement' in user_roles %}
                         <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions-delivered"><i class="bi bi-cart-check me-2"></i> All MRs</a></li>
                      {% endif %}
@@ -285,7 +292,7 @@
                  </h6>
                  <ul class="nav flex-column mb-2">
                      {% if is_privileged or 'Site Engineer' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
-                        <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> My Job Cards</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/job-card-tracking"><i class="bi bi-card-checklist me-2"></i> Pending Job Cards</a></li>
                      {% endif %}
                      {% if (is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles) and 'Project Manager' not in user_roles %}
                         <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions"><i class="bi bi-cart-check me-2"></i> Pending MR</a></li>
@@ -326,6 +333,13 @@
                      <span>List</span>
                  </h6>
                  <ul class="nav flex-column mb-2">
+                    {% if is_privileged  %}
+                     <li class="nav-item">
+                        <a class="nav-link" href="/job-cards/all">
+                            <i class="bi bi-archive-fill me-2"></i> All Job Cards
+                        </a>
+                    </li>
+                    {% endif %}
                     {% if is_privileged or 'Procurement' in user_roles %}
                         <li class="nav-item"><a class="nav-link" href="/procurement/material-requisitions-delivered"><i class="bi bi-cart-check me-2"></i> All MRs</a></li>
                      {% endif %}

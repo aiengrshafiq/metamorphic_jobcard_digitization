@@ -213,7 +213,10 @@ async def job_card_tracking(
         return context
     
     # Base query
-    query = db.query(models.JobCard).options(
+    
+    query = db.query(models.JobCard).filter(
+        models.JobCard.status.in_(['Pending', 'Processing'])
+    ).options(
         joinedload(models.JobCard.project), 
         selectinload(models.JobCard.tasks)
     )
@@ -236,7 +239,7 @@ async def job_card_tracking(
     job_cards = query.order_by(models.JobCard.id.desc()).all()
     
     context.update({
-        "page_title": "My Job Cards", # Renamed for clarity
+        "page_title": "Pending Job Cards", # Renamed for clarity
         "job_cards": job_cards,
         "task_statuses": app_config.get('task_statuses', [])
     })
@@ -521,4 +524,15 @@ async def design_dashboard_page(
         
     context["page_title"] = "Design Dashboard"
     return templates.TemplateResponse("design/dashboard.html", context)
+
+
+@router.get("/job-cards/all", response_class=HTMLResponse, tags=["Pages"])
+async def all_job_cards_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+    
+    context["page_title"] = "All Completed Job Cards"
+    return templates.TemplateResponse("job_cards_all.html", context)
 
