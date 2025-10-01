@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function fetchProjectDetails() {
-        
+        console.log("Checking roles -> Is Design Manager?", isDesignManager, "| Is Doc Controller?", isDocController);
         try {
             const response = await fetchWithAuth(`/api/design/${projectId}`);
             if (!response.ok) {
@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             phasesContainer.innerHTML = '';
 
             project.phases.forEach(phase => {
+                
                 const phaseEl = document.createElement('div');
                 phaseEl.className = 'card mb-4';
                 let closeButtonHtml = '';
@@ -111,6 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 let tasksHtml = '<ul class="list-group list-group-flush">';
                 
                 phase.tasks.forEach(task => {
+                    console.log(`Checking Task -> ID: ${task.id}, Title: '${task.title}', Status: '${task.status}'`);
                     let assignmentCellHtml = '';
                     const dueDateForInput = formatDateForInput(task.due_date);
                     const dueDateForDisplay = formatDateForDisplay(task.due_date);
@@ -138,13 +140,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <button type="submit" class="btn btn-primary btn-sm" style="flex: 1;">Assign</button>
                             </form>`;
                     }
+
+                     // --- THIS IS THE NEW LOGIC ---
+                    // Create a link icon if a file has been submitted
+                    const fileLinkIcon = task.file_link 
+                        ? `<a href="${task.file_link}" target="_blank" class="ms-2" title="View Submitted File"><i class="bi bi-link-45deg"></i></a>` 
+                        : '';
+                    // --- END OF NEW LOGIC ---
                     
                     const statusBadges = { 'Submitted': 'bg-info', 'Revision Requested': 'bg-warning text-dark', 'Verified': 'bg-primary', 'Done': 'bg-success', 'Open': 'bg-light text-dark' };
                     const statusBadgeClass = statusBadges[task.status] || 'bg-secondary';
                     const statusHtml = `<span class="badge ${statusBadgeClass}">${task.status}</span>`;
 
                     tasksHtml += `<li class="list-group-item d-flex justify-content-between align-items-center" data-task-id="${task.id}">
-                                      <div>${task.title}</div>
+                                      <div>${task.title}${fileLinkIcon}</div>
                                       <div class="d-flex align-items-center gap-3">
                                           ${statusHtml}
                                           <div class="assignment-cell" style="min-width: 400px;">${assignmentCellHtml}</div>
