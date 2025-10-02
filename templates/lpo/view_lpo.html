@@ -23,7 +23,8 @@
                     </div>
                     <div class="col-md-6 text-md-end">
                         <strong>Date:</strong> <span id="lpo-date"></span><br>
-                        <strong>Project:</strong> <span id="lpo-project"></span>
+                        <strong>Project:</strong> <span id="lpo-project"></span><br>
+                        <strong>Payment Mode:</strong> <span id="lpo-paymentmode"></span>
                     </div>
                 </div>
                 <div class="row mb-4">
@@ -79,6 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('lpo-number').textContent = lpo.lpo_number;
             document.getElementById('lpo-date').textContent = new Date(lpo.lpo_date).toLocaleDateString();
             document.getElementById('lpo-project').textContent = lpo.project.name;
+            document.getElementById('lpo-paymentmode').textContent = lpo.payment_mode;
             document.getElementById('download-pdf-btn').href = `/api/lpos/${lpo.id}/pdf`;
             
             document.getElementById('supplier-details').innerHTML = `

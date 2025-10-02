@@ -1,7 +1,7 @@
 # app/api/endpoints/lpo/lpo.py
 import json
 import uuid
-from fastapi import APIRouter, Depends, Form, HTTPException, Body, UploadFile, File
+from fastapi import APIRouter, Depends, Form, HTTPException, Body, UploadFile, File, BackgroundTasks
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func
@@ -12,6 +12,8 @@ from sqlalchemy import or_
 from weasyprint import HTML, CSS
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from app.services.slack import send_slack_notification # 2. Import the slack service
+from app.core.config import settings # 3. Import settings for the BASE_URL
 
 from app.api import deps
 from app import models
@@ -38,6 +40,7 @@ class LPOItemData(BaseModel):
 
 @router.post("/", tags=["LPO"])
 def create_lpo(
+    background_tasks: BackgroundTasks,
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user),
     supplier_id: int = Form(...),
@@ -54,9 +57,9 @@ def create_lpo(
 ):
     try:
         items_data = [LPOItemData.parse_obj(item) for item in json.loads(items_json)]
-
+        lpo_number = get_next_lpo_number(db)
         new_lpo = models.LPO(
-            lpo_number=get_next_lpo_number(db),
+            lpo_number=lpo_number,
             payment_mode=payment_mode,
             supplier_id=supplier_id, lpo_date=lpo_date, project_id=project_id,
             message_to_supplier=message_to_supplier, memo=memo,
@@ -73,6 +76,11 @@ def create_lpo(
             
         db.add(new_lpo)
         db.flush() # Flush to get the new_lpo.id
+
+        background_tasks.add_task(
+            send_slack_notification, 
+            message=f"👷‍♂️ *Finance:* New LPO `{lpo_number}` has been created. Waiting for Finance Approval"
+        )
 
         if attachment_ids:
             id_list = [int(id_str) for id_str in attachment_ids.split(',') if id_str.isdigit()]
@@ -151,9 +159,11 @@ def _check_finance_role(current_user: models.User):
 
 @router.post("/{lpo_id}/approve", tags=["LPO"])
 def approve_lpo(
+    background_tasks: BackgroundTasks,
     lpo_id: int,
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user)
+    
 ):
     _check_finance_role(current_user)
     lpo = db.query(models.LPO).filter(models.LPO.id == lpo_id).first()
@@ -161,10 +171,13 @@ def approve_lpo(
         raise HTTPException(status_code=404, detail="LPO not found")
     lpo.status = "Approved"
     db.commit()
+    message_slack = f"🎉 LPO Approved: {lpo.lpo_number} is now fully approved and ready for further processing."
+    background_tasks.add_task(send_slack_notification, message=message_slack)
     return {"message": f"{lpo.lpo_number} has been approved."}
 
 @router.post("/{lpo_id}/reject", tags=["LPO"])
 def reject_lpo(
+    background_tasks: BackgroundTasks,
     lpo_id: int,
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user)
@@ -175,6 +188,8 @@ def reject_lpo(
         raise HTTPException(status_code=404, detail="LPO not found")
     lpo.status = "Rejected"
     db.commit()
+    message_slack = f"🎉 LPO Rejected: {lpo.lpo_number} is has been rejected by finance."
+    background_tasks.add_task(send_slack_notification, message=message_slack)
     return {"message": f"{lpo.lpo_number} has been rejected."}
 
 @router.get("/{lpo_id}/pdf", tags=["LPO"], response_class=StreamingResponse)
