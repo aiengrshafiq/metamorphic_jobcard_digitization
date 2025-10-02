@@ -12,6 +12,7 @@ from app.admin import MyAuthBackend, create_admin_views
 # Import all the routers
 from app.api.endpoints import pages, job_cards, reports, procurement, uploads, users, approvals, nanny_log, requisition_details, material_receipts, duty_officer_reports, site_officer_reports, job_card_details, notifications,materials as materials_router 
 from app.auth.router import router as auth_router
+from app.api.endpoints.suppliers import router as suppliers_router
 
 
 
@@ -72,6 +73,7 @@ app.include_router(site_officer_reports.router, prefix="/api/site-officer-report
 app.include_router(job_card_details.router, prefix="/api/job-card-details", tags=["Job Card Details"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(materials_router.router, prefix="/api/materials", tags=["Materials"])
+app.include_router(suppliers_router, prefix="/api/suppliers", tags=["Suppliers"])
 # -------------------------------
 
 app.include_router(lpo_router, prefix="/api/lpos", tags=["LPO"])

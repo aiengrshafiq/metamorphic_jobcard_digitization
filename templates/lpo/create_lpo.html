@@ -8,6 +8,14 @@
     .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd !important; }
     .item-row input[type=number] { text-align: right; }
     #attachment-list .list-group-item { padding: 0.5rem 1rem; }
+
+    /* --- ADD THIS NEW RULE --- */
+    /* This targets the material dropdowns inside your table and makes them taller */
+    #line-items-body .choices__list--dropdown {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    /* ------------------------ */
 </style>
 {% endblock %}
 
@@ -24,10 +32,14 @@
             <div class="row g-3 align-items-center">
                 <div class="col-lg-6">
                     <label for="supplier_id" class="form-label">Supplier <span class="text-danger">*</span></label>
+                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#addSupplierModal" title="Add New Supplier">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
                     <select id="supplier_id" name="supplier_id" required>
                         <option value="">Select a supplier...</option>
                         {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
                     </select>
+                    
                 </div>
                 <div class="col-lg-3">
                     <label for="project_id" class="form-label">Project <span class="text-danger">*</span></label>
@@ -98,6 +110,37 @@
         </form>
     </div>
 </div>
+<div class="modal fade" id="addSupplierModal" tabindex="-1" aria-labelledby="addSupplierModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addSupplierModalLabel">Add New Supplier</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="new-supplier-form">
+            <div id="modal-error-alert" class="alert alert-danger" style="display: none;"></div>
+            <div class="mb-3">
+                <label for="new-supplier-name" class="form-label">Supplier Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="new-supplier-name" required>
+            </div>
+            <div class="mb-3">
+                <label for="new-supplier-email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="new-supplier-email">
+            </div>
+            <div class="mb-3">
+                <label for="new-supplier-phone" class="form-label">Phone</label>
+                <input type="text" class="form-control" id="new-supplier-phone">
+            </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="save-new-supplier-btn">Save Supplier</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -107,10 +150,18 @@ document.addEventListener('DOMContentLoaded', function () {
    
     // --- INITIAL SETUP ---
     const choicesConfig = { searchEnabled: true, removeItemButton: false, itemSelectText: '' };
-    new Choices('#supplier_id', choicesConfig);
+   // new Choices('#supplier_id', choicesConfig);
+   const supplierChoices = new Choices('#supplier_id', choicesConfig);
     new Choices('#project_id', choicesConfig);
     new Choices('#payment_mode', choicesConfig);
     document.getElementById('lpo_date').valueAsDate = new Date();
+
+    // --- MODAL ELEMENTS ---
+    const addSupplierModal = new bootstrap.Modal(document.getElementById('addSupplierModal'));
+    const saveNewSupplierBtn = document.getElementById('save-new-supplier-btn');
+    const newSupplierForm = document.getElementById('new-supplier-form');
+    const modalErrorAlert = document.getElementById('modal-error-alert');
+
 
     const lineItemsBody = document.getElementById('line-items-body');
     const addItemBtn = document.getElementById('add-item-btn');
@@ -266,6 +317,50 @@ document.addEventListener('DOMContentLoaded', function () {
             submitBtn.disabled = false;
         }
     });
+
+    // --- NEW: LOGIC FOR "ADD NEW SUPPLIER" MODAL ---
+    saveNewSupplierBtn.addEventListener('click', async function() {
+        const name = document.getElementById('new-supplier-name').value;
+        const email = document.getElementById('new-supplier-email').value;
+        const phone = document.getElementById('new-supplier-phone').value;
+        modalErrorAlert.style.display = 'none';
+
+        if (!name.trim()) {
+            modalErrorAlert.textContent = 'Supplier Name is required.';
+            modalErrorAlert.style.display = 'block';
+            return;
+        }
+        
+        saveNewSupplierBtn.disabled = true;
+
+        try {
+            const response = await fetchWithAuth('/api/suppliers/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, phone })
+            });
+            const newSupplier = await response.json();
+            if (!response.ok) throw new Error(newSupplier.detail || 'Failed to save supplier.');
+            
+            // On success, add the new option to the dropdown and select it
+            const newChoice = {
+                value: newSupplier.id,
+                label: newSupplier.name,
+                selected: true
+            };
+            supplierChoices.setChoices([newChoice], 'value', 'label', false);
+            
+            addSupplierModal.hide();
+            newSupplierForm.reset();
+
+        } catch (error) {
+            modalErrorAlert.textContent = error.message;
+            modalErrorAlert.style.display = 'block';
+        } finally {
+            saveNewSupplierBtn.disabled = false;
+        }
+    });
 });
+
 </script>
 {% endblock %}
