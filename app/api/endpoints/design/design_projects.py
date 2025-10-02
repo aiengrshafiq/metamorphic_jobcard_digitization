@@ -12,6 +12,7 @@ from app.design_models import DesignPhaseName, DesignTaskStatus
 
 from typing import Optional # Ensure Optional is imported
 from datetime import date # Ensure date is imported
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -91,7 +92,13 @@ def create_design_project(
 @router.get("/", tags=["Design"])
 def get_design_projects(db: Session = Depends(deps.get_db)):
     """Fetches a list of all Design Projects."""
-    projects = db.query(design_models.DesignProject).order_by(design_models.DesignProject.id.desc()).all()
+    #projects = db.query(design_models.DesignProject).order_by(design_models.DesignProject.id.desc()).all()
+    projects = (
+        db.query(design_models.DesignProject)
+        .filter(design_models.DesignProject.status != "Completed")
+        .order_by(design_models.DesignProject.id.desc())
+        .all()
+    )
     return projects
 
 @router.get("/{project_id}", tags=["Design"])
@@ -133,4 +140,51 @@ def assign_design_task(
     db.commit()
     
     return {"message": "Task assigned successfully."}
+
+
+@router.post("/projects/{project_id}/close", tags=["Design"])
+def close_design_project(
+    project_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """
+    Checks if all phases in a project are complete and then closes the project.
+    """
+    user_roles = {role.name for role in current_user.roles}
+    if "Design Manager" not in user_roles:
+        raise HTTPException(status_code=403, detail="Not authorized for this action.")
+
+    project = db.query(design_models.DesignProject).options(
+        selectinload(design_models.DesignProject.phases)
+    ).filter(design_models.DesignProject.id == project_id).first()
+
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found.")
+    
+    if project.status == "Completed":
+        raise HTTPException(status_code=400, detail="This project is already completed.")
+
+    for phase in project.phases:
+        if phase.status != "Completed":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot close project: Phase '{phase.name.value}' is not yet completed."
+            )
+            
+    # All gates passed, update the project status and close date
+    project.status = "Completed"
+    project.closed_at = datetime.now(timezone.utc) # Set the close date
+    db.commit()
+    
+    return {"message": "Project has been successfully closed."}
+
+
+@router.get("/allprojects/completed", tags=["Design"])
+def get_completed_design_projects(db: Session = Depends(deps.get_db)):
+    """Fetches a list of all completed Design Projects."""
+    projects = db.query(design_models.DesignProject).filter(
+        design_models.DesignProject.status == 'Completed'
+    ).order_by(design_models.DesignProject.closed_at.desc()).all()
+    return projects
 

@@ -216,6 +216,11 @@
                             <i class="bi bi-folder2-open me-2"></i> Manage Projects
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/design/projects/completed">
+                            <i class="bi bi-archive-fill me-2"></i> Completed Projects
+                        </a>
+                    </li>
                    {% endif %}
                     {% if user_roles | select('in', design_team_roles) | list | length > 0 %}
                     <li class="nav-item">
@@ -383,6 +388,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/design/projects">
                             <i class="bi bi-folder2-open me-2"></i> Manage Projects
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/design/projects/completed">
+                            <i class="bi bi-archive-fill me-2"></i> Completed Projects
                         </a>
                     </li>
                    {% endif %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div id="loading-state" class="text-center text-muted mt-3">Loading completed projects...</div>
+        <div id="project-list-container" class="list-group" style="display: none;">
+            </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    const container = document.getElementById('project-list-container');
+    const loadingState = document.getElementById('loading-state');
+
+    async function fetchCompletedProjects() {
+        try {
+            const response = await fetchWithAuth('/api/design/allprojects/completed');
+            if (!response.ok) throw new Error('Could not load completed projects.');
+            const projects = await response.json();
+
+            if (projects.length === 0) {
+                loadingState.textContent = 'No completed design projects found.';
+            } else {
+                projects.forEach(project => {
+                    const link = document.createElement('a');
+                    link.href = `/design/projects/${project.id}`;
+                    link.className = 'list-group-item list-group-item-action';
+                    link.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">${project.name}</h5>
+                            <small class="text-muted">Completed: ${new Date(project.closed_at).toLocaleDateString()}</small>
+                        </div>
+                        <p class="mb-1">Client: ${project.client}</p>
+                        
+                    `;
+                    container.appendChild(link);
+                });
+                loadingState.style.display = 'none';
+                container.style.display = 'block';
+            }
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+
+    fetchCompletedProjects();
+});
+</script>
+{% endblock %}

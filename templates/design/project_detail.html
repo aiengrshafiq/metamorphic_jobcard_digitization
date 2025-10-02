@@ -5,6 +5,12 @@
     <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
     <p class="mt-2 text-muted">Loading project details...</p>
 </div>
+<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2 mb-0" id="project-name-header"></h1>
+    
+    <div id="project-actions-container" class="btn-toolbar mb-2 mb-md-0">
+        </div>
+</div>
 
 <div id="content-container" style="display: none;">
     <h2 id="project-name" class="mb-1"></h2>
@@ -86,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function fetchProjectDetails() {
-        console.log("Checking roles -> Is Design Manager?", isDesignManager, "| Is Doc Controller?", isDocController);
+        // console.log("Checking roles -> Is Design Manager?", isDesignManager, "| Is Doc Controller?", isDocController);
         try {
             const response = await fetchWithAuth(`/api/design/${projectId}`);
             if (!response.ok) {
@@ -97,6 +103,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
             document.getElementById('project-name').textContent = project.name;
             document.getElementById('project-client').textContent = `Client: ${project.client}`;
+
+            // --- NEW: LOGIC FOR PROJECT-LEVEL ACTIONS ---
+            const projectActionsContainer = document.getElementById('project-actions-container');
+            projectActionsContainer.innerHTML = ''; // Clear previous buttons
+
+            // Check if all phases are completed
+            const allPhasesComplete = project.phases.every(phase => phase.status === 'Completed');
+
+            if (project.status === 'Completed') {
+                projectActionsContainer.innerHTML = '<span class="badge bg-success fs-6">Project Completed</span>';
+            } else {
+                
+                // Only show Close Project button if all phases are done
+                if (isDesignManager && allPhasesComplete) {
+                    const closeProjectBtn = document.createElement('button');
+                    closeProjectBtn.className = 'btn btn-sm btn-success close-project-btn';
+                    closeProjectBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Close Project';
+                    projectActionsContainer.appendChild(closeProjectBtn);
+                }
+            }
+            // --- END OF NEW LOGIC ---
+
+
+
+
+
             phasesContainer.innerHTML = '';
 
             project.phases.forEach(phase => {
@@ -112,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 let tasksHtml = '<ul class="list-group list-group-flush">';
                 
                 phase.tasks.forEach(task => {
-                    console.log(`Checking Task -> ID: ${task.id}, Title: '${task.title}', Status: '${task.status}'`);
+                    //console.log(`Checking Task -> ID: ${task.id}, Title: '${task.title}', Status: '${task.status}'`);
                     let assignmentCellHtml = '';
                     const dueDateForInput = formatDateForInput(task.due_date);
                     const dueDateForDisplay = formatDateForDisplay(task.due_date);
@@ -196,6 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const closePhaseButton = e.target.closest('.close-phase-btn');
         const reassignButton = e.target.closest('.reassign-btn');
 
+        
         if (closePhaseButton) {
             const phaseId = closePhaseButton.dataset.phaseId;
             if (confirm('Are you sure you want to close this phase? This action cannot be undone.')) {
@@ -240,6 +273,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="date" class="form-control form-control-sm" value="${dueDateForInput}" style="flex: 1.5;">
                     <button type="submit" class="btn btn-primary btn-sm" style="flex: 1;">Update</button>
                 </form>`;
+        }
+    });
+
+     // --- ADD THIS NEW, SEPARATE LISTENER for the page header actions ---
+    const projectActionsContainer = document.getElementById('project-actions-container');
+    projectActionsContainer.addEventListener('click', function(e) {
+        const closeProjectButton = e.target.closest('.close-project-btn');
+        if (closeProjectButton) {
+            if (confirm('Are you sure you want to close this entire project?')) {
+                handleAction(`/api/design/projects/${projectId}/close`, 'POST', null, 'Project closed successfully.', closeProjectButton);
+            }
         }
     });
 

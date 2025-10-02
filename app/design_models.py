@@ -33,6 +33,7 @@ class DesignProject(Base):
     client = Column(String, nullable=True)
     status = Column(String, default="Active")
     created_at = Column(DateTime, default=func.now())
+    closed_at = Column(DateTime, nullable=True)
     created_by_id = Column(Integer, ForeignKey('users.id'))
     
     created_by = relationship("User")

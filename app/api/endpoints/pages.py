@@ -436,6 +436,16 @@ async def view_lpo_page(lpo_id: int, context: dict = Depends(deps.get_template_c
 
 
 # Start of Design Module Pages
+@router.get("/design/projects/completed", response_class=HTMLResponse, tags=["Pages"])
+async def completed_design_projects_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+    
+    context["page_title"] = "Completed Design Projects"
+    return templates.TemplateResponse("design/completed_project_list.html", context)
+    
 @router.get("/design/projects/new", response_class=HTMLResponse, tags=["Pages"])
 async def create_design_project_page(
     context: dict = Depends(deps.get_template_context)
@@ -535,4 +545,8 @@ async def all_job_cards_page(
     
     context["page_title"] = "All Completed Job Cards"
     return templates.TemplateResponse("job_cards_all.html", context)
+
+
+
+
 
