@@ -18,7 +18,7 @@ def close_phase(
     Checks if a phase's gate conditions are met and, if so, closes the phase.
     """
     # Security Check: Ensure user is a Design Manager
-    user_roles = {role.name.value for role in current_user.roles}
+    user_roles = {role.name for role in current_user.roles}
     if "Design Manager" not in user_roles:
         raise HTTPException(status_code=403, detail="Not authorized for this action.")
 
