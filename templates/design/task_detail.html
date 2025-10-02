@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div id="loading-state" class="text-center">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+        <p class="mt-2 text-muted">Loading task details...</p>
+    </div>
+
+    <div id="content-container" style="display: none;">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header"><h5 class="mb-0" id="task-title"></h5></div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-3">Project</dt><dd class="col-sm-9" id="task-project"></dd>
+                            <dt class="col-sm-3">Phase</dt><dd class="col-sm-9" id="task-phase"></dd>
+                            <dt class="col-sm-3">Status</dt><dd class="col-sm-9" id="task-status"></dd>
+                            <hr class="my-3">
+                            <dt class="col-sm-3">Owner</dt><dd class="col-sm-9" id="task-owner"></dd>
+                            <dt class="col-sm-3">Due Date</dt><dd class="col-sm-9" id="task-due-date"></dd>
+                            <dt class="col-sm-3">Submitted Link</dt><dd class="col-sm-9" id="task-link"></dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header"><h5 class="mb-0"><i class="bi bi-chat-dots-fill me-2"></i>Comments</h5></div>
+                    <div class="card-body">
+                        <div id="comment-list" class="mb-3"></div>
+                        <form id="comment-form">
+                            <div class="mb-3">
+                                <textarea class="form-control" id="comment-text" rows="3" required placeholder="Add a new comment..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="submit-comment-btn">Post Comment</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const taskId = {{ task_id }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+    const commentList = document.getElementById('comment-list');
+    const commentForm = document.getElementById('comment-form');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    // --- RENDER COMMENTS FUNCTION ---
+    function renderComments(comments) {
+        commentList.innerHTML = '';
+        if (comments && comments.length > 0) {
+            // Show newest comments first
+            comments.slice().reverse().forEach(comment => {
+                const commentEl = document.createElement('div');
+                commentEl.className = 'd-flex mb-3 border-bottom pb-2';
+                const commentDate = new Date(comment.created_at).toLocaleString();
+                commentEl.innerHTML = `
+                    <div class="flex-shrink-0 me-3"><i class="bi bi-person-circle fs-3 text-secondary"></i></div>
+                    <div class="flex-grow-1">
+                        <h6 class="mt-0 mb-1">${comment.comment_by.name}</h6>
+                        <p class="mb-1" style="white-space: pre-wrap;">${comment.comment_text}</p>
+                        <small class="text-muted">${commentDate}</small>
+                    </div>`;
+                commentList.appendChild(commentEl);
+            });
+        } else {
+            commentList.innerHTML = '<p class="text-muted text-center">No comments yet.</p>';
+        }
+    }
+
+    async function fetchTaskDetails() {
+        try {
+            // --- THIS IS THE FIX: Added cache option ---
+            const response = await fetchWithAuth(`/api/design/tasks/${taskId}`, {
+                cache: 'no-cache' // This tells the browser to always get the latest data
+            });
+            // ------------------------------------------
+
+            if (!response.ok) throw new Error('Could not load task details.');
+            const data = await response.json();
+            
+            document.getElementById('task-title').textContent = `Task: ${data.title}`;
+            document.getElementById('task-project').textContent = data.phase.project.name;
+            document.getElementById('task-phase').textContent = data.phase.name;
+            document.getElementById('task-status').textContent = data.status;
+            document.getElementById('task-owner').textContent = data.owner ? data.owner.name : 'Unassigned';
+            document.getElementById('task-due-date').textContent = data.due_date ? new Date(data.due_date).toLocaleDateString() : 'Not set';
+            
+            if (data.file_link) {
+                document.getElementById('task-link').innerHTML = `<a href="${data.file_link}" target="_blank">${data.file_link}</a>`;
+            } else {
+                document.getElementById('task-link').textContent = 'Not submitted yet.';
+            }
+
+            renderComments(data.comments);
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+    
+    commentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const commentTextEl = document.getElementById('comment-text');
+        const commentText = commentTextEl.value;
+        if (!commentText.trim()) return;
+
+        try {
+            const response = await fetchWithAuth(`/api/design/tasks/${taskId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comment_text: commentText })
+            });
+            if (!response.ok) throw new Error('Failed to post comment.');
+            
+            commentTextEl.value = ''; // Clear the textarea
+            fetchTaskDetails(); // Refresh the comments list from the server
+        } catch (error) {
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+        }
+    });
+
+    fetchTaskDetails();
+});
+</script>
+{% endblock %}

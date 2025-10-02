@@ -198,3 +198,44 @@ def sign_off_task(
     
     db.commit()
     return {"message": "Task has been signed off successfully."}
+
+
+# Add this Pydantic model for comment validation
+class CommentCreate(BaseModel):
+    comment_text: str
+
+# Add these two new endpoints to the file
+@router.get("/{task_id}", tags=["My Tasks"])
+def get_task_details(
+    task_id: int,
+    db: Session = Depends(deps.get_db)
+):
+    """Fetches all details for a single Design Task."""
+    task = db.query(design_models.DesignTask).options(
+        joinedload(design_models.DesignTask.phase).joinedload(design_models.DesignPhase.project),
+        joinedload(design_models.DesignTask.owner),
+        joinedload(design_models.DesignTask.comments).joinedload(design_models.DesignTaskComment.comment_by)
+    ).filter(design_models.DesignTask.id == task_id).first()
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    return task
+
+@router.post("/{task_id}/comments", tags=["My Tasks"])
+def add_task_comment(
+    task_id: int,
+    comment: CommentCreate,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Adds a new comment to a Design Task."""
+    new_comment = design_models.DesignTaskComment(
+        task_id=task_id,
+        comment_by_id=current_user.id,
+        comment_text=comment.comment_text
+    )
+    db.add(new_comment)
+    db.commit()
+    db.refresh(new_comment)
+    return new_comment

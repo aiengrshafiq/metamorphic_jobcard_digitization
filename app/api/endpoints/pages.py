@@ -547,6 +547,19 @@ async def all_job_cards_page(
     return templates.TemplateResponse("job_cards_all.html", context)
 
 
+@router.get("/design/tasks/{task_id}", response_class=HTMLResponse, tags=["Pages"])
+async def design_task_detail_page(
+    task_id: int,
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+        
+    context["page_title"] = f"Task Details #{task_id}"
+    context["task_id"] = task_id
+    return templates.TemplateResponse("design/task_detail.html", context)
+
+
 
 
 
