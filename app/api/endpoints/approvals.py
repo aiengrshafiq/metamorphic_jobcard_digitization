@@ -65,33 +65,40 @@ def get_pending_approvals(
 def update_approval_status(
     req_id: int,
     update_data: ApprovalUpdate,
-    background_tasks: BackgroundTasks,
+    background_tasks: BackgroundTasks, # 4. Add background_tasks to the function signature
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user)
 ):
     """
-    Updates the approval status for a specific requisition.
+    Updates the approval status for a specific requisition and sends notifications.
     """
-    req = db.query(models.MaterialRequisition).filter(models.MaterialRequisition.id == req_id).first()
+    req = db.query(models.MaterialRequisition).options(
+        joinedload(models.MaterialRequisition.project) # Eager load project for the message
+    ).filter(models.MaterialRequisition.id == req_id).first()
+    
     if not req:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requisition not found")
 
     user_roles = {role.name for role in current_user.roles}
+    approval_field_updated = ""
 
-    if update_data.approval_type == 'pm':
+    if update_data.approval_type == 'mr':
+        if "Procurement" not in user_roles and not {"Admin", "Super Admin"}.intersection(user_roles):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for MR approval")
+        req.mr_approval = update_data.new_status
+        approval_field_updated = "MR"
+    
+    elif update_data.approval_type == 'pm':
         if "Project Manager" not in user_roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for PM approval")
         req.pm_approval = update_data.new_status
+        approval_field_updated = "PM"
+
     elif update_data.approval_type == 'qs':
         if "QS" not in user_roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for QS approval")
         req.qs_approval = update_data.new_status
-    
-    elif update_data.approval_type == 'mr':
-        if "Procurement" not in user_roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for MR approval")
-        req.mr_approval = update_data.new_status
-    # --------------------------
+        approval_field_updated = "QS"
     else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid approval type")
         
@@ -117,4 +124,5 @@ def update_approval_status(
         if message:
             background_tasks.add_task(send_slack_notification, message=message)
     # --------------------------------
+
     return {"message": f"Requisition {req.id} has been {update_data.new_status.lower()}."}
