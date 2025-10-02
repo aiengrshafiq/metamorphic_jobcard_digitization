@@ -1,5 +1,5 @@
 # app/api/endpoints/job_cards.py
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
@@ -9,11 +9,14 @@ from sqlalchemy import or_
 from app.api import deps
 from app import models
 from app.utils import generate_job_card_number
+from app.services.slack import send_slack_notification
+from app.core.config import settings
 
 router = APIRouter()
 
 @router.post("/", response_class=JSONResponse, tags=["Job Cards"])
 async def create_job_card(
+    background_tasks: BackgroundTasks,
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user),
     project_id: int = Form(...),
@@ -76,6 +79,11 @@ async def create_job_card(
             link=f"/job-card-details/{new_job_card.id}"
         )
         db.add(supervisor_notification)
+
+        background_tasks.add_task(
+            send_slack_notification, 
+            message=f"👷‍♂️ *New Assignment:* Job Card `{job_card_no}` has been assigned to a Supervisor. Link: {settings.BASE_URL}/job-card-details/{new_job_card.id}"
+        )
         
         # Notify the new Foreman
         foreman_notification = models.Notification(

@@ -1,9 +1,11 @@
 # app/api/endpoints/approvals.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel, Field
 from typing import Literal
+from app.services.slack import send_slack_notification # 2. Import the slack service
+from app.core.config import settings # 3. Import settings for the BASE_URL
 
 from app.api import deps
 from app import models
@@ -63,6 +65,7 @@ def get_pending_approvals(
 def update_approval_status(
     req_id: int,
     update_data: ApprovalUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user)
 ):
@@ -93,4 +96,25 @@ def update_approval_status(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid approval type")
         
     db.commit()
+
+    # --- 5. NEW NOTIFICATION LOGIC ---
+    if update_data.new_status == 'Approved':
+        mr_link = f"<{settings.BASE_URL}/requisition-details/{req.id}|{req.mr_number}>"
+        message = ""
+
+        # If MR was just approved, notify the PMs
+        if approval_field_updated == "MR":
+            message = f"✅ MR Approved: {mr_link} for project *{req.project.name}* is ready for PM approval."
+        
+        # If PM was just approved, notify the QSs
+        elif approval_field_updated == "PM":
+            message = f"✅ PM Approved: {mr_link} for project *{req.project.name}* is ready for QS approval."
+
+        # If QS was just approved (final approval), notify Procurement
+        elif approval_field_updated == "QS" and req.pm_approval == 'Approved':
+            message = f"🎉 Fully Approved: {mr_link} for project *{req.project.name}* is now fully approved and ready for processing."
+
+        if message:
+            background_tasks.add_task(send_slack_notification, message=message)
+    # --------------------------------
     return {"message": f"Requisition {req.id} has been {update_data.new_status.lower()}."}

@@ -117,6 +117,11 @@ def reassign_job_card(
         link=f"/job-card-details/{jc_id}"
     )
     db.add(supervisor_notification)
+
+    background_tasks.add_task(
+            send_slack_notification, 
+            message=f"👷‍♂️ *New Assignment:* Job Card `{job_card.job_card_no}` has been re-assigned to a Supervisor. Link: {settings.BASE_URL}/job-card-details/{job_card.id}"
+        )
     
     # Notify the new Foreman
     foreman_notification = models.Notification(
