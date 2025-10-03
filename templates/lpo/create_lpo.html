@@ -59,6 +59,16 @@
                     <label for="lpo_date" class="form-label">LPO Date</label>
                     <input type="date" class="form-control" id="lpo_date" name="lpo_date" required>
                 </div>
+                
+                <div class="col-lg-6">
+                    <label for="material_requisition_ids" class="form-label">Link Approved Material Requisitions (Optional)</label>
+                    <select id="material_requisition_ids" name="material_requisition_ids" multiple>
+                        {% for mr in available_mrs %}
+                        <option value="{{ mr.id }}">{{ mr.mr_number }} ({{ mr.project.name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            
             </div>
 
             <hr class="my-4">
@@ -154,6 +164,7 @@ document.addEventListener('DOMContentLoaded', function () {
    const supplierChoices = new Choices('#supplier_id', choicesConfig);
     new Choices('#project_id', choicesConfig);
     new Choices('#payment_mode', choicesConfig);
+    new Choices('#material_requisition_ids');
     document.getElementById('lpo_date').valueAsDate = new Date();
 
     // --- MODAL ELEMENTS ---

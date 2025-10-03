@@ -424,6 +424,16 @@ async def create_lpo_page(context: dict = Depends(deps.get_template_context), db
     context["projects"] = db.query(models.Project).order_by(models.Project.name).all()
     context["materials"] = db.query(models.Material).order_by(models.Material.name).all()
     context["payment_modes"] = app_config.get('payment_modes', [])
+    # --- ADD THIS LOGIC ---
+    # Fetch MRs that are fully approved and not yet linked to an LPO
+    available_mrs = db.query(models.MaterialRequisition).filter(
+        models.MaterialRequisition.mr_approval == 'Approved',
+        models.MaterialRequisition.pm_approval == 'Approved',
+        models.MaterialRequisition.qs_approval == 'Approved',
+        models.MaterialRequisition.lpos.any() == False
+    ).all()
+    context["available_mrs"] = available_mrs
+    # ----------------------
     return templates.TemplateResponse("lpo/create_lpo.html", context)
 
 @router.get("/lpos/{lpo_id}", response_class=HTMLResponse, tags=["Pages"])

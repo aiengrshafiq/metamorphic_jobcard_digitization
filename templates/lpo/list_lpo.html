@@ -18,6 +18,7 @@
                         <th>Supplier</th>
                         <th>Project</th>
                         <th>Status</th>
+                        <th>Linked MRs</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -95,12 +96,19 @@ document.addEventListener('DOMContentLoaded', function () {
                             <button class="btn btn-danger btn-sm approval-btn" data-lpo-id="${lpo.id}" data-action="reject" title="Reject"><i class="bi bi-x-lg"></i></button>
                         `;
                     }
+                    let mrHtml = 'N/A';
+                    if (lpo.material_requisitions && lpo.material_requisitions.length > 0) {
+                        mrHtml = lpo.material_requisitions.map(mr => 
+                            `<span class="badge bg-secondary">${mr.mr_number}</span>`
+                        ).join(' ');
+                    }
                     row.innerHTML = `
                         <td>${lpo.lpo_number}</td>
                         <td>${new Date(lpo.lpo_date).toLocaleDateString()}</td>
                         <td>${lpo.supplier.name}</td>
                         <td>${lpo.project.name}</td>
                         <td class="lpo-status">${renderStatusBadge(lpo.status)}</td>
+                        <td>${mrHtml}</td>
                         <td class="text-end"><div class="btn-group">${actionButtons}<a href="/lpos/${lpo.id}" class="btn btn-outline-secondary btn-sm" title="View Details"><i class="bi bi-eye-fill"></i></a></div></td>
                     `;
                     tableBody.appendChild(row);

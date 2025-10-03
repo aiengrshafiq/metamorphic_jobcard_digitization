@@ -54,7 +54,8 @@ def create_lpo(
     subtotal: float = Form(...),
     tax_total: float = Form(...),
     grand_total: float = Form(...),
-    attachment_ids: Optional[str] = Form(None)
+    attachment_ids: Optional[str] = Form(None),
+    material_requisition_ids: List[int] = Form(None)
 ):
     try:
         items_data = [LPOItemData.parse_obj(item) for item in json.loads(items_json)]
@@ -74,6 +75,14 @@ def create_lpo(
                 quantity=item_data.quantity, rate=item_data.rate, tax_rate=item_data.tax_rate
             )
             new_lpo.items.append(lpo_item)
+        
+        # --- 2. ADD THIS LOGIC BLOCK before db.add(new_lpo) ---
+        if material_requisition_ids:
+            mrs_to_link = db.query(models.MaterialRequisition).filter(
+                models.MaterialRequisition.id.in_(material_requisition_ids)
+            ).all()
+            new_lpo.material_requisitions.extend(mrs_to_link)
+        # ----------------------------------------------------
             
         db.add(new_lpo)
         db.flush() # Flush to get the new_lpo.id
@@ -120,6 +129,39 @@ async def upload_lpo_attachment(file: UploadFile = File(...), db: Session = Depe
     return {"attachment_id": new_attachment.id}
 
 
+# @router.get("/", tags=["LPO"])
+# def get_lpos(
+#     db: Session = Depends(deps.get_db),
+#     skip: int = 0,
+#     limit: int = 20,
+#     search: Optional[str] = None
+# ):
+#     """
+#     Fetches a paginated and searchable list of all LPOs.
+#     """
+#     query = db.query(models.LPO).options(
+#         joinedload(models.LPO.supplier),
+#         joinedload(models.LPO.project),
+#         joinedload(models.LPO.created_by),
+#         selectinload(models.LPO.material_requisitions)
+#     )
+
+#     if search:
+#         search_term = f"%{search}%"
+#         # Join with supplier and project to search their names
+#         query = query.join(models.Supplier).join(models.Project).filter(
+#             or_(
+#                 models.LPO.lpo_number.ilike(search_term),
+#                 models.Supplier.name.ilike(search_term),
+#                 models.Project.name.ilike(search_term)
+#             )
+#         )
+
+#     total_count = query.count()
+#     lpos = query.order_by(models.LPO.id.desc()).offset(skip).limit(limit).all()
+
+#     return {"total_count": total_count, "lpos": lpos}
+
 @router.get("/", tags=["LPO"])
 def get_lpos(
     db: Session = Depends(deps.get_db),
@@ -133,24 +175,32 @@ def get_lpos(
     query = db.query(models.LPO).options(
         joinedload(models.LPO.supplier),
         joinedload(models.LPO.project),
-        joinedload(models.LPO.created_by)
+        joinedload(models.LPO.created_by),
+        selectinload(models.LPO.material_requisitions)
     )
 
     if search:
         search_term = f"%{search}%"
-        # Join with supplier and project to search their names
-        query = query.join(models.Supplier).join(models.Project).filter(
+        # --- ADD THESE CHANGES ---
+        # 1. Join across all tables needed for the search
+        query = query.join(models.Supplier).join(models.Project).join(
+            models.LPO.material_requisitions, isouter=True # Use isouter=True to include LPOs with no MRs
+        ).filter(
             or_(
                 models.LPO.lpo_number.ilike(search_term),
                 models.Supplier.name.ilike(search_term),
-                models.Project.name.ilike(search_term)
+                models.Project.name.ilike(search_term),
+                models.MaterialRequisition.mr_number.ilike(search_term) # 2. Add the search condition for mr_number
             )
         )
+        # -----------------------
 
-    total_count = query.count()
-    lpos = query.order_by(models.LPO.id.desc()).offset(skip).limit(limit).all()
+    # Using .distinct() to avoid duplicate LPOs if they are linked to multiple MRs that match the search
+    total_count = query.distinct().count()
+    lpos = query.distinct().order_by(models.LPO.id.desc()).offset(skip).limit(limit).all()
 
     return {"total_count": total_count, "lpos": lpos}
+    
 
 def _check_finance_role(current_user: models.User):
     """Helper to check if the current user has the Finance role."""

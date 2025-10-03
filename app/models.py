@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Column, Integer, String, Date, Numeric, ForeignKey, DateTime, func, Text, Boolean
 )
+
 from sqlalchemy.orm import relationship, declarative_base
 from passlib.context import CryptContext
 import enum
@@ -48,6 +49,12 @@ report_jc_association_table = Table(
     'report_jc_association', Base.metadata,
     Column('report_id', Integer, ForeignKey('site_officer_reports.id'), primary_key=True),
     Column('job_card_id', Integer, ForeignKey('job_cards.id'), primary_key=True)
+)
+
+lpo_mr_association_table = Table(
+    'lpo_mr_association', Base.metadata,
+    Column('lpo_id', Integer, ForeignKey('lpos.id'), primary_key=True),
+    Column('material_requisition_id', Integer, ForeignKey('material_requisitions.id'), primary_key=True)
 )
 
 class Role(Base):
@@ -365,6 +372,7 @@ class MaterialRequisition(Base):
     comments = relationship("MaterialRequisitionComment", back_populates="requisition", cascade="all, delete-orphan")
     receipts = relationship("MaterialReceipt", back_populates="requisition")
     job_cards = relationship("JobCard", secondary=mr_jc_association_table, back_populates="material_requisitions")
+    lpos = relationship("LPO", secondary=lpo_mr_association_table, back_populates="material_requisitions")
      # --- THIS IS THE UPDATED METHOD ---
     def __str__(self) -> str:
         # Check if the 'project' relationship is already loaded to prevent lazy load errors
@@ -575,6 +583,8 @@ class LPO(Base):
     created_by = relationship("User")
     items = relationship("LPOItem", back_populates="lpo", cascade="all, delete-orphan")
     attachments = relationship("LPOAttachment", back_populates="lpo", cascade="all, delete-orphan")
+    material_requisitions = relationship("MaterialRequisition", secondary=lpo_mr_association_table, back_populates="lpos")
+
 
 class LPOItem(Base):
     __tablename__ = 'lpo_items'
