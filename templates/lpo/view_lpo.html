@@ -6,8 +6,10 @@
         <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
         <p class="mt-2 text-muted">Loading LPO details...</p>
     </div>
+    
 
     <div id="content-container" style="display: none;">
+        
         <div class="d-flex justify-content-end mb-3">
             <a id="download-pdf-btn" href="#" class="btn btn-danger" target="_blank">
                 <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF
@@ -47,6 +49,13 @@
             </div>
         </div>
     </div>
+     <!-- Attachments -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm mt-4" id="attachments-card" style="display: none;">
+            <div class="card-header"><h5 class="mb-0">Attachments</h5></div>
+            <div class="list-group list-group-flush" id="attachments-list"></div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -56,6 +65,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const lpoId = {{ lpo_id }};
     const loadingState = document.getElementById('loading-state');
     const contentContainer = document.getElementById('content-container');
+    const attachmentsCard = document.getElementById('attachments-card'); // <-- ADD THIS
+    const attachmentsList = document.getElementById('attachments-list'); // <-- ADD THIS
 
     // --- THIS FUNCTION WAS MISSING ---
     function getCookie(name) {
@@ -114,6 +125,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     </tbody>
                 </table>
             `;
+
+            // --- ADD THIS LOGIC TO RENDER ATTACHMENTS ---
+            if (lpo.attachments && lpo.attachments.length > 0) {
+                attachmentsList.innerHTML = '';
+                lpo.attachments.forEach(att => {
+                    const link = document.createElement('a');
+                    link.href = att.blob_url;
+                    link.target = '_blank';
+                    link.className = 'list-group-item list-group-item-action d-flex align-items-center';
+                    link.innerHTML = `<i class="bi bi-file-earmark-arrow-down me-2"></i> ${att.file_name}`;
+                    attachmentsList.appendChild(link);
+                });
+                attachmentsCard.style.display = 'block';
+            }
+            // --- END OF NEW LOGIC ---
 
             loadingState.style.display = 'none';
             contentContainer.style.display = 'block';

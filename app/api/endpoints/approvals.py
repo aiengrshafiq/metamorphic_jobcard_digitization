@@ -87,6 +87,8 @@ def update_approval_status(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for MR approval")
         req.mr_approval = update_data.new_status
         approval_field_updated = "MR"
+        if update_data.new_status == 'Rejected':
+            req.status = 'Rejected'
     
     elif update_data.approval_type == 'pm':
         if "Project Manager" not in user_roles:

@@ -89,7 +89,8 @@
                         <form id="comment-form">
                             <div class="mb-3">
                                 <label for="comment-text" class="form-label">Add a new comment</label>
-                                <textarea class="form-control" id="comment-text" rows="3" required></textarea>
+                                
+                                <textarea class="form-control" id="comment-text" name="comment_text" rows="3" required></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary" id="submit-comment-btn">
                                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
@@ -120,7 +121,7 @@
                              <dt class="col-sm-5">Commercial Approval</dt>
                              <dd class="col-sm-7" id="qs-approval"></dd>
 
-                             <hr class="my-3">
+                             <!-- <hr class="my-3">
                              
                              <dt class="col-sm-5">Supplier</dt>
                              <dd class="col-sm-7" id="supplier"></dd>
@@ -129,7 +130,7 @@
                              <dd class="col-sm-7" id="lpo-number"></dd>
                              
                              <dt class="col-sm-5">Payment Status</dt>
-                             <dd class="col-sm-7" id="payment-status"></dd>
+                             <dd class="col-sm-7" id="payment-status"></dd> -->
 
                              <hr class="my-3">
 
@@ -317,9 +318,9 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('mr-approval').innerHTML = formatApprovalStatus(data.mr_approval);
             document.getElementById('pm-approval').innerHTML = formatApprovalStatus(data.pm_approval);
             document.getElementById('qs-approval').innerHTML = formatApprovalStatus(data.qs_approval);
-            document.getElementById('supplier').textContent = data.supplier ? data.supplier.name : 'Not Assigned';
-            document.getElementById('lpo-number').textContent = data.lpo_number || 'N/A';
-            document.getElementById('payment-status').textContent = data.payment_status || 'N/A';
+           // document.getElementById('supplier').textContent = data.supplier ? data.supplier.name : 'Not Assigned';
+           // document.getElementById('lpo-number').textContent = data.lpo_number || 'N/A';
+           // document.getElementById('payment-status').textContent = data.payment_status || 'N/A';
             document.getElementById('remarks').textContent = data.remarks || 'No remarks.';
             
             // Render dynamic sections
@@ -356,8 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
         submitCommentBtn.disabled = true;
         spinner.style.display = 'inline-block';
 
-        // const formData = new FormData();
-        // formData.append('comment_text', commentText.value);
+        
 
         try {
             const response = await fetchWithAuth(`/api/requisition-details/${reqId}/comments`, {

@@ -21,6 +21,7 @@ from app.core.config import settings
 from azure.storage.blob import BlobServiceClient
 from app.utils import generate_sas_url, image_to_data_uri
 
+
 router = APIRouter()
 pdf_templates = Jinja2Templates(directory="templates")
 
@@ -233,4 +234,6 @@ def get_lpo_details(lpo_id: int, db: Session = Depends(deps.get_db)):
     ).filter(models.LPO.id == lpo_id).first()
     if not lpo:
         raise HTTPException(status_code=404, detail="LPO not found")
+    for attachment in lpo.attachments:
+        attachment.blob_url = generate_sas_url(attachment.blob_url)
     return lpo

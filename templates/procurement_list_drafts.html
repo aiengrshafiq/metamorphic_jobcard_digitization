@@ -28,6 +28,9 @@
                         <td>{{ req.special_notes|truncate(50) }}</td>
                         <td class="text-end">
                             {% if is_privileged or 'Procurement' in user_roles or 'QS' in user_roles or 'Project Manager' in user_roles %}
+                            <button class="btn btn-danger btn-sm approval-btn" data-req-id="{{ req.id }}" data-status="Rejected" title="Reject">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
                             <a href="/procurement/material-requisition/{{ req.id }}/process" class="btn btn-primary btn-sm">
                                 <i class="bi bi-pencil-square me-1"></i> Finalize
                             </a>
@@ -46,4 +49,75 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const tableBody = document.querySelector('tbody');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    // const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    // const popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+    //     return new bootstrap.Popover(popoverTriggerEl);
+    // });
+
+    
+
+    async function handleApprovalAction(reqId, newStatus, button) {
+        
+        
+        button.disabled = true;
+
+        try {
+            const response = await fetchWithAuth(`/api/approvals/${reqId}/status`, {
+                method: 'POST',
+                headers: {
+                    //'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    approval_type: 'mr', // This is for MR Approval
+                    new_status: newStatus
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Action failed.');
+
+            // Show success toast
+            document.getElementById('toast-title').innerText = 'Success!';
+            document.getElementById('toast-body').innerText = result.message;
+            toastElement.className = 'toast bg-success text-white';
+            toast.show();
+
+            // Visually disable the buttons in this group
+            // const buttonGroup = button.closest('.btn-group');
+            // buttonGroup.querySelectorAll('.approval-btn').forEach(btn => {
+            //     btn.disabled = true;
+            //     btn.classList.add('opacity-50');
+            // });
+
+        } catch (error) {
+            // Show error toast
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+            button.disabled = false; // Re-enable button on error
+        }
+    }
+
+    // Use event delegation for the buttons
+    tableBody.addEventListener('click', function(event) {
+        const target = event.target.closest('.approval-btn');
+        if (!target) return;
+        
+        const reqId = target.dataset.reqId;
+        const status = target.dataset.status;
+
+        handleApprovalAction(reqId, status, target);
+    });
+});
+</script>
 {% endblock %}
