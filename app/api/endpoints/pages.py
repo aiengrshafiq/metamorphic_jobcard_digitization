@@ -429,8 +429,8 @@ async def create_lpo_page(context: dict = Depends(deps.get_template_context), db
     available_mrs = db.query(models.MaterialRequisition).filter(
         models.MaterialRequisition.mr_approval == 'Approved',
         models.MaterialRequisition.pm_approval == 'Approved',
-        models.MaterialRequisition.qs_approval == 'Approved',
-        models.MaterialRequisition.lpos.any() == False
+        models.MaterialRequisition.qs_approval == 'Approved'
+        #models.MaterialRequisition.lpos.any() == False
     ).all()
     context["available_mrs"] = available_mrs
     # ----------------------
