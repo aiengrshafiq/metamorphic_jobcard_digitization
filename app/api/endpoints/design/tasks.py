@@ -5,10 +5,13 @@ from datetime import datetime, timezone
 from pydantic import Field
 from pydantic import BaseModel
 from typing import Optional, List
+from fastapi import BackgroundTasks
 
 from app.api import deps
 from app import models, design_models
 from app.design_models import DesignTaskStatus
+from app.services.slack import send_design_slack_notification # 2. Import the slack service
+from app.core.config import settings # 3. Import settings for the BASE_URL
 
 router = APIRouter()
 
@@ -31,7 +34,7 @@ def get_my_tasks(
 @router.post("/{task_id}/submit", tags=["My Tasks"])
 def submit_task(
     task_id: int,
-    #file_link: str = Body(..., embed=True),
+    background_tasks: BackgroundTasks,
     file_link: Optional[str] = Body(None, embed=True),
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user)
@@ -52,6 +55,12 @@ def submit_task(
     task.status = DesignTaskStatus.SUBMITTED
     task.submitted_at = datetime.now(timezone.utc)
 
+    # --- ADD/UPDATE NOTIFICATION LOGIC ---
+    notification_message = ""
+    project_name = task.phase.project.name
+    task_link = f"<{settings.BASE_URL}/design/projects/{task.phase.project.id}|View Project>"
+
+
     # --- NEW TRIGGER LOGIC ---
     # 2. If this is the "Ready for QA" task, trigger the "DM QA Review" task
     if task.title == "Ready for QA":
@@ -61,6 +70,7 @@ def submit_task(
         ).first()
         if qa_review_task and qa_review_task.status == DesignTaskStatus.OPEN:
             qa_review_task.status = DesignTaskStatus.SUBMITTED
+            notification_message = f"✅ *Ready for Review:* `{project_name}` is ready for DM QA Review. {task_link}"
     # -------------------------
      # --- ADD THIS TRIGGER LOGIC ---
     # If the submitted task is "Technical Drawings", find the sibling "Engineer Sign-off"
@@ -72,8 +82,14 @@ def submit_task(
         ).first()
         if sign_off_task and sign_off_task.status == DesignTaskStatus.OPEN:
             sign_off_task.status = DesignTaskStatus.SUBMITTED
-            # (Optional) We could also create a notification for the TE here.
+            notification_message = f"📐 *Ready for Sign-off:* `{project_name}` has technical drawings ready for sign-off. {task_link}"
     # --------------------------------
+
+    if notification_message:
+        background_tasks.add_task(
+            send_design_slack_notification, 
+            message=notification_message
+        )
     
     lateness_days = 0
     if task.due_date and task.submitted_at.date() > task.due_date:

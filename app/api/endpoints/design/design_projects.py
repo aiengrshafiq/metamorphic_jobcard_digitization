@@ -4,10 +4,13 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from pydantic import BaseModel
 from typing import List
 from pydantic import conint
+from fastapi import BackgroundTasks
 
 from app.api import deps
 from app import models, design_models
 from app.design_models import DesignPhaseName, DesignTaskStatus
+from app.services.slack import send_design_slack_notification # 2. Import the slack service
+from app.core.config import settings # 3. Import settings for the BASE_URL
 
 
 from typing import Optional # Ensure Optional is imported
@@ -122,6 +125,7 @@ class TaskAssignmentData(BaseModel):
 def assign_design_task(
     task_id: int,
     assignment_data: TaskAssignmentData, # Use the Pydantic model
+    background_tasks: BackgroundTasks,
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user)
 ):
@@ -138,6 +142,16 @@ def assign_design_task(
     task.owner_id = assignment_data.owner_id
     task.due_date = assignment_data.due_date
     db.commit()
+
+    # --- ADD THIS NOTIFICATION LOGIC ---
+    assignee = db.query(models.User).filter(models.User.id == assignment_data.owner_id).first()
+    if assignee:
+        message = f"🎨 *New Task Assigned:* `{task.title}` in project `{task.phase.project.name}` has been assigned to *{assignee.name}*."
+        background_tasks.add_task(
+            send_design_slack_notification, 
+            message=message
+        )
+    # ---------------------------------
     
     return {"message": "Task assigned successfully."}
 
