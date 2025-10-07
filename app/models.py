@@ -10,6 +10,7 @@ from sqlalchemy import Table, Enum as SQLAlchemyEnum
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
 
+
 Base = declarative_base()
 
 # Define the user roles
@@ -28,6 +29,7 @@ class UserRole(str, enum.Enum):
     DESIGN_TEAM_MEMBER = "Design Team Member"
     DOC_CONTROLLER = "Document Controller"
     TECH_ENGINEER = "Technical Engineer"
+    LEAD_DESIGNER = "Lead Designer"
     USER = "User"
 
 # Association table for the many-to-many relationship between users and roles

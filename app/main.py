@@ -22,6 +22,10 @@ from app.api.endpoints.design.dashboard import router as design_dashboard_router
 from app.api.endpoints.design.phases import router as design_phases_router
 
 
+
+
+
+
 from app.api.endpoints.lpo.lpo import router as lpo_router
 
 
@@ -49,11 +53,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"message": f"Invalid form data. Please check the fields. Details: {error_messages}"}
     )
 
-@app.middleware("http")
-async def add_security_headers(request, call_next):
-    response = await call_next(request)
-    response.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
-    return response
+# @app.middleware("http")
+# async def add_security_headers(request, call_next):
+#     response = await call_next(request)
+#     response.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
+#     return response
 # -----------------------------------------------------------------
 
 # --- Include all API Routers ---
@@ -82,6 +86,17 @@ app.include_router(design_router, prefix="/api/design", tags=["Design"])
 app.include_router(design_tasks_router, prefix="/api/design/tasks", tags=["My Tasks"])
 app.include_router(design_dashboard_router, prefix="/api/design/dashboard", tags=["Design Dashboard"])
 app.include_router(design_phases_router, prefix="/api/design/phases", tags=["Design Phases"])
+
+#-----------------------V2-------------------------------
+# Cleaned up imports for Design V2 modules
+from app.api.endpoints.design.projects_v2 import router as design_v2_projects_router
+from app.api.endpoints.design.tasks_v2 import router as design_v2_tasks_router
+from app.api.endpoints.design.stages_v2 import router as design_v2_stages_router
+
+# Include the V2 routers
+app.include_router(design_v2_projects_router, prefix="/api/design/v2/projects", tags=["Design V2"])
+app.include_router(design_v2_tasks_router, prefix="/api/design/v2/tasks", tags=["Design V2 Tasks"])
+app.include_router(design_v2_stages_router, prefix="/api/design/v2/stages", tags=["Design V2 Stages"])
 
 
 @app.get("/health", tags=["System"])

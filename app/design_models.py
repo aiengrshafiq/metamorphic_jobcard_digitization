@@ -11,6 +11,8 @@ import enum
 from app.models import Base, User
 from sqlalchemy.sql import func
 
+
+
 # --- Enums for the Design Module ---
 class DesignPhaseName(str, enum.Enum):
     PHASE_2 = "Phase 2 - Initial Design"

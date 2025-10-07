@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <h3 class="mb-4">Create New Design Project (V2)</h3>
+        <p class="text-muted">This will create a new project with the full, automated stage-based workflow.</p>
+        <form id="create-project-form-v2" novalidate>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="project_name" class="form-label">Project Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="project_name" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="client_name" class="form-label">Client Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="client_name" required>
+                </div>
+            </div>
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">Create Project</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('create-project-form-v2');
+    const submitBtn = document.getElementById('submit-btn');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+        submitBtn.disabled = true;
+
+        const payload = {
+            name: document.getElementById('project_name').value,
+            client: document.getElementById('client_name').value,
+        };
+
+        try {
+            const response = await fetchWithAuth('/api/design/v2/projects/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Failed to create project.');
+
+            // Success handling and redirect
+            // ...
+
+        } catch (error) {
+            // ...
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

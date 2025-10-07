@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div id="loading-state" class="text-center text-muted mt-3">Loading projects...</div>
+        <div id="project-list-container" class="list-group" style="display: none;">
+            <!-- Projects will be loaded here by JavaScript -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    const container = document.getElementById('project-list-container');
+    const loadingState = document.getElementById('loading-state');
+
+    try {
+        // Fetch projects from the V2 API endpoint
+        const response = await fetchWithAuth('/api/design/v2/projects');
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || 'Could not load projects.');
+        }
+        const projects = await response.json();
+
+        if (projects.length === 0) {
+            loadingState.textContent = 'No V2 design projects found. Create one to get started.';
+        } else {
+            projects.forEach(project => {
+                const link = document.createElement('a');
+                // Link to the V2 project detail page
+                link.href = `/design/v2/projects/${project.id}`;
+                link.className = 'list-group-item list-group-item-action';
+                link.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">${project.name}</h5>
+                        <small>${new Date(project.created_at).toLocaleDateString()}</small>
+                    </div>
+                    <p class="mb-1">Client: ${project.client}</p>
+                    <span class="badge bg-primary">${project.status}</span>
+                `;
+                container.appendChild(link);
+            });
+            loadingState.style.display = 'none';
+            container.style.display = 'block';
+        }
+    } catch (error) {
+        loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+    }
+});
+</script>
+{% endblock %}

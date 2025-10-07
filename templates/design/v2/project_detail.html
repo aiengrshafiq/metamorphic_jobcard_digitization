@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<style>
+    .stage-card .list-group-item {
+        padding: 0.75rem 1.25rem;
+    }
+    .assignment-cell {
+        min-width: 350px;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div id="loading-state" class="text-center mt-4">
+    <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+    <p class="mt-2 text-muted">Loading Project Details...</p>
+</div>
+
+<div id="content-container" style="display: none;">
+    <h2 id="project-name"></h2>
+    <p class="lead text-muted" id="project-client"></p>
+    <hr>
+    <div class="accordion" id="stagesAccordion">
+        </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+     const projectId = {{ project_id }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+    const stagesContainer = document.getElementById('stagesAccordion');
+    const projectNameEl = document.getElementById('project-name');
+    const projectClientEl = document.getElementById('project-client');
+    const isDesignManager = {{ ('Design Manager' in user_roles) | tojson }};
+    const teamMembers = {{ team_members | tojson }};
+
+    // --- HELPER FUNCTIONS ---
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    async function fetchWithAuth(url, options = {}) {
+        const token = getCookie('access_token');
+        if (!token) {
+            window.location.href = '/login';
+            return new Promise(() => {});
+        }
+        options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+        const response = await fetch(url, options);
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return new Promise(() => {}); 
+        }
+        return response;
+    }
+    
+    async function handleAction(url, method = 'POST', body = null, successMessage = 'Action successful!', triggerEl = null) {
+        let originalHtml;
+        if (triggerEl) {
+            originalHtml = triggerEl.innerHTML;
+            triggerEl.disabled = true;
+            triggerEl.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+        }
+        try {
+            const options = { method };
+            if (body) {
+                options.headers = { 'Content-Type': 'application/json' };
+                options.body = JSON.stringify(body);
+            }
+            const response = await fetchWithAuth(url, options);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Action failed.');
+            
+            fetchProjectDetails(); // Refresh the entire view on success
+        } catch (error) {
+            alert(error.message);
+            if (triggerEl) {
+                triggerEl.disabled = false;
+                triggerEl.innerHTML = originalHtml;
+            }
+        }
+    }
+
+    function renderStage2A(stage) {
+        if (stage.status === 'Completed') {
+            return '<div class="card-body"><p class="text-success"><i class="bi bi-check-circle-fill me-2"></i>This stage is complete.</p></div>';
+        }
+        if (stage.status === 'Locked') {
+            return '<div class="card-body"><p class="text-muted">This stage is locked until the previous stage is completed.</p></div>';
+        }
+        // If In Progress, show the form
+        return `
+            <div class="card-body">
+                <form class="stage-2a-form" data-stage-id="${stage.id}">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">Meeting Held At</label><input type="datetime-local" name="meeting_held_at" class="form-control" required></div>
+                        <div class="col-md-6"><label class="form-label">Site Photos Link</label><input type="url" name="site_photos_link" class="form-control" placeholder="https://..." required></div>
+                        <div class="col-md-6"><label class="form-label">MoM Link</label><input type="url" name="mom_link" class="form-control" placeholder="https://..." required></div>
+                        <div class="col-md-6"><label class="form-label">Updated Brief Link</label><input type="url" name="updated_brief_link" class="form-control" placeholder="https://..." required></div>
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-primary">Complete Stage</button>
+                    </div>
+                </form>
+            </div>
+        `;
+    }
+
+    function renderStage3Tasks(stage) {
+        if (stage.status === 'Locked') {
+            return '<div class="card-body"><p class="text-muted">This stage is locked until the previous stage is completed.</p></div>';
+        }
+
+        let tasksHtml = '<ul class="list-group list-group-flush">';
+        stage.tasks.forEach(task => {
+            let assignmentCellHtml = '';
+            const dueDateForInput = task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '';
+            const dueDateForDisplay = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set';
+
+            if (task.owner) {
+                assignmentCellHtml = `<div>${task.owner.name}</div><small class="text-muted">Due: ${dueDateForDisplay}</small>`;
+            } else {
+                let options = '<option value="">Assign to...</option>';
+                teamMembers.forEach(user => { options += `<option value="${user.id}">${user.name}</option>`; });
+                assignmentCellHtml = `
+                    <form class="assign-task-form-v2 d-flex gap-2">
+                        <select class="form-select form-select-sm">${options}</select>
+                        <input type="date" class="form-control form-control-sm" value="${dueDateForInput}">
+                        <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                    </form>`;
+            }
+            tasksHtml += `<li class="list-group-item d-flex justify-content-between align-items-center" data-task-id="${task.id}">
+                              <span>${task.title}</span>
+                              <div class="assignment-cell" style="min-width: 350px;">${assignmentCellHtml}</div>
+                          </li>`;
+        });
+        tasksHtml += '</ul>';
+        return tasksHtml;
+    }
+
+    // --- MAIN DATA FETCHING FUNCTION ---
+
+    async function fetchProjectDetails() {
+        try {
+            const response = await fetchWithAuth(`/api/design/v2/projects/${projectId}`);
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Could not load project details.');
+            }
+            const project = await response.json();
+
+            projectNameEl.textContent = project.name;
+            projectClientEl.textContent = `Client: ${project.client}`;
+            stagesContainer.innerHTML = '';
+
+            project.stages.forEach(stage => {
+                const stageEl = document.createElement('div');
+                stageEl.className = 'accordion-item';
+                let bodyHtml = '';
+                if (stage.name === 'Project Initiation & Site Visit') {
+                    bodyHtml = renderStage2A(stage);
+                } else if (stage.name === 'Initial Design Development') {
+                    bodyHtml = renderStage3Tasks(stage);
+                } else {
+                    bodyHtml = `<div class="card-body"><p class="text-muted">UI for this stage is under construction.</p></div>`;
+                }
+
+                let badgeClass = 'bg-secondary';
+                if (stage.status === 'In Progress') badgeClass = 'bg-primary';
+                if (stage.status === 'Completed') badgeClass = 'bg-success';
+                
+                stageEl.innerHTML = `
+                    <h2 class="accordion-header">
+                        <button class="accordion-button ${stage.status !== 'In Progress' ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${stage.id}">
+                            ${stage.name} - <span class="ms-2 badge ${badgeClass}">${stage.status}</span>
+                        </button>
+                    </h2>
+                    <div id="collapse-${stage.id}" class="accordion-collapse collapse ${stage.status === 'In Progress' ? 'show' : ''}" data-bs-parent="#stagesAccordion">
+                        ${bodyHtml}
+                    </div>
+                `;
+                stagesContainer.appendChild(stageEl);
+            });
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+        } catch (error) { 
+            loadingState.innerHTML = `<p class="text-danger text-center">${error.message}</p>`;
+        }
+    }
+    // --- EVENT LISTENERS ---
+
+    stagesContainer.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const button = form.querySelector('button[type="submit"]');
+
+        if (form.classList.contains('stage-2a-form')) {
+            const stageId = form.dataset.stageId;
+            const payload = {
+                meeting_held_at: form.querySelector('[name="meeting_held_at"]').value,
+                mom_link: form.querySelector('[name="mom_link"]').value,
+                site_photos_link: form.querySelector('[name="site_photos_link"]').value,
+                updated_brief_link: form.querySelector('[name="updated_brief_link"]').value,
+            };
+            // For a top-level action, we don't need a specific trigger element for the spinner
+            await handleAction(`/api/design/v2/stages/${stageId}/complete-2a`, 'POST', payload, 'Stage 2A completed!');
+        }
+
+        if (form.classList.contains('assign-task-form-v2')) {
+            const taskId = form.closest('li').dataset.taskId;
+            const ownerId = form.querySelector('select').value;
+            const dueDate = form.querySelector('input[type="date"]').value;
+            if (ownerId && taskId) {
+                await handleAction(
+                    `/api/design/v2/tasks/${taskId}/assign`, 
+                    'POST', 
+                    { owner_id: ownerId, due_date: dueDate }, 
+                    'Task assigned!',
+                    button // Pass the button to the handler
+                );
+            }
+        }
+    });
+
+    // We can add a generic action handler here if more actions are needed later
+    async function handleAction(url, method, body, successMessage, triggerEl = null) {
+        // ... (This function can be added if you have more simple POST actions like "Verify", "Sign-off" etc.)
+        // For now, the direct logic in the event listener is clear enough.
+    }
+
+    // Initial data load
+    fetchProjectDetails();
+});
+</script>
+{% endblock %}

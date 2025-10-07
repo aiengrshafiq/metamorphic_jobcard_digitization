@@ -570,6 +570,58 @@ async def design_task_detail_page(
     return templates.TemplateResponse("design/task_detail.html", context)
 
 
+# End of Design Module Pages
+# Start of Design V2 Module Pages
+@router.get("/design/v2/projects/new", response_class=HTMLResponse, tags=["Pages"])
+async def create_design_project_v2_page(context: dict = Depends(deps.get_template_context)):
+    if isinstance(context, RedirectResponse): return context
+    if "Design Manager" not in context["user_roles"]:
+        raise HTTPException(status_code=403, detail="Access denied.")
+    context["page_title"] = "Create New Design Project (V2)"
+    return templates.TemplateResponse("design/v2/create_project.html", context)
+
+
+@router.get("/design/v2/projects/{project_id}", response_class=HTMLResponse, tags=["Pages"])
+async def view_design_project_v2_page(
+    project_id: int,
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db) # <-- Add the db session
+):
+    if isinstance(context, RedirectResponse): return context
+    
+    # ... (role check is the same)
+        
+    context["page_title"] = f"Design Project Details (V2)"
+    context["project_id"] = project_id
+
+    # --- ADD THIS LOGIC to fetch team members for the dropdowns ---
+    team_roles = [
+        models.UserRole.DESIGN_TEAM_MEMBER,
+        models.UserRole.LEAD_DESIGNER,
+        models.UserRole.TECH_ENGINEER,
+        models.UserRole.DOC_CONTROLLER,
+        models.UserRole.DESIGN_MANAGER
+    ]
+    team_members = db.query(models.User).join(models.User.roles).filter(models.Role.name.in_(team_roles)).all()
+    context["team_members"] = [{"id": u.id, "name": u.name} for u in team_members]
+    # -----------------------------------------------------------
+
+    return templates.TemplateResponse("design/v2/project_detail.html", context)
+
+
+@router.get("/design/v2/projects", response_class=HTMLResponse, tags=["Pages"]) 
+async def design_projects_v2_list_page( context: dict = Depends(deps.get_template_context) ): 
+    if isinstance(context, RedirectResponse): return context
+
+    # Simple check to ensure only relevant people see this
+    allowed_roles = {'Design Manager', 'Admin', 'Super Admin'}
+    if not allowed_roles.intersection(context["user_roles"]):
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+    context["page_title"] = "Design Projects (V2)"
+    return templates.TemplateResponse("design/v2/project_list.html", context)
+
+
 
 
 
