@@ -46,7 +46,16 @@ def complete_stage_2a(stage_id: int, update_data: SiteVisitUpdate, db: Session =
     stage = db.query(DesignStageV3).filter_by(id=stage_id, name=StageV3Name.SITE_VISIT, status=StageV3Status.IN_PROGRESS).first()
     if not stage: raise HTTPException(status_code=404, detail="Active Stage 2A not found.")
     
-    log_entry = SiteVisitLog(stage_id=stage_id, **update_data.dict())
+    # --- THIS IS THE FIX ---
+    # Manually create the log entry, converting HttpUrl objects to strings
+    log_entry = SiteVisitLog(
+        stage_id=stage_id,
+        meeting_held_at=update_data.meeting_held_at,
+        mom_link=str(update_data.mom_link),
+        site_photos_link=str(update_data.site_photos_link),
+        updated_brief_link=str(update_data.updated_brief_link)
+    )
+    # -----------------------
     db.add(log_entry)
     stage.status = StageV3Status.COMPLETED
     _unlock_next_stage(db, stage)

@@ -683,7 +683,11 @@ async def project_v3_detail_page(
     return templates.TemplateResponse("design/v3/project_detail.html", context)
 
 @router.get("/design/v3/my-tasks", response_class=HTMLResponse, tags=["Pages"])
-async def my_tasks_v3_page(context: dict = Depends(deps.get_template_context)):
+async def my_tasks_v3_page(context=Depends(deps.get_template_context)):
+    # If dependency returned a redirect
+    if isinstance(context, RedirectResponse):
+        return context
+    
     context["page_title"] = "My Tasks (V3)"
     return templates.TemplateResponse("design/v3/my_tasks.html", context)
 
