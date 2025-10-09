@@ -88,15 +88,34 @@ app.include_router(design_dashboard_router, prefix="/api/design/dashboard", tags
 app.include_router(design_phases_router, prefix="/api/design/phases", tags=["Design Phases"])
 
 #-----------------------V2-------------------------------
-# Cleaned up imports for Design V2 modules
-from app.api.endpoints.design.projects_v2 import router as design_v2_projects_router
-from app.api.endpoints.design.tasks_v2 import router as design_v2_tasks_router
-from app.api.endpoints.design.stages_v2 import router as design_v2_stages_router
+# # Cleaned up imports for Design V2 modules
+# from app.api.endpoints.design.projects_v2 import router as design_v2_projects_router
+# from app.api.endpoints.design.tasks_v2 import router as design_v2_tasks_router
+# from app.api.endpoints.design.stages_v2 import router as design_v2_stages_router
 
-# Include the V2 routers
-app.include_router(design_v2_projects_router, prefix="/api/design/v2/projects", tags=["Design V2"])
-app.include_router(design_v2_tasks_router, prefix="/api/design/v2/tasks", tags=["Design V2 Tasks"])
-app.include_router(design_v2_stages_router, prefix="/api/design/v2/stages", tags=["Design V2 Stages"])
+# # Include the V2 routers
+# app.include_router(design_v2_projects_router, prefix="/api/design/v2/projects", tags=["Design V2"])
+# app.include_router(design_v2_tasks_router, prefix="/api/design/v2/tasks", tags=["Design V2 Tasks"])
+# app.include_router(design_v2_stages_router, prefix="/api/design/v2/stages", tags=["Design V2 Stages"])
+
+
+#-----------------------V3-------------------------------
+from app.api.endpoints.design.deals_v3 import router as design_v3_deals_router
+app.include_router(design_v3_deals_router, prefix="/api/design/v3/deals", tags=["Design V3 Deals"])
+
+# In app/main.py
+from app.api.endpoints.design.projects_v3 import router as design_v3_projects_router
+from app.api.endpoints.design.stages_v3 import router as design_v3_stages_router
+
+# Add the new routers
+app.include_router(design_v3_projects_router, prefix="/api/design/v3/projects", tags=["Design V3 Projects"])
+app.include_router(design_v3_stages_router, prefix="/api/design/v3/stages", tags=["Design V3 Stages"])
+
+from app.api.endpoints.design.tasks_v3 import router as design_v3_tasks_router
+
+app.include_router(design_v3_tasks_router, prefix="/api/design/v3/tasks", tags=["Design V3 Tasks"])
+
+
 
 
 @app.get("/health", tags=["System"])

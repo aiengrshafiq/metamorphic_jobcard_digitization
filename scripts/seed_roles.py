@@ -9,6 +9,10 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models import Role, UserRole
 
+import app.design_models
+import app.design_v2_models
+import app.design_v3_models
+
 def create_all_roles(db: Session):
     """
     Checks for and creates any missing roles from the UserRole enum.

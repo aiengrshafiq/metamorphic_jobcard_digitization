@@ -1,0 +1,48 @@
+{# templates/design/v3/_stage_task_list.html #}
+<ul class="list-group list-group-flush">
+    {% if not stage.tasks %}
+    <li class="list-group-item text-muted">No deliverables for this stage.</li>
+    {% endif %}
+
+    {% set all_tasks_submitted = true %}
+    {% for task in stage.tasks %}
+        {% if task.status != 'Submitted' %}
+            {% set all_tasks_submitted = false %}
+        {% endif %}
+        <li class="list-group-item d-flex justify-content-between align-items-center" data-task-id="{{ task.id }}">
+            <div>{{ task.title }}</div>
+            <div class="assignment-cell">
+                {% if task.status == 'Open' and task.owner_id == user.id %}
+                    <form class="submit-task-form-v3 d-flex gap-2">
+                        <input type="url" class="form-control form-control-sm" placeholder="Paste file link..." required>
+                        <button type="submit" class="btn btn-primary btn-sm">Submit</button>
+                    </form>
+                {% elif task.owner %}
+                    <div>{{ task.owner.name }}</div>
+                    <small class="text-muted">Due: {{ task.due_date.strftime('%d-%b-%Y') if task.due_date else 'Not set' }}</small>
+                {% elif 'Design Manager' in user_roles or 'Lead Designer' in user_roles %}
+                    <form class="assign-task-form-v3 d-flex gap-2">
+                        <select class="form-select form-select-sm">
+                            <option value="">Assign to...</option>
+                            {% for member in team_members %}
+                            <option value="{{ member.id }}">{{ member.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="date" class="form-control form-control-sm" value="{{ task.due_date.strftime('%Y-%m-%d') if task.due_date else '' }}">
+                        <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                    </form>
+                {% else %}
+                    <span class="text-muted">Unassigned</span>
+                {% endif %}
+            </div>
+        </li>
+    {% endfor %}
+</ul>
+
+{% if stage.status == 'In Progress' and all_tasks_submitted and ('Design Manager' in user_roles or 'Lead Designer' in user_roles) %}
+<div class="card-footer text-end">
+    <button class="btn btn-success complete-stage-3-btn" data-stage-id="{{ stage.id }}">
+        <i class="bi bi-check2-circle me-1"></i> Complete Stage & Forward to QS
+    </button>
+</div>
+{% endif %}

@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload, selectinload
 from app.api.endpoints.lpo.lpo import get_next_lpo_number
+from app.design_v3_models import Vendor
 import yaml
 from pathlib import Path
 import os
@@ -14,6 +15,8 @@ from app import models
 from app import design_models
 from app.design_models import DesignTaskStatus
 from app.utils import generate_job_card_number
+
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -620,6 +623,69 @@ async def design_projects_v2_list_page( context: dict = Depends(deps.get_templat
 
     context["page_title"] = "Design Projects (V2)"
     return templates.TemplateResponse("design/v2/project_list.html", context)
+
+
+#--------------V3 DEALS PAGES AND ENDPOINTS----------------
+from app.design_v3_models import CommitmentPackage # Add this import
+
+@router.get("/design/v3/deals/new", response_class=HTMLResponse, tags=["Pages"])
+async def create_deal_v3_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse): return context
+    
+    # Security check for SIP role
+    if "Sales In-Charge Person" not in context["user_roles"]:
+        raise HTTPException(status_code=403, detail="Access denied.")
+        
+    context["page_title"] = "Create New Deal (V3)"
+    context["commitment_packages"] = [e.value for e in CommitmentPackage]
+    return templates.TemplateResponse("design/v3/create_deal.html", context)
+
+
+@router.get("/design/v3/deals", response_class=HTMLResponse, tags=["Pages"])
+async def deals_v3_list_page(
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse): return context
+    
+    # Security check for design leadership
+    allowed_roles = {'Design Manager', 'Lead Designer', 'Admin', 'Super Admin'}
+    if not allowed_roles.intersection(context["user_roles"]):
+        raise HTTPException(status_code=403, detail="Access denied.")
+        
+    context["page_title"] = "New Deals (V3)"
+    return templates.TemplateResponse("design/v3/deal_list.html", context)
+
+
+@router.get("/design/v3/projects/{project_id}", response_class=HTMLResponse, tags=["Pages"])
+async def project_v3_detail_page(
+    project_id: int,
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse): return context
+    context["page_title"] = f"Design Project V3"
+    context["project_id"] = project_id
+    team_roles = [
+        models.UserRole.DESIGN_TEAM_MEMBER,
+        models.UserRole.LEAD_DESIGNER,
+        models.UserRole.TECH_ENGINEER,
+        models.UserRole.DOC_CONTROLLER,
+        models.UserRole.DESIGN_MANAGER
+    ]
+    team_members = db.query(models.User).join(models.User.roles).filter(models.Role.name.in_(team_roles)).all()
+    context["team_members"] = [{"id": u.id, "name": u.name} for u in team_members]
+    
+    vendors = db.query(Vendor).order_by(Vendor.name).all()
+    context["vendors"] = [{"id": v.id, "name": v.name} for v in vendors]
+
+    return templates.TemplateResponse("design/v3/project_detail.html", context)
+
+@router.get("/design/v3/my-tasks", response_class=HTMLResponse, tags=["Pages"])
+async def my_tasks_v3_page(context: dict = Depends(deps.get_template_context)):
+    context["page_title"] = "My Tasks (V3)"
+    return templates.TemplateResponse("design/v3/my_tasks.html", context)
 
 
 

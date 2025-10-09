@@ -7,8 +7,8 @@ from pydantic import conint
 from fastapi import BackgroundTasks
 
 from app.api import deps
-from app import models, design_models
-from app.design_models import DesignPhaseName, DesignTaskStatus
+from app import models
+# from app.design_models import DesignPhaseName, DesignTaskStatus
 from app.services.slack import send_design_slack_notification # 2. Import the slack service
 from app.core.config import settings # 3. Import settings for the BASE_URL
 

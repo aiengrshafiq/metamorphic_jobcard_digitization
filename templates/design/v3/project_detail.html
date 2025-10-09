@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<style>
+    .assignment-cell { min-width: 350px; }
+    .signoff-list { list-style-type: none; padding-left: 0; }
+    .signoff-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #eee; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="loading-state" class="text-center mt-4">
+    <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+    <p class="mt-2 text-muted">Loading Project Details...</p>
+</div>
+
+<div id="content-container" style="display: none;">
+    <h2 id="project-name"></h2>
+    <p class="lead text-muted" id="project-client"></p>
+    <hr>
+    <div class="accordion" id="stagesAccordion"></div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const projectId = {{ project_id }};
+    const currentUserId = {{ user.id }};
+    const isDesignManager = {{ ('Design Manager' in user_roles) | tojson }};
+    const isLeadDesigner = {{ ('Lead Designer' in user_roles) | tojson }};
+    const isTechEngineer = {{ ('Technical Engineer' in user_roles) | tojson }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+    const stagesContainer = document.getElementById('stagesAccordion');
+    const projectNameEl = document.getElementById('project-name');
+    const projectClientEl = document.getElementById('project-client');
+    const teamMembers = {{ team_members | default([]) | tojson }};
+    const vendors = {{ vendors | tojson }};
+    const isQS = {{ ('QS' in user_roles) | tojson }};
+
+    console.log('isLeadDesigner:', isLeadDesigner);
+     
+
+    // --- HELPER ---
+    async function handleAction(url, method = 'POST', body = null, successMessage = 'Action successful!', triggerEl = null) {
+        let originalHtml;
+        if (triggerEl) {
+            originalHtml = triggerEl.innerHTML;
+            triggerEl.disabled = true;
+            triggerEl.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+        }
+        try {
+            const options = { method };
+            if (body) {
+                options.headers = { 'Content-Type': 'application/json' };
+                options.body = JSON.stringify(body);
+            }
+            const response = await fetchWithAuth(url, options);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Action failed.');
+            await fetchProjectDetails(); // refresh
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            if (triggerEl) {
+                triggerEl.disabled = false;
+                triggerEl.innerHTML = originalHtml;
+            }
+        }
+    }
+
+    
+
+    
+
+    async function renderStageBody(stage) {
+        if (stage.status === 'Locked') return '<div class="card-body"><p class="text-muted">This stage is locked.</p></div>';
+        if (stage.status === 'Completed') return `<div class="card-body"><p class="text-success"><i class="bi bi-check-circle-fill me-2"></i>Stage Complete</p></div>`;
+        
+        switch(stage.name) {
+            case 'Stage 2A - Design Activation & Site Visit': return renderStage2A(stage);
+            case 'Stage 2B - Measurement Requisition': return renderStage2B(stage);
+            case 'Stage 4 - Forward to QS': return renderStage4QS(stage);
+            case 'Stage 5 - Technical Review': return renderTechnicalReviewStage(stage);
+            case 'Stage 3 - Initial Design Development': return await renderTaskBasedStage(stage);
+            //default: return renderTaskBasedStage(stage);
+            default:
+                if (Array.isArray(stage.tasks) && stage.tasks.length > 0) {
+                    return await renderTaskBasedStage(stage);
+                }
+                return `<div class="card-body"><p class="text-muted">UI for this stage is under construction.</p></div>`;
+        }
+    }
+
+    function renderStage4QS(stage) {
+        if (!isQS) {
+            return '<div class="card-body"><p class="text-muted">Awaiting action from the QS team.</p></div>';
+        }
+        return `
+            <div class="card-body">
+                <form class="stage-4-form" data-stage-id="${stage.id}">
+                    <p class="text-muted">As the QS, validate the BOQ from Stage 3 and upload your cost estimations.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Validated BOQ Link <span class="text-danger">*</span></label>
+                            <input type="url" name="validated_boq_link" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cost Estimation Sheet Link <span class="text-danger">*</span></label>
+                            <input type="url" name="cost_estimation_sheet_link" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-primary">Complete Stage 4</button>
+                    </div>
+                </form>
+            </div>`;
+    }
+    // Stage 2A (your original, kept intact for correctness)
+    function renderStage2A(stage) {
+        if (stage.status === 'Completed') {
+            const log = stage.site_visit_log || {};
+            return `<div class="card-body">
+                        <p class="text-success"><i class="bi bi-check-circle-fill me-2"></i>This stage is complete.</p>
+                        <ul class="list-unstyled">
+                            <li><strong>Meeting Held:</strong> ${log.meeting_held_at ? new Date(log.meeting_held_at).toLocaleString() : '-'}</li>
+                            ${log.mom_link ? `<li><a href="${log.mom_link}" target="_blank">View Meeting Minutes</a></li>` : ''}
+                            ${log.site_photos_link ? `<li><a href="${log.site_photos_link}" target="_blank">View Site Photos</a></li>` : ''}
+                            ${log.updated_brief_link ? `<li><a href="${log.updated_brief_link}" target="_blank">View Updated Brief</a></li>` : ''}
+                        </ul>
+                    </div>`;
+        }
+        if (stage.status === 'Locked') {
+            return '<div class="card-body"><p class="text-muted">This stage is locked.</p></div>';
+        }
+        return `
+            <div class="card-body">
+                <form class="stage-2a-form" data-stage-id="${stage.id}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Meeting Held At</label>
+                            <input type="datetime-local" name="meeting_held_at" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Site Photos Link</label>
+                            <input type="url" name="site_photos_link" class="form-control" placeholder="https://..." required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">MoM Link</label>
+                            <input type="url" name="mom_link" class="form-control" placeholder="https://..." required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Updated Brief Link</label>
+                            <input type="url" name="updated_brief_link" class="form-control" placeholder="https://..." required>
+                        </div>
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-primary">Complete Stage</button>
+                    </div>
+                </form>
+            </div>`;
+    }
+
+    
+
+    async function renderTaskBasedStage(stage) {
+        if (stage.status === 'Locked') {
+            return '<div class="card-body"><p class="text-muted">This stage is locked.</p></div>';
+        }
+        
+        // Fetch the pre-rendered HTML from our new endpoint
+        const response = await fetchWithAuth(`/api/design/v3/stages/${stage.id}/tasks-html`);
+        if (!response.ok) return '<div class="card-body"><p class="text-danger">Error loading tasks.</p></div>';
+        return await response.text(); // Return the HTML content
+    }
+
+    // Technical Review stage (interdisciplinary sign-offs)
+    function renderTechnicalReviewStage(stage) {
+        const disciplines = ['Structural Review', 'MEP Review', 'Landscape Review'];
+        let signoffHtml = '<ul class="signoff-list">';
+        const signoffs = Array.isArray(stage.interdisciplinary_signoffs) ? stage.interdisciplinary_signoffs : [];
+
+        disciplines.forEach(disc => {
+            const signoff = signoffs.find(s => s.discipline === disc);
+            let actionHtml = '';
+            if (signoff) {
+                actionHtml = `<span class="text-success"><i class="bi bi-check-circle-fill"></i> Signed by ${signoff.signed_off_by?.name || '—'}</span>`;
+            } else if (isTechEngineer) {
+                actionHtml = `<button class="btn btn-sm btn-primary signoff-btn" data-discipline="${disc}">Sign Off</button>`;
+            } else {
+                actionHtml = `<span class="text-muted">Pending</span>`;
+            }
+            signoffHtml += `<li><span>${disc}</span><span>${actionHtml}</span></li>`;
+        });
+
+        signoffHtml += '</ul>';
+        return `<div class="card-body">${signoffHtml}</div>`;
+    }
+
+    function renderStage2B(stage) {
+        console.log('Rendering Stage 2B with stage data:', stage);
+
+        if (stage.status === 'Locked') return '<div class="card-body"><p class="text-muted">This stage is locked.</p></div>';
+        
+        // First, check if a requisition exists.
+        if (stage.measurement_requisition) {
+            // If it's "Approved", the stage is effectively complete.
+
+            if (stage.measurement_requisition.status === "Approved") {
+                return `<div class="card-body">
+                            <p class="text-success"><i class="bi bi-check-circle-fill me-2"></i>Measurement package received from <strong>${stage.measurement_requisition.vendor.name}</strong>.</p>
+                            <a href="${stage.measurement_requisition.measurement_package_link}" target="_blank">View Measurements</a>
+                        </div>`;
+            }
+            // If it exists but is not yet approved, show the form for the Lead Designer
+            if (isLeadDesigner) {
+                return `
+                    <div class="card-body">
+                        <p>Request sent to vendor: <strong>${stage.measurement_requisition.vendor.name}</strong>. Awaiting delivery.</p>
+                        <form class="stage-2b-completion-form" data-stage-id="${stage.id}">
+                            <label class="form-label">Once received, paste the measurement package link below to complete this stage:</label>
+                            <div class="input-group">
+                                <input type="url" name="measurement_package_link" class="form-control" placeholder="https://..." required>
+                                <button type="submit" class="btn btn-primary">Approve & Complete Stage</button>
+                            </div>
+                        </form>
+                    </div>`;
+            } else {
+                // For other users (like DM), show the status
+                return `<div class="card-body"><p class="text-muted">Awaiting measurement delivery from vendor: <strong>${stage.measurement_requisition.vendor.name}</strong>.</p></div>`;
+            }
+        }
+        
+        // If no requisition exists yet, show the creation form for the Lead Designer
+        if (isLeadDesigner) {
+            let vendorOptions = '<option value="">Select a vendor...</option>';
+            vendors.forEach(vendor => { vendorOptions += `<option value="${vendor.id}">${vendor.name}</option>`; });
+            return `
+                <div class="card-body">
+                    <form class="stage-2b-creation-form" data-stage-id="${stage.id}">
+                        <p class="text-muted">Select a 3rd-party vendor to send the Measurement Requisition.</p>
+                        <div class="input-group">
+                            <select name="vendor_id" class="form-select" required>${vendorOptions}</select>
+                            <button type="submit" class="btn btn-primary">Send Request</button>
+                        </div>
+                    </form>
+                </div>`;
+        }
+
+        // If no requisition and not a lead designer, show waiting message.
+        return '<div class="card-body"><p class="text-muted">Awaiting action from the Lead Designer.</p></div>';
+    }
+
+    
+
+    // --- MAIN FETCH ---
+    // async function fetchProjectDetails() {
+    //     try {
+    //         const response = await fetchWithAuth(`/api/design/v3/projects/${projectId}`);
+    //         if (!response.ok) throw new Error('Could not load project details.');
+    //         const project = await response.json();
+
+    //         projectNameEl.textContent = project.name;
+    //         projectClientEl.textContent = `Client: ${project.client}`;
+    //         stagesContainer.innerHTML = '';
+
+    //         (project.stages || []).forEach(stage => {
+    //             const stageEl = document.createElement('div');
+    //             stageEl.className = 'accordion-item';
+
+    //             const bodyHtml = renderStageBody(stage);
+
+    //             let badgeClass = 'bg-secondary';
+    //             if (stage.status === 'In Progress') badgeClass = 'bg-primary';
+    //             if (stage.status === 'Completed') badgeClass = 'bg-success';
+
+                
+
+    //             stageEl.innerHTML = `
+    //                 <h2 class="accordion-header">
+    //                     <button class="accordion-button ${stage.status !== 'In Progress' ? 'collapsed' : ''}"
+    //                             type="button"
+    //                             data-bs-toggle="collapse"
+    //                             data-bs-target="#collapse-${stage.id}">
+    //                         ${stage.name}
+    //                         <span class="ms-2 badge ${badgeClass}">${stage.status}</span>
+    //                     </button>
+    //                 </h2>
+    //                 <div id="collapse-${stage.id}" class="accordion-collapse collapse ${stage.status === 'In Progress' ? 'show' : ''}" data-bs-parent="#stagesAccordion">
+    //                     ${bodyHtml}
+    //                 </div>
+    //             `;
+    //             stagesContainer.appendChild(stageEl);
+    //         });
+
+    //         loadingState.style.display = 'none';
+    //         contentContainer.style.display = 'block';
+    //     } catch (error) {
+    //         loadingState.innerHTML = `<p class="text-danger text-center">${error.message}</p>`;
+    //     }
+    // }
+
+    async function fetchProjectDetails() {
+        try {
+            const response = await fetchWithAuth(`/api/design/v3/projects/${projectId}`);
+            if (!response.ok) throw new Error('Could not load project details.');
+            const project = await response.json();
+
+            projectNameEl.textContent = project.name;
+            projectClientEl.textContent = `Client: ${project.client}`;
+            stagesContainer.innerHTML = '';
+            // Create an array of promises, one for each stage's body HTML
+            const bodyHtmlPromises = (project.stages || []).map(stage => renderStageBody(stage));
+            
+            // Wait for all the HTML snippets to be fetched/rendered
+            const resolvedBodyHtmls = await Promise.all(bodyHtmlPromises);
+
+            (project.stages || []).forEach((stage, index) => {
+                const stageEl = document.createElement('div');
+                stageEl.className = 'accordion-item';
+                const bodyHtml = resolvedBodyHtmls[index];
+                let badgeClass = 'bg-secondary';
+                if (stage.status === 'In Progress') badgeClass = 'bg-primary';
+                if (stage.status === 'Completed') badgeClass = 'bg-success';
+
+                stageEl.innerHTML = `
+                    <h2 class="accordion-header">
+                        <button class="accordion-button ${stage.status !== 'In Progress' ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${stage.id}">
+                            ${stage.name} <span class="ms-2 badge ${badgeClass}">${stage.status}</span>
+                        </button>
+                    </h2>
+                    <div id="collapse-${stage.id}" class="accordion-collapse collapse ${stage.status === 'In Progress' ? 'show' : ''}" data-bs-parent="#stagesAccordion">
+                        ${bodyHtml}
+                    </div>`;
+                stagesContainer.appendChild(stageEl);
+            });
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger text-center">${error.message}</p>`;
+        }
+    }
+
+    // --- EVENTS ---
+    stagesContainer.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const button = form.querySelector('button[type="submit"]');
+        
+
+        // Complete Stage 2A
+        if (form.classList.contains('stage-2a-form')) {
+            const stageId = form.dataset.stageId;
+            const payload = {
+                meeting_held_at: form.querySelector('[name="meeting_held_at"]').value,
+                mom_link: form.querySelector('[name="mom_link"]').value,
+                site_photos_link: form.querySelector('[name="site_photos_link"]').value,
+                updated_brief_link: form.querySelector('[name="updated_brief_link"]').value,
+            };
+            await handleAction(`/api/design/v3/stages/${stageId}/complete-2a`, 'POST', payload, 'Stage 2A completed!', button);
+        }
+
+        // Assign task (manager/lead)
+        if (form.classList.contains('assign-task-form-v3')) {
+            const li = form.closest('li');
+            const taskId = li?.dataset.taskId;
+            const ownerId = form.querySelector('select').value;
+            const dueDate = form.querySelector('input[type="date"]').value;
+            if (ownerId && taskId) {
+                await handleAction(
+                    `/api/design/v3/tasks/${taskId}/assign`, // <-- Corrected to v3
+                    'POST',
+                    { owner_id: parseInt(ownerId), due_date: dueDate },
+                    'Task assigned!',
+                    button
+                );
+            }
+        }
+
+        // Submit task (owner)
+        if (form.classList.contains('submit-task-form-v2')) {
+            const li = form.closest('li');
+            const taskId = li?.dataset.taskId;
+            const link = form.querySelector('input[type="url"]').value;
+            await handleAction(
+                `/api/design/v2/tasks/${taskId}/submit`,       // keep v2 endpoint as in your backend
+                'POST',
+                { file_link: link },
+                'Task Submitted!',
+                form.querySelector('button[type="submit"]')
+            );
+        }
+        if (form.classList.contains('stage-4-form')) {
+            const stageId = form.dataset.stageId;
+            const payload = {
+                validated_boq_link: form.querySelector('[name="validated_boq_link"]').value,
+                cost_estimation_sheet_link: form.querySelector('[name="cost_estimation_sheet_link"]').value,
+            };
+            await handleAction(`/api/design/v3/stages/${stageId}/complete-4`, 'POST', payload, 'Stage 4 completed!', button);
+        }
+        if (form.classList.contains('stage-2b-form')) {
+            const stageId = form.dataset.stageId;
+            const vendorId = form.querySelector('[name="vendor_id"]').value;
+            if (!vendorId) { alert('Please select a vendor.'); return; }
+
+            const payload = { vendor_id: parseInt(vendorId) };
+            await handleAction(`/api/design/v3/stages/${stageId}/create-measurement-req`, 'POST', payload, 'Measurement request sent!', button);
+        }
+
+        if (form.classList.contains('stage-2b-creation-form')) {
+            const stageId = form.dataset.stageId;
+            const vendorId = form.querySelector('[name="vendor_id"]').value;
+            if (!vendorId) { alert('Please select a vendor.'); return; }
+            await handleAction(`/api/design/v3/stages/${stageId}/create-measurement-req`, 'POST', { vendor_id: parseInt(vendorId) }, 'Measurement request sent!', button);
+        }
+
+        if (form.classList.contains('stage-2b-completion-form')) {
+            const stageId = form.dataset.stageId;
+            const payload = { measurement_package_link: form.querySelector('[name="measurement_package_link"]').value };
+            await handleAction(`/api/design/v3/stages/${stageId}/complete-2b`, 'POST', payload, 'Stage 2B completed!', button);
+        }
+    });
+
+    // Technical Review sign-off (tech engineer)
+    stagesContainer.addEventListener('click', function(e) {
+        const signoffBtn = e.target.closest('.signoff-btn');
+        const completeStage3Btn = e.target.closest('.complete-stage-3-btn');
+        
+        if (completeStage3Btn) {
+            const stageId = completeStage3Btn.dataset.stageId;
+            if (confirm('Are you sure all deliverables for this stage are submitted and ready to be forwarded to the QS?')) {
+                handleAction(`/api/design/v3/stages/${stageId}/complete-3`, 'POST', null, 'Stage 3 Completed!', completeStage3Btn);
+            }
+        }
+        if (signoffBtn) {
+            const collapse = signoffBtn.closest('.accordion-collapse');
+            const stageId = collapse?.id?.split('-')[1];
+            const discipline = signoffBtn.dataset.discipline;
+            handleAction(
+                `/api/design/v2/stages/${stageId}/sign-off`,   // keep v2 endpoint as in your backend
+                'POST',
+                { discipline },
+                `${discipline} Signed Off`,
+                signoffBtn
+            );
+        }
+    });
+
+    // initial load
+    fetchProjectDetails();
+});
+</script>
+{% endblock %}

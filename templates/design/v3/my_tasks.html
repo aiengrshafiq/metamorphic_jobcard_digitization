@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead><tr><th>Project</th><th>Stage</th><th>Deliverable</th><th>Due Date</th><th style="width: 35%;">Submit Link</th></tr></thead>
+                <tbody id="tasks-table-body"></tbody>
+            </table>
+            <p id="loading-state" class="text-center text-muted mt-3">Loading your tasks...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tableBody = document.getElementById('tasks-table-body');
+    const loadingState = document.getElementById('loading-state');
+
+    // --- ADD THIS HELPER FUNCTION ---
+    async function handleAction(url, method, body, successMessage, triggerEl) {
+        let originalHtml;
+        if (triggerEl) {
+            originalHtml = triggerEl.innerHTML;
+            triggerEl.disabled = true;
+            triggerEl.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+        }
+        try {
+            const options = { method };
+            if (body) {
+                options.headers = { 'Content-Type': 'application/json' };
+                options.body = JSON.stringify(body);
+            }
+            const response = await fetchWithAuth(url, options);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Action failed.');
+            
+            // On success, simply remove the row from the list
+            if (triggerEl) {
+                triggerEl.closest('tr').remove();
+            }
+        } catch (error) {
+            alert(error.message);
+            if (triggerEl) {
+                triggerEl.disabled = false;
+                triggerEl.innerHTML = originalHtml;
+            }
+        }
+    }
+    // -----------------------------
+
+    async function fetchMyTasks() {
+        try {
+            const response = await fetchWithAuth('/api/design/v3/tasks/my-tasks');
+            const tasks = await response.json();
+            if (tasks.length === 0) {
+                loadingState.innerHTML = '<div class="text-center p-4"><h5>Your task list is empty!</h5></div>';
+            } else {
+                loadingState.style.display = 'none';
+                tableBody.innerHTML = '';
+                tasks.forEach(task => {
+                    const row = document.createElement('tr');
+                    row.id = `task-row-${task.id}`;
+                    row.innerHTML = `
+                        <td>${task.stage.project.name}</td>
+                        <td>${task.stage.name}</td>
+                        <td>${task.title}</td>
+                        <td>${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'N/A'}</td>
+                        <td><form class="submit-task-form-v3 d-flex gap-2"><input type="url" class="form-control form-control-sm" placeholder="Paste file link..." required><button type="submit" class="btn btn-primary btn-sm">Submit</button></form></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+        } catch (error) {
+             loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+    
+    tableBody.addEventListener('submit', async function(e) {
+        if (e.target.classList.contains('submit-task-form-v3')) {
+            e.preventDefault();
+            const form = e.target;
+            const taskId = form.closest('tr').id.split('-')[2];
+            const link = form.querySelector('input').value;
+            const button = form.querySelector('button');
+            // The call to handleAction is now valid
+            await handleAction(`/api/design/v3/tasks/${taskId}/submit`, 'POST', { file_link: link }, 'Task Submitted!', button);
+        }
+    });
+
+    fetchMyTasks();
+});
+</script>
+{% endblock %}

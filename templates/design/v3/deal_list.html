@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div id="loading-state" class="text-center text-muted mt-3">Loading new deals...</div>
+        <div id="deal-list-container" class="list-group" style="display: none;">
+            </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const container = document.getElementById('deal-list-container');
+    const loadingState = document.getElementById('loading-state');
+
+    async function fetchDeals() {
+        try {
+            const response = await fetchWithAuth('/api/design/v3/deals/');
+            if (!response.ok) throw new Error('Could not load deals.');
+            const deals = await response.json();
+
+            if (deals.length === 0) {
+                loadingState.textContent = 'No new deals found.';
+            } else {
+                container.innerHTML = '';
+                deals.forEach(deal => {
+                    const div = document.createElement('div');
+                    div.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+                    let actionButton;
+                    if (deal.project_id) {
+                        actionButton = `<a href="/design/v3/projects/${deal.project_id}" class="btn btn-secondary btn-sm">View Project</a>`;
+                    } else {
+                        actionButton = `<button class="btn btn-primary btn-sm activate-btn" data-deal-id="${deal.id}">Activate Project</button>`;
+                    }
+
+                    div.innerHTML = `
+                        <div>
+                            <h5 class="mb-1">${deal.project_name}</h5>
+                            <p class="mb-1">Client: ${deal.client_name}</p>
+                            <small class="text-muted">Handled by: ${deal.sip.name} | Deal Date: ${new Date(deal.contract_date).toLocaleDateString()}</small>
+                        </div>
+                        <div>${actionButton}</div>
+                    `;
+                    container.appendChild(div);
+                });
+                loadingState.style.display = 'none';
+                container.style.display = 'block';
+            }
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+    
+    container.addEventListener('click', async function(e) {
+        if (e.target.classList.contains('activate-btn')) {
+            const button = e.target;
+            const dealId = button.dataset.dealId;
+            
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+            try {
+                const response = await fetchWithAuth(`/api/design/v3/deals/${dealId}/activate`, { method: 'POST' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Activation failed.');
+                
+                // Redirect to the new V3 project detail page on success
+                window.location.href = `/design/v3/projects/${result.project_id}`;
+            } catch (error) {
+                alert(error.message);
+                button.disabled = false;
+                button.innerHTML = 'Activate Project';
+            }
+        }
+    });
+
+    fetchDeals();
+});
+</script>
+{% endblock %}
