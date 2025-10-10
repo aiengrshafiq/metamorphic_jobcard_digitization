@@ -650,7 +650,7 @@ async def deals_v3_list_page(
     if isinstance(context, RedirectResponse): return context
     
     # Security check for design leadership
-    allowed_roles = {'Design Manager', 'Lead Designer', 'Admin', 'Super Admin'}
+    allowed_roles = {'Design Manager', 'Lead Designer', 'Admin', 'Super Admin','QS','Operation Manager'}
     if not allowed_roles.intersection(context["user_roles"]):
         raise HTTPException(status_code=403, detail="Access denied.")
         

@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const teamMembers = {{ team_members | default([]) | tojson }};
     const vendors = {{ vendors | tojson }};
     const isQS = {{ ('QS' in user_roles) | tojson }};
+    const isOps = {{ ('Operation Manager' in user_roles) | tojson }};
 
     console.log('isLeadDesigner:', isLeadDesigner);
      
@@ -77,14 +78,15 @@ document.addEventListener('DOMContentLoaded', function() {
     async function renderStageBody(stage) {
         if (stage.status === 'Locked') return '<div class="card-body"><p class="text-muted">This stage is locked.</p></div>';
         if (stage.status === 'Completed') return `<div class="card-body"><p class="text-success"><i class="bi bi-check-circle-fill me-2"></i>Stage Complete</p></div>`;
-        
+        console.log(stage.name)
         switch(stage.name) {
             case 'Stage 2A - Design Activation & Site Visit': return renderStage2A(stage);
             case 'Stage 2B - Measurement Requisition': return renderStage2B(stage);
             case 'Stage 4 - Forward to QS': return renderStage4QS(stage);
-            case 'Stage 5 - Technical Review': return renderTechnicalReviewStage(stage);
+            case 'Stage 5 - Technical Review & Coordination': return renderTechnicalReviewStage(stage);
             case 'Stage 3 - Initial Design Development': return await renderTaskBasedStage(stage);
-            //default: return renderTaskBasedStage(stage);
+            case 'Stage 8 - Handover to Execution':return renderStage8Handover(stage, window.currentProjectData); 
+            
             default:
                 if (Array.isArray(stage.tasks) && stage.tasks.length > 0) {
                     return await renderTaskBasedStage(stage);
@@ -177,13 +179,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Technical Review stage (interdisciplinary sign-offs)
     function renderTechnicalReviewStage(stage) {
+        console.log('function renderTechnicalReviewStage called');
         const disciplines = ['Structural Review', 'MEP Review', 'Landscape Review'];
         let signoffHtml = '<ul class="signoff-list">';
         const signoffs = Array.isArray(stage.interdisciplinary_signoffs) ? stage.interdisciplinary_signoffs : [];
 
         disciplines.forEach(disc => {
             const signoff = signoffs.find(s => s.discipline === disc);
+            // console.log('Checking discipline:', disc, 'Signoff found:', signoff);
             let actionHtml = '';
+
             if (signoff) {
                 actionHtml = `<span class="text-success"><i class="bi bi-check-circle-fill"></i> Signed by ${signoff.signed_off_by?.name || '—'}</span>`;
             } else if (isTechEngineer) {
@@ -195,7 +200,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         signoffHtml += '</ul>';
-        return `<div class="card-body">${signoffHtml}</div>`;
+        // --- ADD THIS FOOTER WITH THE BUTTON ---
+        let footerHtml = '';
+        const allSignedOff = signoffs.length >= disciplines.length;
+        if (stage.status === 'In Progress' && allSignedOff && (isDesignManager || isLeadDesigner)) {
+            footerHtml = `
+                <div class="card-footer text-end">
+                    <button class="btn btn-success complete-stage-5-btn" data-stage-id="${stage.id}">
+                        <i class="bi bi-check2-circle me-1"></i> Complete Stage & Unlock Authority Package
+                    </button>
+                </div>
+            `;
+        }
+        return `<div class="card-body">${signoffHtml}</div>` + footerHtml;
     }
 
     function renderStage2B(stage) {
@@ -254,58 +271,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     
 
-    // --- MAIN FETCH ---
-    // async function fetchProjectDetails() {
-    //     try {
-    //         const response = await fetchWithAuth(`/api/design/v3/projects/${projectId}`);
-    //         if (!response.ok) throw new Error('Could not load project details.');
-    //         const project = await response.json();
-
-    //         projectNameEl.textContent = project.name;
-    //         projectClientEl.textContent = `Client: ${project.client}`;
-    //         stagesContainer.innerHTML = '';
-
-    //         (project.stages || []).forEach(stage => {
-    //             const stageEl = document.createElement('div');
-    //             stageEl.className = 'accordion-item';
-
-    //             const bodyHtml = renderStageBody(stage);
-
-    //             let badgeClass = 'bg-secondary';
-    //             if (stage.status === 'In Progress') badgeClass = 'bg-primary';
-    //             if (stage.status === 'Completed') badgeClass = 'bg-success';
-
-                
-
-    //             stageEl.innerHTML = `
-    //                 <h2 class="accordion-header">
-    //                     <button class="accordion-button ${stage.status !== 'In Progress' ? 'collapsed' : ''}"
-    //                             type="button"
-    //                             data-bs-toggle="collapse"
-    //                             data-bs-target="#collapse-${stage.id}">
-    //                         ${stage.name}
-    //                         <span class="ms-2 badge ${badgeClass}">${stage.status}</span>
-    //                     </button>
-    //                 </h2>
-    //                 <div id="collapse-${stage.id}" class="accordion-collapse collapse ${stage.status === 'In Progress' ? 'show' : ''}" data-bs-parent="#stagesAccordion">
-    //                     ${bodyHtml}
-    //                 </div>
-    //             `;
-    //             stagesContainer.appendChild(stageEl);
-    //         });
-
-    //         loadingState.style.display = 'none';
-    //         contentContainer.style.display = 'block';
-    //     } catch (error) {
-    //         loadingState.innerHTML = `<p class="text-danger text-center">${error.message}</p>`;
-    //     }
-    // }
 
     async function fetchProjectDetails() {
         try {
             const response = await fetchWithAuth(`/api/design/v3/projects/${projectId}`);
             if (!response.ok) throw new Error('Could not load project details.');
             const project = await response.json();
+            window.currentProjectData = project;
 
             projectNameEl.textContent = project.name;
             projectClientEl.textContent = `Client: ${project.client}`;
@@ -427,26 +399,87 @@ document.addEventListener('DOMContentLoaded', function() {
     stagesContainer.addEventListener('click', function(e) {
         const signoffBtn = e.target.closest('.signoff-btn');
         const completeStage3Btn = e.target.closest('.complete-stage-3-btn');
+        const completeStage5Btn = e.target.closest('.complete-stage-5-btn');
+        const handoverBtn = e.target.closest('.handover-btn');
+        if (handoverBtn) {
+            const stageId = handoverBtn.closest('.accordion-collapse').id.split('-')[1];
+            if (stageId && confirm('Are you sure you want to sign off on this project handover?')) {
+                handleAction(`/api/design/v3/stages/${stageId}/handover-signoff`, 'POST', null, 'Handover Signed!', handoverBtn);
+            }
+        }
+
+        if (completeStage5Btn) {
+            const stageId = completeStage5Btn.dataset.stageId;
+            if (confirm('Are you sure all technical reviews are complete and you want to proceed to the Authority Package stage?')) {
+                handleAction(`/api/design/v3/stages/${stageId}/complete-5`, 'POST', null, 'Stage 5 Completed!', completeStage5Btn);
+            }
+        }
         
+        // if (completeStage3Btn) {
+        //     const stageId = completeStage3Btn.dataset.stageId;
+        //     if (confirm('Are you sure all deliverables for this stage are submitted and ready to be forwarded to the QS?')) {
+        //         handleAction(`/api/design/v3/stages/${stageId}/complete-3`, 'POST', null, 'Stage 3 Completed!', completeStage3Btn);
+        //     }
+        // }
         if (completeStage3Btn) {
             const stageId = completeStage3Btn.dataset.stageId;
-            if (confirm('Are you sure all deliverables for this stage are submitted and ready to be forwarded to the QS?')) {
-                handleAction(`/api/design/v3/stages/${stageId}/complete-3`, 'POST', null, 'Stage 3 Completed!', completeStage3Btn);
+            const stageName = completeStage3Btn.dataset.stageName;
+            let endpoint = '';
+            let confirmMsg = 'Are you sure all deliverables for this stage are complete?';
+            console.log(stageName);
+            if (stageName.includes('INITIAL_DESIGN')) {
+                endpoint = `/api/design/v3/stages/${stageId}/complete-3`;
+                confirmMsg = 'Are you sure all deliverables are ready to be forwarded to the QS?';
+            } else if (stageName.includes('AUTHORITY_PACKAGE')) {
+                endpoint = `/api/design/v3/stages/${stageId}/complete-6`;
+                confirmMsg = 'Are you sure the authority package is complete?';
+            }else if (stageName.includes('FINAL_DELIVERY')) {
+                endpoint = `/api/design/v3/stages/${stageId}/complete-7`;
+                confirmMsg = 'Are you sure the final package is ready for delivery?';
+            }
+            // Add more else if blocks for other stages like 7, 8 etc.
+
+            if (endpoint && confirm(confirmMsg)) {
+                handleAction(endpoint, 'POST', null, 'Stage Completed!', completeStage3Btn);
             }
         }
         if (signoffBtn) {
             const collapse = signoffBtn.closest('.accordion-collapse');
             const stageId = collapse?.id?.split('-')[1];
             const discipline = signoffBtn.dataset.discipline;
-            handleAction(
-                `/api/design/v2/stages/${stageId}/sign-off`,   // keep v2 endpoint as in your backend
-                'POST',
-                { discipline },
-                `${discipline} Signed Off`,
-                signoffBtn
-            );
+            
+            if (stageId && discipline) {
+                handleAction(
+                    `/api/design/v3/stages/${stageId}/sign-off-tech`,
+                    'POST',
+                    { discipline },
+                    `${discipline} Signed Off`,
+                    signoffBtn
+                );
+            }
         }
     });
+
+    function renderStage8Handover(stage, project) {
+        let signoffHtml = '<ul class="signoff-list">';
+
+        const designSignoff = project.handover_design_head_signed_by;
+        const opsSignoff = project.handover_ops_head_signed_by;
+
+        let designActionHtml = designSignoff 
+            ? `<span class="text-success"><i class="bi bi-check-circle-fill"></i> Signed by ${designSignoff.name}</span>`
+            : (isDesignManager ? `<button class="btn btn-sm btn-primary handover-btn">Sign as Design Head</button>` : `<span class="text-muted">Pending</span>`);
+
+        let opsActionHtml = opsSignoff
+            ? `<span class="text-success"><i class="bi bi-check-circle-fill"></i> Signed by ${opsSignoff.name}</span>`
+            : (isOps ? `<button class="btn btn-sm btn-primary handover-btn">Sign as Ops Head</button>` : `<span class="text-muted">Pending</span>`);
+
+        signoffHtml += `<li><span>Design Head Sign-off</span><span>${designActionHtml}</span></li>`;
+        signoffHtml += `<li><span>Operations Head Sign-off</span><span>${opsActionHtml}</span></li>`;
+        signoffHtml += '</ul>';
+
+        return `<div class="card-body">${signoffHtml}</div>`;
+    }
 
     // initial load
     fetchProjectDetails();

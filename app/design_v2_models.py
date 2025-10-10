@@ -82,15 +82,15 @@ class SiteVisitLog(Base):
     site_photos_link = Column(Text)
     updated_brief_link = Column(Text)
 
-class InterdisciplinarySignoff(Base):
-    __tablename__ = 'interdisciplinary_signoffs'
-    id = Column(Integer, primary_key=True)
-    discipline = Column(String, nullable=False) # e.g., "Structural", "MEP"
-    is_approved = Column(Boolean, default=False)
-    signed_off_at = Column(DateTime)
-    notes = Column(Text)
+# class InterdisciplinarySignoff(Base):
+#     __tablename__ = 'interdisciplinary_signoffs'
+#     id = Column(Integer, primary_key=True)
+#     discipline = Column(String, nullable=False) # e.g., "Structural", "MEP"
+#     is_approved = Column(Boolean, default=False)
+#     signed_off_at = Column(DateTime)
+#     notes = Column(Text)
     
-    stage_id = Column(Integer, ForeignKey('design_stages.id'), nullable=False)
-    signed_off_by_id = Column(Integer, ForeignKey('users.id'))
+#     stage_id = Column(Integer, ForeignKey('design_stages.id'), nullable=False)
+#     signed_off_by_id = Column(Integer, ForeignKey('users.id'))
     
-    signed_off_by = relationship("User")
+#     signed_off_by = relationship("User")

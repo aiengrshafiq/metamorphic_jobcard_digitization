@@ -21,25 +21,72 @@ from app.design_v3_models import Deal, DesignProjectV3, DesignStageV3, StageV3Na
 router = APIRouter()
 
 
-# --- Reusable logic for creating stages and tasks ---
+# # --- Reusable logic for creating stages and tasks ---
+# def _create_stages_and_tasks(db: Session, project: DesignProjectV3):
+#     # This template defines which tasks are auto-created for each stage
+#     DELIVERABLE_TEMPLATES_V3 = {
+#         StageV3Name.INITIAL_DESIGN: ["2D Layout", "SketchUp Model", "Render Set v1", "Preliminary BOQ"],
+#         # Add other stages with default tasks here in the future
+#     }
+    
+#     # Create all stages in order
+#     for i, stage_enum in enumerate(StageV3Name):
+#         # The first actionable stage is 2A (SITE_VISIT)
+#         stage_status = StageV3Status.IN_PROGRESS if stage_enum == StageV3Name.SITE_VISIT else StageV3Status.LOCKED
+        
+#         new_stage = DesignStageV3(
+#             project_id=project.id,
+#             name=stage_enum,
+#             status=stage_status,
+#             order=i + 1
+#         )
+#         db.add(new_stage)
+#         db.flush()
+        
+#         # Create the default tasks for this stage
+#         tasks_for_stage = DELIVERABLE_TEMPLATES_V3.get(stage_enum, [])
+#         for task_title in tasks_for_stage:
+#             new_task = DesignTaskV3(stage_id=new_stage.id, title=task_title)
+#             db.add(new_task)
+
 def _create_stages_and_tasks(db: Session, project: DesignProjectV3):
-    # This template defines which tasks are auto-created for each stage
+    """A helper function to create all default stages and tasks for a new V3 project."""
+    
     DELIVERABLE_TEMPLATES_V3 = {
         StageV3Name.INITIAL_DESIGN: ["2D Layout", "SketchUp Model", "Render Set v1", "Preliminary BOQ"],
-        # Add other stages with default tasks here in the future
+        StageV3Name.TECH_REVIEW: ["Structural Review", "MEP Review", "Landscape Review"],
+        StageV3Name.AUTHORITY_PACKAGE: ["Architectural Set", "Structural Set", "MEP Set", "Landscape Set", "Lighting Set", "Paint Plans Set"],
+        StageV3Name.FINAL_DELIVERY: ["Client-ready final design set", "Internal release memo"],
+        StageV3Name.EXECUTION_HANDOVER: ["Execution-ready files", "Task checklist for site team"]
     }
+    # -----------------------
     
-    # Create all stages in order
-    for i, stage_enum in enumerate(StageV3Name):
+    # We explicitly define the linear workflow stages to create
+    stages_to_create = [
+        StageV3Name.FINANCE_CONFIRMATION,
+        StageV3Name.DEAL_CREATION,
+        StageV3Name.SITE_VISIT,
+        StageV3Name.MEASUREMENT,
+        StageV3Name.INITIAL_DESIGN,
+        StageV3Name.QS_HANDOVER,
+        StageV3Name.TECH_REVIEW,
+        StageV3Name.AUTHORITY_PACKAGE,
+        StageV3Name.FINAL_DELIVERY,
+        StageV3Name.EXECUTION_HANDOVER,
+    ]
+
+    for i, stage_enum in enumerate(stages_to_create):
         # The first actionable stage is 2A (SITE_VISIT)
         stage_status = StageV3Status.IN_PROGRESS if stage_enum == StageV3Name.SITE_VISIT else StageV3Status.LOCKED
         
+        # --- THIS IS THE FIX ---
         new_stage = DesignStageV3(
             project_id=project.id,
-            name=stage_enum,
-            status=stage_status,
-            order=i + 1
+            name=stage_enum,             # enum member → stored as .value due to values_callable
+            status=stage_status,         # enum member → stored as .name (UPPERCASE)
+            order=i + 1,
         )
+        # -----------------------
         db.add(new_stage)
         db.flush()
         

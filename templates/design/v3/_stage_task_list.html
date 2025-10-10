@@ -41,8 +41,8 @@
 
 {% if stage.status == 'In Progress' and all_tasks_submitted and ('Design Manager' in user_roles or 'Lead Designer' in user_roles) %}
 <div class="card-footer text-end">
-    <button class="btn btn-success complete-stage-3-btn" data-stage-id="{{ stage.id }}">
-        <i class="bi bi-check2-circle me-1"></i> Complete Stage & Forward to QS
+    <button class="btn btn-success complete-stage-3-btn" data-stage-id="{{ stage.id }}" data-stage-name="{{stage.name}}">
+        <i class="bi bi-check2-circle me-1"></i> Complete Stage
     </button>
 </div>
 {% endif %}

@@ -8,7 +8,7 @@ from fastapi import Request
 from app.api import deps
 from app import models, schemas
 from sqlalchemy.orm import selectinload, joinedload
-from app.design_v3_models import DesignStageV3,TaskStatusV3, SiteVisitLog, StageV3Status, StageV3Name,DesignTaskV3, QSValidation,MeasurementRequisition
+from app.design_v3_models import DesignStageV3,TaskStatusV3, SiteVisitLog, StageV3Status, StageV3Name,DesignTaskV3, QSValidation,MeasurementRequisition,InterdisciplinarySignoff
 from fastapi.responses import HTMLResponse
 
 
@@ -88,15 +88,15 @@ def complete_stage_4_qs(
     db.commit()
     return {"message": "Stage 4 (QS) completed successfully."}
 
-@router.post("/{stage_id}/sign-off-tech", tags=["Design V3 Stages"])
-def sign_off_stage_5(stage_id: int, discipline: str = Body(..., embed=True), db: Session = Depends(deps.get_db), current_user: models.User = Depends(deps.get_current_user)):
-    stage = db.query(DesignStageV3).filter_by(id=stage_id, name=StageV3Name.TECH_REVIEW).first()
-    if not stage: raise HTTPException(status_code=404, detail="Stage 5 not found.")
+# @router.post("/{stage_id}/sign-off-tech", tags=["Design V3 Stages"])
+# def sign_off_stage_5(stage_id: int, discipline: str = Body(..., embed=True), db: Session = Depends(deps.get_db), current_user: models.User = Depends(deps.get_current_user)):
+#     stage = db.query(DesignStageV3).filter_by(id=stage_id, name=StageV3Name.TECH_REVIEW).first()
+#     if not stage: raise HTTPException(status_code=404, detail="Stage 5 not found.")
 
-    new_signoff = InterdisciplinarySignoff(stage_id=stage_id, discipline=discipline, is_approved=True, signed_off_at=datetime.now(timezone.utc), signed_off_by_id=current_user.id)
-    db.add(new_signoff)
-    db.commit()
-    return {"message": f"{discipline} review has been signed off."}
+#     new_signoff = InterdisciplinarySignoff(stage_id=stage_id, discipline=discipline, is_approved=True, signed_off_at=datetime.now(timezone.utc), signed_off_by_id=current_user.id)
+#     db.add(new_signoff)
+#     db.commit()
+#     return {"message": f"{discipline} review has been signed off."}
 
 
 
@@ -203,3 +203,162 @@ def complete_stage_3(
     _unlock_next_stage(db, stage)
     db.commit()
     return {"message": "Stage 3 completed. Handoff to QS initiated."}
+
+@router.post("/{stage_id}/sign-off-tech", tags=["Design V3 Stages"])
+def sign_off_stage_5(
+    stage_id: int,
+    discipline: str = Body(..., embed=True),
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Logs an interdisciplinary sign-off for a Stage 5 task."""
+    stage = db.query(DesignStageV3).filter_by(id=stage_id, name=StageV3Name.TECH_REVIEW).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage 5 not found.")
+    
+    # Add security check for TE role if needed
+
+    new_signoff = InterdisciplinarySignoff(
+        stage_id=stage_id,
+        discipline=discipline,
+        is_approved=True,
+        signed_off_by_id=current_user.id
+    )
+    db.add(new_signoff)
+    db.commit()
+    return {"message": f"{discipline} review has been signed off."}
+
+
+@router.post("/{stage_id}/complete-5", tags=["Design V3 Stages"])
+def complete_stage_5(
+    stage_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Checks if all Stage 5 signoffs are done, then completes the stage."""
+    user_roles = {role.name for role in current_user.roles}
+    if not {"Design Manager", "Lead Designer"}.intersection(user_roles):
+        raise HTTPException(status_code=403, detail="Not authorized for this action.")
+
+    stage = db.query(DesignStageV3).options(
+        selectinload(DesignStageV3.interdisciplinary_signoffs)
+    ).filter_by(id=stage_id, name=StageV3Name.TECH_REVIEW).first()
+
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage 5 not found.")
+
+    # Gate Logic: Check if all disciplines are signed off (assuming 3 are required)
+    REQUIRED_SIGNOFFS = 3
+    if len(stage.interdisciplinary_signoffs) < REQUIRED_SIGNOFFS:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot complete stage: Not all technical disciplines have been signed off."
+        )
+            
+    stage.status = StageV3Status.COMPLETED
+    _unlock_next_stage(db, stage) # This unlocks Stage 6
+    db.commit()
+    return {"message": "Stage 5 completed. Authority Drawing Package is now unlocked."}
+
+
+@router.post("/{stage_id}/complete-6", tags=["Design V3 Stages"])
+def complete_stage_6(
+    stage_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Checks if all tasks in Stage 6 are submitted, then completes the stage."""
+    user_roles = {role.name for role in current_user.roles}
+    if not {"Design Manager", "Lead Designer"}.intersection(user_roles):
+        raise HTTPException(status_code=403, detail="Not authorized for this action.")
+
+    stage = db.query(DesignStageV3).options(
+        selectinload(DesignStageV3.tasks)
+    ).filter_by(id=stage_id, name=StageV3Name.AUTHORITY_PACKAGE).first()
+
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage 6 not found.")
+
+    # Gate Logic: Check if all tasks in this stage are Submitted
+    for task in stage.tasks:
+        if task.status != TaskStatusV3.SUBMITTED:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot complete stage: Task '{task.title}' is not yet submitted."
+            )
+            
+    stage.status = StageV3Status.COMPLETED
+    _unlock_next_stage(db, stage) # This unlocks Stage 7
+    db.commit()
+    return {"message": "Stage 6 completed. Final Package Delivery is now unlocked."}
+
+
+@router.post("/{stage_id}/complete-7", tags=["Design V3 Stages"])
+def complete_stage_7(
+    stage_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Checks if all tasks in Stage 7 are submitted, then completes the stage."""
+    user_roles = {role.name for role in current_user.roles}
+    if not {"Design Manager", "Lead Designer"}.intersection(user_roles):
+        raise HTTPException(status_code=403, detail="Not authorized for this action.")
+
+    stage = db.query(DesignStageV3).options(
+        selectinload(DesignStageV3.tasks)
+    ).filter_by(id=stage_id, name=StageV3Name.FINAL_DELIVERY).first()
+
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage 7 not found.")
+
+    # Gate Logic: Check if all tasks in this stage are Submitted
+    for task in stage.tasks:
+        if task.status != TaskStatusV3.SUBMITTED:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot complete stage: Task '{task.title}' is not yet submitted."
+            )
+            
+    stage.status = StageV3Status.COMPLETED
+    _unlock_next_stage(db, stage) # This unlocks Stage 8
+    db.commit()
+    return {"message": "Stage 7 completed. Handover to Execution is now unlocked."}
+
+
+@router.post("/{stage_id}/handover-signoff", tags=["Design V3 Stages"])
+def handover_stage_8(
+    stage_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Handles the dual sign-off for project handover (Stage 8)."""
+    stage = db.query(DesignStageV3).options(
+        joinedload(DesignStageV3.project)
+    ).filter_by(id=stage_id, name=StageV3Name.EXECUTION_HANDOVER).first()
+    
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage 8 not found.")
+
+    project = stage.project
+    user_roles = {role.name for role in current_user.roles}
+    signed = False
+
+    if "Design Manager" in user_roles:
+        project.handover_design_head_signed_by_id = current_user.id
+        project.handover_design_head_signed_at = datetime.now(timezone.utc)
+        signed = True
+    elif "Operation Manager" in user_roles:
+        project.handover_ops_head_signed_by_id = current_user.id
+        project.handover_ops_head_signed_at = datetime.now(timezone.utc)
+        signed = True
+        
+    if not signed:
+        raise HTTPException(status_code=403, detail="Not authorized for handover sign-off.")
+    
+    # If both have now signed off, complete the stage and the project
+    if project.handover_design_head_signed_by_id and project.handover_ops_head_signed_by_id:
+        stage.status = StageV3Status.COMPLETED
+        project.status = "Handed Over"
+
+    db.commit()
+    return {"message": "Handover successfully signed."}
