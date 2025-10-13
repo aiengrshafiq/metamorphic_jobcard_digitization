@@ -28,6 +28,7 @@ class SiteVisitUpdate(BaseModel):
 
 class MeasurementRequestCreate(BaseModel):
     vendor_id: int
+    delivery_datetime: Optional[datetime] = None
 
 class MeasurementComplete(BaseModel):
     measurement_package_link: HttpUrl
@@ -115,7 +116,8 @@ def create_measurement_requisition(
 
     new_req = MeasurementRequisition(
         stage_id=stage_id,
-        vendor_id=request_data.vendor_id
+        vendor_id=request_data.vendor_id,
+        delivery_datetime=request_data.delivery_datetime
     )
     db.add(new_req)
     db.commit()

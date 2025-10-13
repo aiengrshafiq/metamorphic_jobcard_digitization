@@ -32,9 +32,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     let actionButton;
                     if (deal.project_id) {
-                        actionButton = `<a href="/design/v3/projects/${deal.project_id}" class="btn btn-secondary btn-sm">View Project</a>`;
+                        actionButton = `<a href="/design/v3/deals/${deal.id}" class="btn btn-outline-secondary btn-sm">View Deal</a><a href="/design/v3/projects/${deal.project_id}" class="btn btn-secondary btn-sm">View Project</a>`;
                     } else {
-                        actionButton = `<button class="btn btn-primary btn-sm activate-btn" data-deal-id="${deal.id}">Activate Project</button>`;
+                        actionButton = `<a href="/design/v3/deals/${deal.id}" class="btn btn-outline-secondary btn-sm">View Deal</a><button class="btn btn-primary btn-sm activate-btn" data-deal-id="${deal.id}">Activate Project</button>`;
                     }
 
                     div.innerHTML = `

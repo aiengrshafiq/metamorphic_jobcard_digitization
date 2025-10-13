@@ -16,7 +16,7 @@
 
 <div id="content-container" style="display: none;">
     <h2 id="project-name"></h2>
-    <p class="lead text-muted" id="project-client"></p>
+    <p class="lead text-muted" id="project-client"></p><p class="lead text-muted" id="project-status"></p>
     <hr>
     <div class="accordion" id="stagesAccordion"></div>
 </div>
@@ -179,14 +179,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Technical Review stage (interdisciplinary sign-offs)
     function renderTechnicalReviewStage(stage) {
-        console.log('function renderTechnicalReviewStage called');
+        console.log('function renderTechnicalReviewStage called, login user is: ',isTechEngineer);
         const disciplines = ['Structural Review', 'MEP Review', 'Landscape Review'];
         let signoffHtml = '<ul class="signoff-list">';
         const signoffs = Array.isArray(stage.interdisciplinary_signoffs) ? stage.interdisciplinary_signoffs : [];
 
         disciplines.forEach(disc => {
             const signoff = signoffs.find(s => s.discipline === disc);
-            // console.log('Checking discipline:', disc, 'Signoff found:', signoff);
+            console.log('Checking discipline:', disc, 'Signoff found:', signoff);
             let actionHtml = '';
 
             if (signoff) {
@@ -250,15 +250,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // If no requisition exists yet, show the creation form for the Lead Designer
+        // if (isLeadDesigner) {
+        //     let vendorOptions = '<option value="">Select a vendor...</option>';
+        //     vendors.forEach(vendor => { vendorOptions += `<option value="${vendor.id}">${vendor.name}</option>`; });
+        //     return `
+        //         <div class="card-body">
+        //             <form class="stage-2b-creation-form" data-stage-id="${stage.id}">
+        //                 <p class="text-muted">Select a 3rd-party vendor to send the Measurement Requisition.</p>
+        //                 <div class="input-group">
+        //                     <select name="vendor_id" class="form-select" required>${vendorOptions}</select>
+        //                     <button type="submit" class="btn btn-primary">Send Request</button>
+        //                 </div>
+        //             </form>
+        //         </div>`;
+        // }
         if (isLeadDesigner) {
             let vendorOptions = '<option value="">Select a vendor...</option>';
             vendors.forEach(vendor => { vendorOptions += `<option value="${vendor.id}">${vendor.name}</option>`; });
             return `
                 <div class="card-body">
                     <form class="stage-2b-creation-form" data-stage-id="${stage.id}">
-                        <p class="text-muted">Select a 3rd-party vendor to send the Measurement Requisition.</p>
-                        <div class="input-group">
-                            <select name="vendor_id" class="form-select" required>${vendorOptions}</select>
+                        <p class="text-muted">Select a 3rd-party vendor and specify the expected delivery date to send the Measurement Requisition.</p>
+                        <div class="row g-2">
+                            <div class="col-sm-7">
+                                <select name="vendor_id" class="form-select" required>${vendorOptions}</select>
+                            </div>
+                            <div class="col-sm-5">
+                                <input type="datetime-local" name="delivery_datetime" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="text-end mt-3">
                             <button type="submit" class="btn btn-primary">Send Request</button>
                         </div>
                     </form>
@@ -280,7 +301,9 @@ document.addEventListener('DOMContentLoaded', function() {
             window.currentProjectData = project;
 
             projectNameEl.textContent = project.name;
-            projectClientEl.textContent = `Client: ${project.client}`;
+            projectClientEl.textContent = `Client: ${project.client}`+` , Status: ${project.status}`;
+           // projectClientEl.textContent = `Status: ${project.status}`;
+            
             stagesContainer.innerHTML = '';
             // Create an array of promises, one for each stage's body HTML
             const bodyHtmlPromises = (project.stages || []).map(stage => renderStageBody(stage));
@@ -372,20 +395,29 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             await handleAction(`/api/design/v3/stages/${stageId}/complete-4`, 'POST', payload, 'Stage 4 completed!', button);
         }
-        if (form.classList.contains('stage-2b-form')) {
-            const stageId = form.dataset.stageId;
-            const vendorId = form.querySelector('[name="vendor_id"]').value;
-            if (!vendorId) { alert('Please select a vendor.'); return; }
+        // if (form.classList.contains('stage-2b-form')) {
+        //     const stageId = form.dataset.stageId;
+        //     const vendorId = form.querySelector('[name="vendor_id"]').value;
+        //     if (!vendorId) { alert('Please select a vendor.'); return; }
 
-            const payload = { vendor_id: parseInt(vendorId) };
-            await handleAction(`/api/design/v3/stages/${stageId}/create-measurement-req`, 'POST', payload, 'Measurement request sent!', button);
-        }
+        //     const payload = { vendor_id: parseInt(vendorId) };
+        //     await handleAction(`/api/design/v3/stages/${stageId}/create-measurement-req`, 'POST', payload, 'Measurement request sent!', button);
+        // }
 
         if (form.classList.contains('stage-2b-creation-form')) {
             const stageId = form.dataset.stageId;
             const vendorId = form.querySelector('[name="vendor_id"]').value;
-            if (!vendorId) { alert('Please select a vendor.'); return; }
-            await handleAction(`/api/design/v3/stages/${stageId}/create-measurement-req`, 'POST', { vendor_id: parseInt(vendorId) }, 'Measurement request sent!', button);
+            const deliveryDateTime = form.querySelector('[name="delivery_datetime"]').value;
+            //if (!vendorId) { alert('Please select a vendor.'); return; }
+            if (!vendorId || !deliveryDateTime) {
+                alert('Please select a vendor and a delivery date/time.');
+                return;
+            }
+            const m_payload = { 
+                vendor_id: parseInt(vendorId),
+                delivery_datetime: deliveryDateTime
+            };
+            await handleAction(`/api/design/v3/stages/${stageId}/create-measurement-req`, 'POST', m_payload, 'Measurement request sent!', button);
         }
 
         if (form.classList.contains('stage-2b-completion-form')) {

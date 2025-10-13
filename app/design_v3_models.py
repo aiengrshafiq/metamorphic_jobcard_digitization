@@ -50,6 +50,18 @@ class TaskStatusV3(str, enum.Enum):
     REVISION = "Revision Required"
     APPROVED = "Approved"
 
+
+# --- Add these new Enums ---
+class ProjectType(str, enum.Enum):
+    NEW_PROJECT = "New Project"
+    RENOVATION = "Renovation"
+
+class DealAttachmentType(str, enum.Enum):
+    INITIAL_BRIEF = "Initial Client Brief"
+    FLOOR_PLAN = "Layout / Floor Plan"
+    AS_BUILT = "As-Built Drawings"
+# --------------------------
+
 # --- Main Models for the V3 Workflow ---
 class Deal(Base):
     __tablename__ = 'deals'
@@ -58,19 +70,34 @@ class Deal(Base):
     client_name = Column(String, nullable=False)
     client_contact = Column(String)
     location = Column(String)
+    project_type = Column(SQLAlchemyEnum(ProjectType, name="projecttype"), nullable=False)
     contract_type = Column(SQLAlchemyEnum(CommitmentPackage, name="commitmentpackage"), nullable=False)
     budget = Column(Numeric(12, 2))
     payment_date = Column(Date)
     contract_date = Column(Date)
-    initial_brief_link = Column(Text)
-    floor_plan_link = Column(Text)
-    as_built_link = Column(Text)
+    # initial_brief_link = Column(Text)
+    # floor_plan_link = Column(Text)
+    # as_built_link = Column(Text)
     created_at = Column(DateTime, default=func.now())
     sip_id = Column(Integer, ForeignKey('users.id'))
     
     sip = relationship("User")
     project = relationship("DesignProjectV3", back_populates="deal", uselist=False)
+    attachments = relationship("DealAttachment", back_populates="deal", cascade="all, delete-orphan")
 
+
+# --- Add this new model class ---
+class DealAttachment(Base):
+    __tablename__ = 'deal_attachments'
+    id = Column(Integer, primary_key=True)
+    deal_id = Column(Integer, ForeignKey('deals.id'), nullable=False)
+    blob_url = Column(Text, nullable=False)
+    file_name = Column(String, nullable=False)
+    attachment_type = Column(SQLAlchemyEnum(DealAttachmentType, name="dealattachmenttype"), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+
+    deal = relationship("Deal", back_populates="attachments")
+# --------------------------------
 
 class DesignProjectV3(Base):
     __tablename__ = 'design_projects_v3'
@@ -215,7 +242,7 @@ class DesignTaskV3(Base):
     
 
 class SiteVisitLog(Base):
-    __tablename__ = 'site_visit_logs'
+    __tablename__ = 'site_visit_logs_v3'
     id = Column(Integer, primary_key=True)
     
     meeting_held_at = Column(DateTime, nullable=True)
@@ -256,6 +283,7 @@ class MeasurementRequisition(Base):
     id = Column(Integer, primary_key=True)
     status = Column(String, default="Pending Vendor Upload") # e.g., Pending, Uploaded, Approved
     requested_at = Column(DateTime, default=func.now())
+    delivery_datetime = Column(DateTime, nullable=True)
     
     stage_id = Column(Integer, ForeignKey('design_stages_v3.id'), nullable=False, unique=True)
     vendor_id = Column(Integer, ForeignKey('vendors.id'), nullable=False)

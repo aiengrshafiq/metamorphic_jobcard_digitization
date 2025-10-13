@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="loading-state" class="text-center mt-4">
+    <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+    <p class="mt-2 text-muted">Loading Deal Details...</p>
+</div>
+
+<div id="content-container" class="card shadow-sm border-0" style="display: none;">
+    <div class="card-body p-4">
+        <div class="row">
+            <div class="col-lg-8">
+                <dl class="row">
+                    <dt class="col-sm-4">Project Name</dt>
+                    <dd class="col-sm-8" id="project_name"></dd>
+
+                    <dt class="col-sm-4">Client Name</dt>
+                    <dd class="col-sm-8" id="client_name"></dd>
+
+                    <dt class="col-sm-4">Client Contact</dt>
+                    <dd class="col-sm-8" id="client_contact"></dd>
+
+                    <dt class="col-sm-4">Location</dt>
+                    <dd class="col-sm-8" id="location"></dd>
+
+                    <dt class="col-sm-4">Project Type</dt>
+                    <dd class="col-sm-8" id="project_type"></dd>
+
+                    <dt class="col-sm-4">Contract Type</dt>
+                    <dd class="col-sm-8" id="contract_type"></dd>
+
+                    <dt class="col-sm-4">Budget / Ticket Size</dt>
+                    <dd class="col-sm-8" id="budget"></dd>
+
+                    <dt class="col-sm-4">Contract Date</dt>
+                    <dd class="col-sm-8" id="contract_date"></dd>
+
+                    <dt class="col-sm-4">Payment Date</dt>
+                    <dd class="col-sm-8" id="payment_date"></dd>
+
+                    <dt class="col-sm-4">Handled By (SIP)</dt>
+                    <dd class="col-sm-8" id="sip_name"></dd>
+                </dl>
+            </div>
+            <div class="col-lg-4">
+                <h5>Attachments</h5>
+                <div id="attachments-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    const dealId = {{ deal_id }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+
+    try {
+        const response = await fetchWithAuth(`/api/design/v3/deals/${dealId}`);
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || 'Failed to load deal details.');
+        }
+        const deal = await response.json();
+
+        // Populate fields
+        document.getElementById('project_name').textContent = deal.project_name;
+        document.getElementById('client_name').textContent = deal.client_name;
+        document.getElementById('client_contact').textContent = deal.client_contact;
+        document.getElementById('location').textContent = deal.location;
+        document.getElementById('project_type').textContent = deal.project_type;
+        document.getElementById('contract_type').textContent = deal.contract_type;
+        document.getElementById('budget').textContent = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'AED' }).format(deal.budget);
+        document.getElementById('contract_date').textContent = new Date(deal.contract_date).toLocaleDateString();
+        document.getElementById('payment_date').textContent = new Date(deal.payment_date).toLocaleDateString();
+        document.getElementById('sip_name').textContent = deal.sip.name;
+
+        // Populate attachments
+        const attachmentsContainer = document.getElementById('attachments-container');
+        const attachmentsByType = {};
+        (deal.attachments || []).forEach(att => {
+            if (!attachmentsByType[att.attachment_type]) {
+                attachmentsByType[att.attachment_type] = [];
+            }
+            attachmentsByType[att.attachment_type].push(att);
+        });
+
+        let attachmentsHtml = '';
+        for (const type in attachmentsByType) {
+            attachmentsHtml += `<h6 class="mt-3">${type}</h6><ul class="list-unstyled">`;
+            attachmentsByType[type].forEach(att => {
+                attachmentsHtml += `<li><a href="${att.blob_url}" target="_blank"><i class="bi bi-file-earmark-arrow-down"></i> ${att.file_name}</a></li>`;
+            });
+            attachmentsHtml += `</ul>`;
+        }
+        attachmentsContainer.innerHTML = attachmentsHtml || '<p class="text-muted">No attachments found.</p>';
+
+        loadingState.style.display = 'none';
+        contentContainer.style.display = 'block';
+
+    } catch (error) {
+        loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+    }
+});
+</script>
+{% endblock %}

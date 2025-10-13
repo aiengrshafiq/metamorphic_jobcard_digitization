@@ -650,12 +650,26 @@ async def deals_v3_list_page(
     if isinstance(context, RedirectResponse): return context
     
     # Security check for design leadership
-    allowed_roles = {'Design Manager', 'Lead Designer', 'Admin', 'Super Admin','QS','Operation Manager'}
+    allowed_roles = {'Design Manager', 'Lead Designer', 'Admin', 'Super Admin','QS','Operation Manager', 'Technical Engineer', 'Document Controller'}
     if not allowed_roles.intersection(context["user_roles"]):
         raise HTTPException(status_code=403, detail="Access denied.")
         
     context["page_title"] = "New Deals (V3)"
     return templates.TemplateResponse("design/v3/deal_list.html", context)
+
+
+@router.get("/design/v3/deals/{deal_id}", response_class=HTMLResponse, tags=["Pages"])
+async def deal_v3_detail_page(
+    deal_id: int,
+    context: dict = Depends(deps.get_template_context)
+):
+    if isinstance(context, RedirectResponse):
+        return context
+    
+    context["page_title"] = f"Deal Details #{deal_id}"
+    context["deal_id"] = deal_id
+    return templates.TemplateResponse("design/v3/deal_detail.html", context)
+
 
 
 @router.get("/design/v3/projects/{project_id}", response_class=HTMLResponse, tags=["Pages"])

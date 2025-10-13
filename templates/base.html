@@ -203,14 +203,15 @@
                     </ul>
                     {% endif %}
                  <!-- Design Team -->
+                  <!-- <p>User Roles: {{ user_roles }}</p> -->
                   {% set all_design_team_roles = ['Operation Manager','QS','Design Manager','Design Team Member', 'Technical Engineer', 'Document Controller','Lead Designer'] %}
-                 {% set design_team_roles = ['Design Team Member', 'Technical Engineer','Lead Designer'] %}
+                 {% set design_team_roles = ['Design Team Member', 'Technical Engineer','Lead Designer', 'Document Controller'] %}
                  {% if user_roles | select('in', all_design_team_roles) | list | length > 0 %}
                 <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                     <span>Design Studio</span>
                 </h6>
                 <ul class="nav flex-column mb-2">
-                    {% if 'Design Manager' in user_roles or 'Lead Designer' in user_roles  or 'QS' in user_roles or 'Operation Manager' in user_roles  %}
+                    
                     <li class="nav-item">
                         <a class="nav-link" href="/design/dashboard">
                             <i class="bi bi-speedometer2 me-2"></i> Design Dashboard
@@ -221,14 +222,14 @@
                             <i class="bi bi-plus-circle me-2"></i> New Project
                         </a>
                     </li> -->
-                    {% if 'Design Manager' in user_roles or 'Lead Designer' in user_roles or 'QS' in user_roles or 'Operation Manager' in user_roles, %}
+                    
                     <li class="nav-item">
                         <a class="nav-link" href="/design/v3/deals">
                             <i class="bi bi-briefcase-fill me-2"></i> New Deals (V3)
                         </a>
                     </li>
-                    {% endif %}
-                    <li class="nav-item">
+                    
+                    <!-- <li class="nav-item">
                         <a class="nav-link" href="/design/v2/projects/new">
                             <i class="bi bi-plus-circle-dotted me-2"></i> New Project (V2)
                         </a>
@@ -237,26 +238,15 @@
                         <a class="nav-link" href="/design/v2/projects">
                             <i class="bi bi-folder2-open me-2"></i> Manage Projects (V2)
                         </a>
-                    </li>
-                    {% endif %}
-                    {% if 'Design Manager' in user_roles or 'Document Controller' in user_roles or 'Technical Engineer' in user_roles %}
-                    <!-- <li class="nav-item">
-                        <a class="nav-link" href="/design/projects">
-                            <i class="bi bi-folder2-open me-2"></i> Manage Projects
-                        </a>
                     </li> -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/design/projects/completed">
-                            <i class="bi bi-archive-fill me-2"></i> Completed Projects
-                        </a>
-                    </li>
-                   {% endif %}
+                    
+                   
                     {% if user_roles | select('in', design_team_roles) | list | length > 0 %}
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <a class="nav-link" href="/design/my-tasks">
                             <i class="bi bi-list-task me-2"></i> My Tasks
                         </a>
-                    </li>
+                    </li> -->
                     <li class="nav-item">
                         <a class="nav-link" href="/design/v3/my-tasks">
                             <i class="bi bi-list-task me-2"></i> My Tasks (V3)
@@ -412,13 +402,13 @@
                     </ul>
                     {% endif %}
                  {% set all_design_team_roles = ['Design Manager','Design Team Member', 'Technical Engineer', 'Document Controller','Lead Designer'] %}
-                 {% set design_team_roles = ['Design Team Member', 'Technical Engineer','Lead Designer'] %}
+                 {% set design_team_roles = ['Design Team Member', 'Technical Engineer','Lead Designer', 'Document Controller'] %}
                  {% if user_roles | select('in', all_design_team_roles) | list | length > 0 %}
                 <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                     <span>Design Studio</span>
                 </h6>
                 <ul class="nav flex-column mb-2">
-                    {% if 'Design Manager' in user_roles %}
+                    <!-- {% if 'Design Manager' in user_roles %} -->
                     <li class="nav-item">
                         <a class="nav-link" href="/design/dashboard">
                             <i class="bi bi-speedometer2 me-2"></i> Design Dashboard
@@ -429,14 +419,14 @@
                             <i class="bi bi-plus-circle me-2"></i> New Project
                         </a>
                     </li> -->
-                    {% if 'Design Manager' in user_roles or 'Lead Designer' in user_roles or 'QS' in user_roles %}
+                    <!-- {% if 'Design Manager' in user_roles or 'Lead Designer' in user_roles or 'QS' in user_roles %} -->
                     <li class="nav-item">
                         <a class="nav-link" href="/design/v3/deals">
                             <i class="bi bi-briefcase-fill me-2"></i> New Deals (V3)
                         </a>
                     </li>
-                    {% endif %}
-                    <li class="nav-item">
+                    <!-- {% endif %} -->
+                    <!-- <li class="nav-item">
                         <a class="nav-link" href="/design/v2/projects/new">
                             <i class="bi bi-plus-circle-dotted me-2"></i> New Project (V2)
                         </a>
@@ -445,8 +435,8 @@
                         <a class="nav-link" href="/design/v2/projects">
                             <i class="bi bi-folder2-open me-2"></i> Manage Projects (V2)
                         </a>
-                    </li>
-                    {% endif %}
+                    </li> -->
+                    <!-- {% endif %} -->
                     {% if 'Design Manager' in user_roles or 'Document Controller' in user_roles or 'Technical Engineer' in user_roles %}
                     <!-- <li class="nav-item">
                         <a class="nav-link" href="/design/projects">
@@ -460,11 +450,11 @@
                     </li>
                    {% endif %}
                     {% if user_roles | select('in', design_team_roles) | list | length > 0 %}
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <a class="nav-link" href="/design/my-tasks">
                             <i class="bi bi-list-task me-2"></i> My Tasks
                         </a>
-                    </li>
+                    </li> -->
                     <li class="nav-item">
                         <a class="nav-link" href="/design/v3/my-tasks">
                             <i class="bi bi-list-task me-2"></i> My Tasks (V3)

@@ -10,14 +10,15 @@
                 <div class="col-md-6"><label class="form-label">Client Name <span class="text-danger">*</span></label><input type="text" name="client_name" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label">Client Contact <span class="text-danger">*</span></label><input type="text" name="client_contact" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label">Location <span class="text-danger">*</span></label><input type="text" name="location" class="form-control" required></div>
+                 <div class="col-md-6"><label class="form-label">Project Type <span class="text-danger">*</span></label><select name="project_type" class="form-select" required><option value="">Select...</option><option value="New Project">New Project</option><option value="Renovation">Renovation</option></select></div>
                 <div class="col-md-6"><label class="form-label">Contract Type <span class="text-danger">*</span></label><select name="contract_type" class="form-select" required><option value="">Select...</option>{% for pkg in commitment_packages %}<option value="{{ pkg }}">{{ pkg }}</option>{% endfor %}</select></div>
                 <div class="col-md-6"><label class="form-label">Budget / Ticket Size <span class="text-danger">*</span></label><input type="number" name="budget" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label">Payment Date <span class="text-danger">*</span></label><input type="date" name="payment_date" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label">Contract Date <span class="text-danger">*</span></label><input type="date" name="contract_date" class="form-control" required></div>
                 <hr class="my-2">
-                <div class="col-md-4"><label class="form-label">Initial Client Brief <span class="text-danger">*</span></label><input type="file" name="initial_brief" class="form-control" required></div>
-                <div class="col-md-4"><label class="form-label">Layout / Floor Plan <span class="text-danger">*</span></label><input type="file" name="floor_plan" class="form-control" required></div>
-                <div class="col-md-4"><label class="form-label">As-Built Drawings (Optional)</label><input type="file" name="as_built" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label">Initial Client Brief <span class="text-danger">*</span></label><input type="file" name="initial_brief" class="form-control" required multiple></div>
+                <div class="col-md-4"><label class="form-label">Layout / Floor Plan <span class="text-danger">*</span></label><input type="file" name="floor_plan" class="form-control" required multiple></div>
+                <div class="col-md-4"><label class="form-label">As-Built Drawings (Optional)</label><input type="file" name="as_built" class="form-control" multiple></div>
             </div>
             <div class="mt-4 text-end">
                 <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">Create Deal</button>

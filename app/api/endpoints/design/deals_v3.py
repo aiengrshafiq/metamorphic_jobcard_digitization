@@ -14,6 +14,9 @@ from sqlalchemy import func
 
 from app.design_v3_models import Deal, DesignProjectV3, DesignStageV3, StageV3Name, StageV3Status, CommitmentPackage,DesignTaskV3
 
+from app.design_v3_models import ProjectType, DealAttachment, DealAttachmentType
+
+
 
 
 
@@ -107,14 +110,15 @@ async def create_deal_v3(
     client_name: str = Form(...),
     client_contact: str = Form(...),
     location: str = Form(...),
+    project_type: ProjectType = Form(...),
     contract_type: CommitmentPackage = Form(...),
     budget: float = Form(...),
     payment_date: date = Form(...),
     contract_date: date = Form(...),
     # File Uploads
-    initial_brief: UploadFile = File(...),
-    floor_plan: UploadFile = File(...),
-    as_built: Optional[UploadFile] = File(None)
+    initial_briefs: List[UploadFile] = File(..., alias="initial_brief"),
+    floor_plans: List[UploadFile] = File(..., alias="floor_plan"),
+    as_builts: List[UploadFile] = File([], alias="as_built")
 ):
     """Creates a new V3 Deal, uploading attachments to Azure."""
     
@@ -133,25 +137,62 @@ async def create_deal_v3(
             
             file_contents = await file.read()
             await blob_client.upload_blob(file_contents, overwrite=True)
-            return blob_client.url
+            return {"url": blob_client.url, "name": file.filename}
 
-    # Upload files and get their URLs
-    brief_url = await upload_to_azure(initial_brief)
-    floor_plan_url = await upload_to_azure(floor_plan)
-    as_built_url = await upload_to_azure(as_built) if as_built else None
+    # # Upload files and get their URLs
+    # brief_url = await upload_to_azure(initial_brief)
+    # floor_plan_url = await upload_to_azure(floor_plan)
+    # as_built_url = await upload_to_azure(as_built) if as_built else None
 
     new_deal = Deal(
         project_name=project_name, client_name=client_name, client_contact=client_contact,
-        location=location, contract_type=contract_type, budget=budget,
+        location=location, project_type=project_type,  contract_type=contract_type, budget=budget,
         payment_date=payment_date, contract_date=contract_date,
-        initial_brief_link=brief_url, floor_plan_link=floor_plan_url, as_built_link=as_built_url,
+        #initial_brief_link=brief_url, floor_plan_link=floor_plan_url, as_built_link=as_built_url,
         sip_id=current_user.id
     )
     
     db.add(new_deal)
+    db.flush() # Flush to get the new_deal.id
+
+    # --- Process and create attachment records ---
+    attachment_uploads = {
+        DealAttachmentType.INITIAL_BRIEF: initial_briefs,
+        DealAttachmentType.FLOOR_PLAN: floor_plans,
+        DealAttachmentType.AS_BUILT: as_builts
+    }
+
+    for attachment_type, files in attachment_uploads.items():
+        for file in files:
+            if file and file.filename:
+                upload_result = await upload_to_azure(file)
+                if upload_result:
+                    new_attachment = DealAttachment(
+                        deal_id=new_deal.id,
+                        blob_url=upload_result["url"],
+                        file_name=upload_result["name"],
+                        attachment_type=attachment_type
+                    )
+                    db.add(new_attachment)
+    # -------------------------------------------
+    
     db.commit()
     
     return {"message": "Deal created successfully!", "deal_id": new_deal.id}
+
+
+@router.get("/{deal_id}", tags=["Design V3 Deals"])
+def get_deal_v3(deal_id: int, db: Session = Depends(deps.get_db)):
+    """Fetches a single V3 Deal with all its details and attachments."""
+    deal = db.query(Deal).options(
+        selectinload(Deal.attachments),
+        joinedload(Deal.sip)
+    ).filter(Deal.id == deal_id).first()
+
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    
+    return deal
 
 
 @router.get("/", tags=["Design V3 Deals"])
