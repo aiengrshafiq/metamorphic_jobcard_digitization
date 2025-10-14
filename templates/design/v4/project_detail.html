@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+{% set PAGE_ID = 'design-v4-project-detail' %}
+
+{% block head_extra %}
+<style>
+  /* ===== Design V4: Clean, Responsive, Extensible ===== */
+  :root {
+    --bg-surface: #ffffff;
+    --bg-soft: #f8f9fb;
+    --text-muted: #6c757d;
+    --ring: rgba(13,110,253,.25);
+  }
+  /* Layout */
+  .v4-layout { display: grid; grid-template-columns: 290px 1fr; gap: 1.25rem; }
+  @media (max-width: 992px) { .v4-layout { grid-template-columns: 1fr; } }
+
+  .v4-sidebar { position: sticky; top: 88px; align-self: start; }
+  .v4-card { background: var(--bg-surface); border: 1px solid #e9ecef; border-radius: 12px; box-shadow: 0 1px 0 rgba(0,0,0,.02); }
+  .v4-card-header { padding: .9rem 1rem; border-bottom: 1px solid #eef0f2; display:flex; align-items:center; gap:.75rem; }
+  .v4-card-body { padding: 1rem; }
+  .v4-card-footer { padding: .75rem 1rem; border-top: 1px solid #eef0f2; background: #fafbfc; }
+  .v4-card-header .badge { 
+  margin-left: auto; 
+  min-width: 96px; 
+  text-align: center; 
+}
+  .v4-sep { height: 1px; background: #eef0f2; margin: .5rem 0; }
+  .v4-kv { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .v4-kv dt { color: var(--text-muted); font-weight: 500; }
+
+  /* Stage list (Stepper) */
+  .v4-steps { list-style:none; margin:0; padding:0; }
+  .v4-step {
+  display: flex;
+  gap: .75rem;
+  padding: .6rem .5rem;
+  border-radius: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+  .v4-step:hover { background:#f6f8ff; }
+  .v4-step.active { background:#eef4ff; outline:2px solid var(--ring); }
+  .v4-step .badge { 
+  margin-left: auto; 
+  min-width: 96px;      /* same width = perfect vertical alignment */
+  text-align: center; 
+}
+  .v4-step .v4-step-title { font-weight:600; }
+  .v4-step .v4-step-sub { font-size:.85rem; color: var(--text-muted); }
+
+  /* Toolbar */
+  .v4-toolbar { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+  .v4-toolbar .form-control { max-width: 240px; }
+
+  /* Skeletons */
+  .skeleton { background: linear-gradient(90deg,#eee,#f5f5f5,#eee); background-size:200% 100%; animation: sk 1.2s infinite; }
+  @keyframes sk { to { background-position:-200% 0; } }
+  .sk-line { height: 14px; border-radius:6px; }
+  .sk-line.lg { height: 20px; }
+  .sk-blk { height: 120px; border-radius:12px; }
+
+  /* Utilities */
+  .minw-280 { min-width: 280px; flex: 1 1 auto; }
+  .grid-2 { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .75rem; }
+  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* Forms */
+  .v4-actions .btn + .btn { margin-left:.5rem; }
+  .assignment-cell { min-width: 330px; }
+  .signoff-list { list-style: none; padding-left: 0; margin: 0; }
+  .signoff-list li { display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid #eee; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="{{ PAGE_ID }}" class="container-fluid py-3">
+  <!-- Page Header -->
+  <div class="v4-card mb-3">
+    <div class="v4-card-header">
+      <div class="sk-line lg skeleton" style="width: 220px;" id="ph-title"></div>
+      <span class="badge bg-secondary" id="ph-status"></span>
+      <div class="ms-auto v4-toolbar">
+        <input id="stageSearch" type="search" class="form-control form-control-sm" placeholder="Search stages…" aria-label="Search stages" />
+        <div class="btn-group btn-group-sm" role="group" aria-label="Filters">
+          <button class="btn btn-outline-secondary" data-filter="all">All</button>
+          <button class="btn btn-outline-primary" data-filter="inprogress">In progress</button>
+          <button class="btn btn-outline-success" data-filter="completed">Completed</button>
+          <button class="btn btn-outline-secondary" data-filter="locked">Locked</button>
+        </div>
+        <button id="refreshBtn" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-repeat me-1"></i>Refresh
+        </button>
+      </div>
+    </div>
+    <div class="v4-card-body">
+      <dl class="v4-kv mb-0">
+        <dt>Client</dt><dd id="ph-client" class="sk-line skeleton" style="width:160px"></dd>
+        <dt>Project</dt><dd id="ph-project" class="sk-line skeleton" style="width:220px"></dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="v4-layout">
+    <!-- Sidebar: vertical stepper -->
+    <aside class="v4-sidebar v4-card p-2">
+      <div class="input-group input-group-sm mb-2">
+        <span class="input-group-text"><i class="bi bi-list-check"></i></span>
+        <input id="quickFind" type="search" class="form-control" placeholder="Quick find stage" />
+      </div>
+      <ul id="steps" class="v4-steps" aria-label="Project stages">
+        <!-- Populated by JS -->
+        <li class="v4-step">
+          <div class="sk-line skeleton" style="width: 70%"></div>
+          <span class="badge bg-secondary">—</span>
+        </li>
+        <li class="v4-step">
+          <div class="sk-line skeleton" style="width: 60%"></div>
+          <span class="badge bg-secondary">—</span>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main: stage detail panel -->
+    <main id="stagePanel" class="d-flex flex-column gap-3">
+      <!-- Skeleton while loading -->
+      <section class="v4-card">
+        <div class="v4-card-header">
+          <div class="sk-line lg skeleton" style="width: 280px;"></div>
+          <span class="badge bg-secondary ms-auto">Loading…</span>
+        </div>
+        <div class="v4-card-body grid-2">
+          <div class="sk-blk skeleton"></div>
+          <div class="sk-blk skeleton"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="toastV4" class="toast align-items-center text-bg-dark border-0" role="status" aria-live="polite" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastV4Body">Action done.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Templates -->
+<template id="tpl-step-item">
+  <li class="v4-step" data-stage-id="">
+    <div class="minw-280">
+      <div class="v4-step-title"></div>
+      <div class="v4-step-sub"></div><span class="badge">—</span>
+    </div>
+    <!-- <span class="badge">—</span> -->
+  </li>
+</template>
+
+<template id="tpl-stage-panel">
+  <section class="v4-card stage" data-stage-id="">
+    <div class="v4-card-header">
+      <i class="bi bi-diagram-3"></i>
+      <div class="fw-semibold" data-el="title">Stage Title</div>
+      <span class="badge ms-auto" data-el="statusBadge">Status</span>
+    </div>
+    <div class="v4-card-body" data-el="body">
+      <!-- Dynamic per-stage UI from server (or fallback body) -->
+    </div>
+    <div class="v4-card-footer d-flex justify-content-end gap-2" data-el="footer">
+      <!-- Action buttons (complete / sign off) injected here -->
+    </div>
+  </section>
+</template>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+(function(){
+  // ===== Config & capabilities from server context =====
+  const projectId = {{ project_id }};
+  const currentUserId = {{ user.id }};
+  const userRoles = {{ (user_roles | default([]) | list) | tojson }};
+  const teamMembers = {{ team_members | default([]) | tojson }};
+  const vendors = {{ vendors | default([]) | tojson }};
+
+  const caps = {
+    isDesignManager: userRoles.includes('Design Manager'),
+    isLeadDesigner: userRoles.includes('Lead Designer'),
+    isTechEngineer: userRoles.includes('Technical Engineer'),
+    isQS: userRoles.includes('QS'),
+    isOps: userRoles.includes('Operation Manager')
+  };
+
+  // ===== Elements =====
+  const root = document.getElementById('{{ PAGE_ID }}');
+  const stepsEl = root.querySelector('#steps');
+  const panelEl = root.querySelector('#stagePanel');
+  const phTitle = root.querySelector('#ph-title');
+  const phClient = root.querySelector('#ph-client');
+  const phProject = root.querySelector('#ph-project');
+  const phStatus = root.querySelector('#ph-status');
+  const quickFind = root.querySelector('#quickFind');
+  const stageSearch = root.querySelector('#stageSearch');
+  const toast = new bootstrap.Toast(document.getElementById('toastV4'));
+  const toastBody = document.getElementById('toastV4Body');
+
+  // ===== Utilities =====
+  function showToast(msg) { toastBody.textContent = msg; toast.show(); }
+  function badgeClass(status){
+    switch(status){
+      case 'In Progress': return 'bg-primary';
+      case 'Completed': return 'bg-success';
+      case 'Locked': return 'bg-secondary';
+      default: return 'bg-secondary';
+    }
+  }
+  async function fetchJSON(url, options){
+    const res = await fetchWithAuth(url, options || {});
+    if(!res.ok){ let msg='Request failed'; try{const j=await res.json(); msg=j.detail||msg;}catch{} throw new Error(msg); }
+    return res.json();
+  }
+  function html(strings, ...vals){ return strings.reduce((acc, s, i)=> acc + s + (vals[i] ?? ''), ''); }
+
+  // ===== Application State =====
+  let project = null; // hydrated JSON
+  let activeStageId = null;
+  let filterMode = 'all';
+
+  // ===== Renderers =====
+  function renderHeader(){
+    phTitle.classList.remove('skeleton'); phTitle.textContent = project?.name || '—';
+    phClient.classList.remove('skeleton'); phClient.textContent = project?.client || '—';
+    phProject.classList.remove('skeleton'); phProject.textContent = project?.code || project?.reference || project?.name || '—';
+    phStatus.textContent = project?.status || '—';
+    phStatus.className = 'badge ' + (project?.status === 'Active' ? 'bg-primary' : 'bg-secondary');
+  }
+
+  function renderSteps(){
+    stepsEl.innerHTML = '';
+    (project.stages||[]).forEach((s, idx)=>{
+      const li = document.getElementById('tpl-step-item').content.cloneNode(true);
+      const root = li.querySelector('li');
+      root.dataset.stageId = s.id;
+      root.querySelector('.v4-step-title').textContent = s.name;
+      root.querySelector('.v4-step-sub').textContent = s.description || `Stage ${idx+1}`;
+      const badge = root.querySelector('.badge');
+      badge.textContent = s.status;
+      badge.classList.add(badgeClass(s.status));
+
+      // Filter & search control
+      const text = (s.name + ' ' + (s.description||'')).toLowerCase();
+      const q = (quickFind.value || stageSearch.value || '').toLowerCase().trim();
+      const matchesText = !q || text.includes(q);
+      const matchesFilter = (
+        filterMode==='all' ||
+        (filterMode==='completed' && s.status==='Completed') ||
+        (filterMode==='inprogress' && s.status==='In Progress') ||
+        (filterMode==='locked' && s.status==='Locked')
+      );
+      if(matchesText && matchesFilter){ stepsEl.appendChild(root); }
+    });
+
+    // Maintain active selection
+    const first = stepsEl.querySelector('.v4-step');
+    const hasActiveInList = stepsEl.querySelector(`[data-stage-id="${activeStageId}"]`);
+    if(!hasActiveInList) activeStageId = first?.dataset.stageId || null;
+    setActiveStep(activeStageId);
+  }
+
+  function setActiveStep(stageId){
+    activeStageId = stageId;
+    stepsEl.querySelectorAll('.v4-step').forEach(el=> el.classList.toggle('active', el.dataset.stageId==stageId));
+    if(stageId) renderStagePanel(stageId);
+  }
+  function stripStatusChips(container) {
+            const STATUSES = ['locked', 'completed', 'in progress'];
+            container.querySelectorAll('.badge').forEach(b => {
+                const t = (b.textContent || b.innerText || '').trim().toLowerCase();
+                if (STATUSES.includes(t)) b.remove();
+            });
+            }
+  async function renderStagePanel(stageId){
+    const stage = (project.stages||[]).find(s=> String(s.id)===String(stageId));
+    if(!stage) return;
+
+    console.log("stage name is ="+stage.name);
+    // Create container from template
+    const frag = document.getElementById('tpl-stage-panel').content.cloneNode(true);
+    const root = frag.querySelector('section');
+    root.dataset.stageId = stage.id;
+    const elTitle = frag.querySelector('[data-el="title"]');
+    const elStatus = frag.querySelector('[data-el="statusBadge"]');
+    const elBody = frag.querySelector('[data-el="body"]');
+    const elFooter = frag.querySelector('[data-el="footer"]');
+
+    elTitle.textContent = stage.name;
+    elStatus.textContent = stage.status; elStatus.className = 'badge ' + badgeClass(stage.status);
+
+    // Locked / Completed quick responses
+    if(stage.status==='Locked'){
+      elBody.innerHTML = '<p class="text-muted mb-0">This stage is locked until the previous stage is completed.</p>';
+      elFooter.remove();
+    } else if(stage.status==='Completed'){
+      elBody.innerHTML = '<p class="text-success mb-0"><i class="bi bi-check-circle-fill me-2"></i>Stage completed.</p>';
+      elFooter.remove();
+    } else {
+        // In Progress → if it's a special stage, render custom FIRST; otherwise use tasks-html
+        const isSpecial = ['stage 2a','stage 2b','stage 4','stage 5','stage 8']
+          .some(s => stage.name.toLowerCase().includes(s));
+        try {
+          if (isSpecial) {
+            elBody.innerHTML = await renderCustomStage(stage);
+            stripStatusChips(elBody);
+          } else {
+            const bodyRes = await fetchWithAuth(
+              `/api/design/v3/stages/${stage.id}/tasks-html`,
+              { method: 'GET', headers: { 'Accept': 'text/html' } }
+            );
+            if (bodyRes.ok) {
+              elBody.innerHTML = await bodyRes.text();
+              stripStatusChips(elBody);
+              const mo = new MutationObserver(() => stripStatusChips(elBody));
+              mo.observe(elBody, { childList: true, subtree: true });
+            } else {
+              elBody.innerHTML = await renderCustomStage(stage);
+              stripStatusChips(elBody);
+            }
+          }
+        } catch (err) {
+          elBody.innerHTML = `<div class="alert alert-danger">Failed to load stage UI. ${err.message||''}</div>`;
+        }
+     
+
+      // Footer actions (complete/sign-off) discovered from body markers
+      const completeBtn = elBody.querySelector('.complete-stage-3-btn,[data-action="complete-stage"]');
+      if(completeBtn){ elFooter.appendChild(completeBtn); }
+      if(!elFooter.childElementCount){ elFooter.remove(); }
+    }
+
+    panelEl.innerHTML = ''; panelEl.appendChild(frag);
+  }
+
+  async function renderCustomStage(stage){
+    // Re-implement the special-stage UIs with minimal, accessible forms
+    const { isLeadDesigner, isTechEngineer, isQS, isOps, isDesignManager } = caps;
+    console.log('userRoles:', userRoles, 'caps.isQS:', caps.isQS);
+    if(stage.name.includes('Stage 2A')){
+      return html`<form class="stage-2a-form" data-stage-id="${stage.id}">
+        <div class="grid-2">
+          <div>
+            <label class="form-label">Meeting Held At</label>
+            <input type="datetime-local" name="meeting_held_at" class="form-control" required>
+          </div>
+          <div>
+            <label class="form-label">Site Photos Link</label>
+            <input type="url" name="site_photos_link" class="form-control" placeholder="https://…" required>
+          </div>
+          <div>
+            <label class="form-label">MoM Link</label>
+            <input type="url" name="mom_link" class="form-control" placeholder="https://…" required>
+          </div>
+          <div>
+            <label class="form-label">Updated Brief Link</label>
+            <input type="url" name="updated_brief_link" class="form-control" placeholder="https://…" required>
+          </div>
+        </div>
+        <div class="v4-card-footer d-flex justify-content-end mt-3">
+          <button type="submit" class="btn btn-primary">Complete Stage</button>
+        </div>
+      </form>`;
+    }
+
+    if(stage.name.includes('Stage 2B')){
+      // Creation or completion views depending on measurement_requisition
+      const mr = stage.measurement_requisition || null;
+      if(!mr && isLeadDesigner){
+        const vendorOptions = vendors.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+        return html`<form class="stage-2b-creation-form" data-stage-id="${stage.id}">
+          <p class="text-muted mb-2">Select a 3rd-party vendor and expected delivery date to send the Measurement Requisition.</p>
+          <div class="row g-2">
+            <div class="col-sm-7"><select name="vendor_id" class="form-select" required><option value="">Select vendor…</option>${vendorOptions}</select></div>
+            <div class="col-sm-5"><input type="datetime-local" name="delivery_datetime" class="form-control" required></div>
+          </div>
+          <div class="v4-card-footer d-flex justify-content-end mt-3"><button type="submit" class="btn btn-primary">Send Request</button></div>
+        </form>`;
+      }
+      if(mr && mr.status!=='Approved' && isLeadDesigner){
+        return html`<form class="stage-2b-completion-form" data-stage-id="${stage.id}">
+          <p class="mb-2">Request sent to <strong>${mr.vendor?.name||'—'}</strong>. Paste the measurement package link below once received.</p>
+          <div class="input-group">
+            <input type="url" name="measurement_package_link" class="form-control" placeholder="https://…" required>
+            <button class="btn btn-primary" type="submit">Approve & Complete</button>
+          </div>
+        </form>`;
+      }
+      if(mr && mr.status==='Approved'){
+        return html`<p class="text-success mb-0"><i class="bi bi-check-circle-fill me-2"></i>Measurement package received from <strong>${mr.vendor?.name||'—'}</strong> — <a href="${mr.measurement_package_link}" target="_blank">View</a></p>`;
+      }
+      return '<p class="text-muted mb-0">Awaiting Lead Designer action.</p>';
+    }
+    console.log(stage.name);
+    console.log(caps.isQS);
+    if(stage.name.includes('Stage 4')){
+      if(!caps.isQS) return '<p class="text-muted mb-0">Awaiting action from the QS team.</p>';
+      return html`<form class="stage-4-form" data-stage-id="${stage.id}">
+        <p class="text-muted">Validate the BOQ from Stage 3 and upload your cost estimations.</p>
+        <div class="grid-2">
+          <div>
+            <label class="form-label">Validated BOQ Link <span class="text-danger">*</span></label>
+            <input type="url" name="validated_boq_link" class="form-control" required>
+          </div>
+          <div>
+            <label class="form-label">Cost Estimation Sheet Link <span class="text-danger">*</span></label>
+            <input type="url" name="cost_estimation_sheet_link" class="form-control" required>
+          </div>
+        </div>
+        <div class="v4-card-footer d-flex justify-content-end mt-3"><button type="submit" class="btn btn-primary">Complete Stage 4</button></div>
+      </form>`;
+    }
+
+    if(stage.name.includes('Stage 5')){
+      const disciplines = ['Structural Review','MEP Review','Landscape Review'];
+      const signoffs = Array.isArray(stage.interdisciplinary_signoffs) ? stage.interdisciplinary_signoffs : [];
+      const allSigned = signoffs.length >= disciplines.length;
+      const items = disciplines.map(d=>{
+        const so = signoffs.find(s=> s.discipline===d);
+        let action = '<span class="text-muted">Pending</span>';
+        if(so){ action = `<span class="text-success"><i class="bi bi-check-circle-fill"></i> Signed by ${so.signed_off_by?.name||'—'}</span>`; }
+        else if(caps.isTechEngineer){ action = `<button class="btn btn-sm btn-primary signoff-btn" data-discipline="${d}">Sign Off</button>`; }
+        return `<li><span>${d}</span><span>${action}</span></li>`;
+      }).join('');
+      const footer = (stage.status==='In Progress' && allSigned && (caps.isDesignManager || caps.isLeadDesigner))
+        ? `<div class="v4-card-footer text-end"><button class="btn btn-success complete-stage-5-btn" data-stage-id="${stage.id}"><i class="bi bi-check2-circle me-1"></i> Complete Stage & Unlock Authority Package</button></div>`
+        : '';
+      return `<ul class="signoff-list">${items}</ul>${footer}`;
+    }
+
+    if(stage.name.includes('Stage 8')){
+      const d = project.handover_design_head_signed_by;
+      const o = project.handover_ops_head_signed_by;
+      const designAction = d ? `<span class="text-success"><i class="bi bi-check-circle-fill"></i> Signed by ${d.name}</span>` : (caps.isDesignManager ? `<button class="btn btn-sm btn-primary handover-btn">Sign as Design Head</button>` : `<span class="text-muted">Pending</span>`);
+      const opsAction = o ? `<span class="text-success"><i class="bi bi-check-circle-fill"></i> Signed by ${o.name}</span>` : (caps.isOps ? `<button class="btn btn-sm btn-primary handover-btn">Sign as Ops Head</button>` : `<span class="text-muted">Pending</span>`);
+      return `<ul class="signoff-list"><li><span>Design Head Sign‑off</span><span>${designAction}</span></li><li><span>Operations Head Sign‑off</span><span>${opsAction}</span></li></ul>`;
+    }
+
+    // Default if no specialized renderer
+    return '<p class="text-muted mb-0">UI for this stage is under construction.</p>';
+  }
+
+  // ===== Actions =====
+  async function postAction(url, body, el){
+    const btn = el instanceof HTMLButtonElement ? el : el?.querySelector('button[type="submit"]');
+    let old = btn ? btn.innerHTML : null;
+    if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'; }
+    try{
+      const opts = body ? { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) } : { method:'POST' };
+      const res = await fetchWithAuth(url, opts);
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.detail || 'Action failed');
+      await hydrate();
+      showToast('Saved');
+    }catch(err){ alert(err.message); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML = old; } }
+  }
+
+  // ===== Events =====
+  stepsEl.addEventListener('click', (e)=>{
+    const item = e.target.closest('.v4-step'); if(!item) return; setActiveStep(item.dataset.stageId);
+  });
+
+  quickFind.addEventListener('input', renderSteps);
+  stageSearch.addEventListener('input', renderSteps);
+  root.querySelectorAll('[data-filter]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ filterMode = btn.dataset.filter; renderSteps(); });
+  });
+  root.querySelector('#refreshBtn').addEventListener('click', ()=> hydrate());
+
+  // Delegate form submits and button actions inside the panel
+  panelEl.addEventListener('submit', async (e)=>{
+    e.preventDefault(); const form = e.target; const stageId = form.dataset.stageId;
+    if(form.classList.contains('stage-2a-form')){
+      const payload = {
+        meeting_held_at: form.meeting_held_at.value,
+        mom_link: form.mom_link.value,
+        site_photos_link: form.site_photos_link.value,
+        updated_brief_link: form.updated_brief_link.value,
+      };
+      await postAction(`/api/design/v3/stages/${stageId}/complete-2a`, payload, form);
+    }
+    if(form.classList.contains('stage-2b-creation-form')){
+      const payload = { vendor_id: parseInt(form.vendor_id.value), delivery_datetime: form.delivery_datetime.value };
+      await postAction(`/api/design/v3/stages/${stageId}/create-measurement-req`, payload, form);
+    }
+    if(form.classList.contains('stage-2b-completion-form')){
+      const payload = { measurement_package_link: form.measurement_package_link.value };
+      await postAction(`/api/design/v3/stages/${stageId}/complete-2b`, payload, form);
+    }
+    if(form.classList.contains('stage-4-form')){
+      const payload = { validated_boq_link: form.validated_boq_link.value, cost_estimation_sheet_link: form.cost_estimation_sheet_link.value };
+      await postAction(`/api/design/v3/stages/${stageId}/complete-4`, payload, form);
+    }
+    if(form.classList.contains('assign-task-form-v3')){
+      const li = form.closest('[data-task-id]');
+      const taskId = li?.dataset.taskId; const ownerId = form.querySelector('select').value; const dueDate = form.querySelector('input[type="date"]').value;
+      if(ownerId && taskId){ await postAction(`/api/design/v3/tasks/${taskId}/assign`, { owner_id: parseInt(ownerId), due_date: dueDate }, form); }
+    }
+    if(form.classList.contains('submit-task-form-v3')){
+      const li = form.closest('[data-task-id]'); const taskId = li?.dataset.taskId; const link = form.querySelector('input[type="url"]').value;
+      await postAction(`/api/design/v2/tasks/${taskId}/submit`, { file_link: link }, form);
+    }
+  });
+
+  panelEl.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('button'); if(!btn) return;
+    // Stage 5 complete
+    if(btn.classList.contains('complete-stage-5-btn')){
+      const stageId = btn.dataset.stageId; if(confirm('Proceed to complete Stage 5?')) await postAction(`/api/design/v3/stages/${stageId}/complete-5`, null, btn);
+    }
+    // Stage 3/6/7 generic complete (when provided by tasks-html)
+    if(btn.classList.contains('complete-stage-3-btn')){
+      const stageId = btn.dataset.stageId; const stageName = btn.dataset.stageName || '';
+      let endpoint = '', confirmMsg = 'Are you sure all deliverables for this stage are complete?';
+      if(stageName.includes('INITIAL_DESIGN')){ endpoint = `/api/design/v3/stages/${stageId}/complete-3`; confirmMsg='Forward deliverables to QS?'; }
+      else if(stageName.includes('AUTHORITY_PACKAGE')){ endpoint = `/api/design/v3/stages/${stageId}/complete-6`; confirmMsg='Mark authority package as complete?'; }
+      else if(stageName.includes('FINAL_DELIVERY')){ endpoint = `/api/design/v3/stages/${stageId}/complete-7`; confirmMsg='Mark final package ready for delivery?'; }
+      if(endpoint && confirm(confirmMsg)) await postAction(endpoint, null, btn);
+    }
+    // Stage 5 discipline signoff
+    if(btn.classList.contains('signoff-btn')){
+      const stageId = panelEl.querySelector('.stage')?.dataset.stageId; const discipline = btn.dataset.discipline;
+      await postAction(`/api/design/v3/stages/${stageId}/sign-off-tech`, { discipline }, btn);
+    }
+    // Stage 8 handover signoffs
+    if(btn.classList.contains('handover-btn')){
+      const stageId = panelEl.querySelector('.stage')?.dataset.stageId;
+      if(confirm('Sign this handover?')) await postAction(`/api/design/v3/stages/${stageId}/handover-signoff`, null, btn);
+    }
+  });
+
+  // ===== Data load & hydration =====
+  async function hydrate(){
+    try{
+      project = await fetchJSON(`/api/design/v3/projects/${projectId}`);
+      renderHeader();
+      renderSteps();
+    } catch(err){
+      panelEl.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+    }
+  }
+
+  // Boot
+  hydrate();
+})();
+</script>
+{% endblock %}

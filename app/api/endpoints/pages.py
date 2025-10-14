@@ -690,11 +690,15 @@ async def project_v3_detail_page(
     ]
     team_members = db.query(models.User).join(models.User.roles).filter(models.Role.name.in_(team_roles)).all()
     context["team_members"] = [{"id": u.id, "name": u.name} for u in team_members]
+
+    # if isinstance(context.get("user_roles"), set):
+    #     context["user_roles"] = list(context["user_roles"])
     
     vendors = db.query(Vendor).order_by(Vendor.name).all()
     context["vendors"] = [{"id": v.id, "name": v.name} for v in vendors]
 
-    return templates.TemplateResponse("design/v3/project_detail.html", context)
+    #return templates.TemplateResponse("design/v3/project_detail.html", context)
+    return templates.TemplateResponse("design/v4/project_detail.html", context)
 
 @router.get("/design/v3/my-tasks", response_class=HTMLResponse, tags=["Pages"])
 async def my_tasks_v3_page(context=Depends(deps.get_template_context)):
