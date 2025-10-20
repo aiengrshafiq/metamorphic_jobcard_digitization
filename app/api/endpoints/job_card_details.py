@@ -2,10 +2,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Form
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import or_
-from typing import List
+from typing import List, Optional
 
 from app.api import deps
 from app import models
+
+from pydantic import BaseModel
+from datetime import date, datetime
+
+
 
 router = APIRouter()
 
@@ -134,3 +139,56 @@ def reassign_job_card(
     db.commit()
 
     return {"message": "Job Card successfully re-assigned."}
+
+
+# --- 1. ADD THIS PYDANTIC MODEL ---
+class TaskProgressCreate(BaseModel):
+    date: date
+    quantity_done: float
+    notes: Optional[str] = None
+
+# --- 2. ADD THESE TWO NEW ENDPOINTS (e.g., after the /reassign endpoint) ---
+
+@router.get("/tasks/{task_id}/progress", tags=["Job Card Details"])
+def get_task_progress(
+    task_id: int,
+    db: Session = Depends(deps.get_db)
+):
+    """Fetches a task and its progress log."""
+    task = db.query(models.Task).options(
+        selectinload(models.Task.progress_logs).joinedload(models.TaskProgressLog.created_by)
+    ).filter(models.Task.id == task_id).first()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Calculate total done
+    total_done = sum(log.quantity_done for log in task.progress_logs)
+    
+    return {
+        "task": task,
+        "total_done": total_done
+    }
+
+@router.post("/tasks/{task_id}/progress", tags=["Job Card Details"])
+def log_task_progress(
+    task_id: int,
+    progress_data: TaskProgressCreate,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user)
+):
+    """Adds a new progress log entry to a task."""
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    new_log = models.TaskProgressLog(
+        task_id=task_id,
+        date=progress_data.date,
+        quantity_done=progress_data.quantity_done,
+        notes=progress_data.notes,
+        created_by_id=current_user.id
+    )
+    db.add(new_log)
+    db.commit()
+    return {"message": "Progress logged successfully."}

@@ -325,6 +325,21 @@ class JobCard(Base):
     # -----------------------------
     def __str__(self) -> str: return self.job_card_no
 
+# --- 1. ADD THIS NEW MODEL CLASS ---
+class TaskProgressLog(Base):
+    __tablename__ = 'task_progress_logs'
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
+    date = Column(Date, nullable=False, default=func.current_date())
+    quantity_done = Column(Numeric(10, 2), nullable=False)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    
+    created_by_id = Column(Integer, ForeignKey('users.id'))
+    
+    task = relationship("Task", back_populates="progress_logs")
+    created_by = relationship("User")
+
 class Task(Base):
     __tablename__ = 'tasks'
     id = Column(Integer, primary_key=True, index=True)
@@ -340,7 +355,10 @@ class Task(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     job_card_id = Column(Integer, ForeignKey('job_cards.id'), nullable=False)
     job_card = relationship("JobCard", back_populates="tasks")
+    progress_logs = relationship("TaskProgressLog", back_populates="task", cascade="all, delete-orphan", order_by="TaskProgressLog.date.desc()")
     def __str__(self) -> str: return f"Task #{self.id}: {self.task_details[:50]}" if self.task_details else f"Task #{self.id}"
+
+
 
 class MaterialRequisition(Base):
     __tablename__ = 'material_requisitions'

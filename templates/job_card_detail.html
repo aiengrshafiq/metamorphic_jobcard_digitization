@@ -33,6 +33,7 @@
                                 <th>Start Date</th>
                                 <th>End Date</th>
                                 <th>Status</th>
+                                <th class="text-end">Log</th> 
                             </tr>
                         </thead>
                         <tbody id="task-list-body">
@@ -123,6 +124,56 @@
     </div>
   </div>
 </div>
+<div class="modal fade" id="logProgressModal" tabindex="-1" aria-labelledby="logProgressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logProgressModalLabel">Log Progress for Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-5">
+                        <form id="log-progress-form">
+                            <input type="hidden" id="log-task-id">
+                            <div class="mb-3">
+                                <label for="log-date" class="form-label">Date</label>
+                                <input type="date" class="form-control" id="log-date" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="log-quantity" class="form-label">Quantity Done</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" class="form-control" id="log-quantity" required>
+                                    <span class="input-group-text" id="log-unit-display"></span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="log-notes" class="form-label">Notes (Optional)</label>
+                                <textarea id="log-notes" class="form-control" rows="3"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="save-progress-btn">Log Progress</button>
+                        </form>
+                    </div>
+                    <div class="col-md-7">
+                        <h6>Task Summary</h6>
+                        <dl class="row">
+                            <dt class="col-sm-5">Total Qty:</dt>
+                            <dd class="col-sm-7" id="summary-total-qty"></dd>
+                            <dt class="col-sm-5">Total Done:</dt>
+                            <dd class="col-sm-7" id="summary-total-done"></dd>
+                            <dt class="col-sm-5">Remaining:</dt>
+                            <dd class="col-sm-7" id="summary-remaining"></dd>
+                        </dl>
+                        <hr>
+                        <h6>History</h6>
+                        <div id="progress-history-list" style="max-height: 250px; overflow-y: auto;">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -139,6 +190,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const assignmentHistoryContainer = document.getElementById('assignment-history-container');
     const toastElement = document.getElementById('responseToast');
     const toast = new bootstrap.Toast(toastElement);
+
+     // --- ADD THESE NEW CONSTANTS ---
+    const logProgressModalEl = document.getElementById('logProgressModal');
+    const logProgressModal = new bootstrap.Modal(logProgressModalEl);
+    const logProgressForm = document.getElementById('log-progress-form');
+    const saveProgressBtn = document.getElementById('save-progress-btn');
+    const progressHistoryList = document.getElementById('progress-history-list');
+    // -------------------------------
 
     // Modal elements
     const reassignModalEl = document.getElementById('reassignModal');
@@ -256,6 +315,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td>${startDate}</td>
                         <td>${endDate}</td>
                         <td><span class="badge bg-primary rounded-pill">${task.status}</span></td>
+                        <td class="text-end"> <button class="btn btn-outline-success btn-sm log-progress-btn" data-bs-toggle="modal" data-bs-target="#logProgressModal" data-task-id="${task.id}" data-task-qty="${task.quantity}" data-task-unit="${task.units}">
+                            <i class="bi bi-plus-lg"></i></button>
+                       
+                    </td>
                     `;
                     taskTableBody.appendChild(row);
                 });
@@ -327,7 +390,95 @@ document.addEventListener('DOMContentLoaded', function () {
             alert(`Error: ${error.message}`); // Simple alert for now
         }
     });
+    // --- ADD ALL THIS NEW LOGIC ---
+    
+    // Open the modal and fetch history
+   
+    // Handle the progress log form submission
+  logProgressForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    saveProgressBtn.disabled = true;
 
+    const taskId = document.getElementById('log-task-id').value;
+    const payload = {
+      date: document.getElementById('log-date').value,
+      quantity_done: parseFloat(document.getElementById('log-quantity').value),
+      notes: document.getElementById('log-notes').value,
+    };
+
+    try {
+      const response = await fetchWithAuth(`/api/job-card-details/tasks/${taskId}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || 'Failed to save progress.');
+
+      // Hide modal on success and refresh list
+      logProgressModal.hide();
+      fetchJobCardDetails();
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      saveProgressBtn.disabled = false;
+    }
+  });
+
+  // Fetch data when the modal is about to be shown
+  logProgressModalEl.addEventListener('show.bs.modal', async function (event) {
+    const button = event.relatedTarget;
+    if (!button) return;
+
+    const taskId = button.dataset.taskId;
+    const taskQty = parseFloat(button.dataset.taskQty) || 0;
+    const taskUnit = button.dataset.taskUnit || '';
+
+    // 1. Set up form
+    document.getElementById('log-task-id').value = taskId;
+    document.getElementById('log-unit-display').textContent = taskUnit;
+    document.getElementById('log-date').valueAsDate = new Date();
+    document.getElementById('log-quantity').value = '';
+    document.getElementById('log-notes').value = '';
+
+    // 2. Show loading spinner
+    progressHistoryList.innerHTML = '<div class="spinner-border spinner-border-sm"></div>';
+
+    try {
+      // Fetch progress history
+      const response = await fetchWithAuth(`/api/job-card-details/tasks/${taskId}/progress`);
+      if (!response.ok) throw new Error('Could not load progress history.');
+      const data = await response.json();
+
+      // 3. Render summary
+      const remaining = taskQty - data.total_done;
+      document.getElementById('summary-total-qty').textContent = `${taskQty} ${taskUnit}`;
+      document.getElementById('summary-total-done').textContent = `${data.total_done.toFixed(2)} ${taskUnit}`;
+      document.getElementById('summary-remaining').textContent = `${remaining.toFixed(2)} ${taskUnit}`;
+
+      // 4. Render history list
+      if (!data.task || !data.task.progress_logs || data.task.progress_logs.length === 0) {
+        progressHistoryList.innerHTML = '<p class="text-muted small">No progress logged yet.</p>';
+      } else {
+        progressHistoryList.innerHTML = ''; // Clear spinner
+        data.task.progress_logs.forEach((log) => {
+          const logEl = document.createElement('div');
+          logEl.className = 'small border-bottom pb-1 mb-1';
+          logEl.innerHTML = `
+            <strong>${log.quantity_done} ${taskUnit}</strong> on ${new Date(log.date).toLocaleDateString()}
+            <small class="d-block text-muted">by ${log.created_by.name} ${log.notes ? `- "${log.notes}"` : ''}</small>
+          `;
+          progressHistoryList.appendChild(logEl);
+        });
+      }
+    } catch (error) {
+      progressHistoryList.innerHTML = `<p class="text-danger small">${error.message}</p>`;
+    }
+  });
+    
+
+    
+    // --- END OF NEW LOGIC ---
     fetchJobCardDetails();
 });
 </script>
