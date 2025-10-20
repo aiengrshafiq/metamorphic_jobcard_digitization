@@ -19,6 +19,7 @@
                         <th>Request Date</th>
                         <th>Project</th>
                         <th>Requested By</th>
+                        <th>Status</th>
                         <th>Urgency</th>
                         <th class="text-end">Action</th>
                     </tr>
@@ -37,6 +38,7 @@
                         <td>{{ req.request_date.strftime('%d-%b-%Y') }}</td>
                         <td>{{ req.project.name }}</td>
                         <td>{{ req.requested_by.name }}</td>
+                        <td>{{ req.status }}</td>
                         <td>
                             {% if req.urgency == 'Critical' %}
                                 <span class="badge bg-danger">{{ req.urgency }}</span>

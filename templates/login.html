@@ -98,7 +98,8 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    const expires = new Date(Date.now() + 86400 * 1000).toUTCString();
+                    //const expires = new Date(Date.now() + 86400 * 1000).toUTCString();
+                    const expires = new Date(Date.now() + 7 * 86400 * 1000).toUTCString();
                     document.cookie = `access_token=${data.access_token}; path=/; expires=${expires}; SameSite=Lax; Secure`;
                     window.location.href = '/';
                 } else {

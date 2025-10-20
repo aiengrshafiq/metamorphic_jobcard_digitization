@@ -129,38 +129,7 @@ async def upload_lpo_attachment(file: UploadFile = File(...), db: Session = Depe
     return {"attachment_id": new_attachment.id}
 
 
-# @router.get("/", tags=["LPO"])
-# def get_lpos(
-#     db: Session = Depends(deps.get_db),
-#     skip: int = 0,
-#     limit: int = 20,
-#     search: Optional[str] = None
-# ):
-#     """
-#     Fetches a paginated and searchable list of all LPOs.
-#     """
-#     query = db.query(models.LPO).options(
-#         joinedload(models.LPO.supplier),
-#         joinedload(models.LPO.project),
-#         joinedload(models.LPO.created_by),
-#         selectinload(models.LPO.material_requisitions)
-#     )
 
-#     if search:
-#         search_term = f"%{search}%"
-#         # Join with supplier and project to search their names
-#         query = query.join(models.Supplier).join(models.Project).filter(
-#             or_(
-#                 models.LPO.lpo_number.ilike(search_term),
-#                 models.Supplier.name.ilike(search_term),
-#                 models.Project.name.ilike(search_term)
-#             )
-#         )
-
-#     total_count = query.count()
-#     lpos = query.order_by(models.LPO.id.desc()).offset(skip).limit(limit).all()
-
-#     return {"total_count": total_count, "lpos": lpos}
 
 @router.get("/", tags=["LPO"])
 def get_lpos(

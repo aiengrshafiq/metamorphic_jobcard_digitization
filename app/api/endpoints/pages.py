@@ -1,5 +1,5 @@
 # app/api/endpoints/pages.py
-from fastapi import APIRouter, Depends, Request # <--- MAKE SURE 'Request' IS IMPORTED
+from fastapi import APIRouter, Depends, Request , Form # <--- MAKE SURE 'Request' IS IMPORTED
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -9,12 +9,15 @@ import yaml
 from pathlib import Path
 import os
 from sqlalchemy import or_
-
+import httpx
 from app.api import deps
 from app import models
 from app import design_models
 from app.design_models import DesignTaskStatus
 from app.utils import generate_job_card_number
+from fastapi.responses import HTMLResponse, JSONResponse
+
+from datetime import datetime, timezone, timedelta
 
 
 
@@ -321,7 +324,56 @@ async def nanny_log_form(
     })
     return templates.TemplateResponse("nanny_log.html", context)
 
-    
+
+@router.get("/officer-requisition-tracker", response_class=HTMLResponse, tags=["Pages"])
+async def officer_requisition_tracker(
+    request: Request,
+    context: dict = Depends(deps.get_template_context),
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, HTMLResponse):
+        return context
+
+    # Example query (optional - only if you need user list)
+    all_users = db.query(models.User).filter(models.User.is_active == True).order_by(models.User.name).all()
+
+    context.update({
+        "page_title": "Officer Requisition Form",
+        "users": all_users,
+    })
+    return templates.TemplateResponse("officer_requisition_tracker.html", {"request": request, **context})
+
+
+@router.post("/submit-requisition")
+async def submit_requisition(
+    request_id: str = Form(...),
+    requester_name: str = Form(...),
+    department: str = Form(...),
+    item: str = Form(...),
+    quantity: str = Form(...),
+    reason: str = Form(...),
+    item_link: str = Form(None)
+):
+    data = {
+        "request_id": request_id,
+        "Requester Name": requester_name,
+        "Department": department,
+        "Item": item,
+        "Quantity": quantity,
+        "Reason": reason,
+        "Item Link": item_link,
+        "Timestamp": datetime.now(timezone(timedelta(hours=4))).isoformat()
+    }
+
+    n8n_url = "https://ecstasyholding.app.n8n.cloud/webhook-test/requisition-form"
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(n8n_url, json=data)
+            response.raise_for_status()
+        return JSONResponse({"message": "Form submitted successfully!"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)   
 
 @router.get("/requisition-details/{req_id}", response_class=HTMLResponse, tags=["Pages"])
 async def requisition_details_page(

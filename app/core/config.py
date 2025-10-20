@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     AZURE_STORAGE_CONNECTION_STRING: str
     OPENAI_API_KEY:str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # Default to 30 minutes if not set
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # Default to 30 minutes if not set
     SLACK_WEBHOOK_URL: str
     SLACK_DESIGN_WEBHOOK_URL: str
     BASE_URL: str = "http://127.0.0.1:8000/"  # Default base URL

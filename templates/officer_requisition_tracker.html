@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-md-4 p-3">
+        <h4 class="mb-4">Officer Requisition Form</h4>
+        <form id="requisition-form" action="/submit-requisition" method="post" novalidate>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Request ID <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="request_id" placeholder="REQ-2391" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Requester Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="requester_name" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Department <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="department" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Item <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="item" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="quantity" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Reason <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="reason" required>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">Item Link</label>
+                    <input type="url" class="form-control" name="item_link" placeholder="https://">
+                </div>
+            </div>
+
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display:none;"></span>
+                    Submit Form
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('requisition-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = submitBtn.querySelector('.spinner-border');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch("/submit-requisition", {
+                method: "POST",
+                body: formData
+            });
+            const result = await response.json();
+
+            if (!response.ok) throw new Error(result.error || "Unknown error");
+
+            alert("✅ " + result.message);
+            form.reset();
+        } catch (err) {
+            alert("❌ Submission failed: " + err.message);
+        } finally {
+            spinner.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

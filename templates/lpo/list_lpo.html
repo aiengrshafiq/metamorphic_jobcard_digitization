@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     let mrHtml = 'N/A';
                     if (lpo.material_requisitions && lpo.material_requisitions.length > 0) {
                         mrHtml = lpo.material_requisitions.map(mr => 
-                            `<span class="badge bg-secondary">${mr.mr_number}</span>`
+                            `<a href="/requisition-details/${mr.id}" target="_blank"><span class="badge bg-secondary">${mr.mr_number}</span></a>`
                         ).join(' ');
                     }
                     row.innerHTML = `
