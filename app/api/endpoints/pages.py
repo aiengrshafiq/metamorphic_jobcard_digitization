@@ -8,7 +8,8 @@ from app.design_v3_models import Vendor
 import yaml
 from pathlib import Path
 import os
-from sqlalchemy import or_
+#from sqlalchemy import or_
+from sqlalchemy import and_, or_
 import httpx
 from app.api import deps
 from app import models
@@ -497,6 +498,39 @@ async def view_lpo_page(lpo_id: int, context: dict = Depends(deps.get_template_c
     context["page_title"] = f"Purchase Order #{lpo_id}"
     context["lpo_id"] = lpo_id
     return templates.TemplateResponse("lpo/view_lpo.html", context)
+
+
+@router.get("/lpos/{lpo_id}/edit", response_class=HTMLResponse, tags=["Pages"])
+async def edit_lpo_page(
+    lpo_id: int,
+    context: dict = Depends(deps.get_template_context), 
+    db: Session = Depends(deps.get_db)
+):
+    if isinstance(context, RedirectResponse): return context
+    
+    # We need to load all the same data as the create page
+    context["page_title"] = f"Edit Purchase Order"
+    context["lpo_id"] = lpo_id # Pass the ID to the template
+    context["suppliers"] = db.query(models.Supplier).order_by(models.Supplier.name).all()
+    context["projects"] = db.query(models.Project).order_by(models.Project.name).all()
+    context["materials"] = db.query(models.Material).order_by(models.Material.name).all()
+    context["payment_modes"] = app_config.get('payment_modes', [])
+    
+    # Fetch all approved MRs, plus the ones already linked to this LPO
+    available_mrs = db.query(models.MaterialRequisition).filter(
+        or_(
+            models.MaterialRequisition.lpos.any(models.LPO.id == lpo_id),
+            and_(
+                models.MaterialRequisition.mr_approval == 'Approved',
+                models.MaterialRequisition.pm_approval == 'Approved',
+                models.MaterialRequisition.qs_approval == 'Approved',
+                models.MaterialRequisition.lpos.any() == False
+            )
+        )
+    ).all()
+    context["available_mrs"] = available_mrs
+    
+    return templates.TemplateResponse("lpo/edit_lpo.html", context)
 
 
 

@@ -105,6 +105,79 @@ def create_lpo(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
+
+@router.put("/{lpo_id}", tags=["LPO"])
+def update_lpo(
+    lpo_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user),
+    # All form fields are the same as create_lpo
+    supplier_id: int = Form(...),
+    lpo_date: date = Form(...),
+    project_id: int = Form(...),
+    message_to_supplier: Optional[str] = Form(None),
+    memo: Optional[str] = Form(None),
+    payment_mode: Optional[str] = Form(None),
+    items_json: str = Form(...),
+    subtotal: float = Form(...),
+    tax_total: float = Form(...),
+    grand_total: float = Form(...),
+    attachment_ids: Optional[str] = Form(None),
+    material_requisition_ids: List[int] = Form(None)
+):
+    """Updates an existing LPO."""
+    lpo = db.query(models.LPO).options(
+        selectinload(models.LPO.items),
+        selectinload(models.LPO.material_requisitions)
+    ).filter(models.LPO.id == lpo_id).first()
+
+    if not lpo:
+        raise HTTPException(status_code=404, detail="LPO not found")
+    if lpo.status != "Pending":
+        raise HTTPException(status_code=400, detail="Only 'Pending' LPOs can be edited.")
+
+    try:
+        # Update main fields
+        lpo.supplier_id = supplier_id
+        lpo.lpo_date = lpo_date
+        lpo.project_id = project_id
+        lpo.message_to_supplier = message_to_supplier
+        lpo.memo = memo
+        lpo.payment_mode = payment_mode
+        lpo.subtotal = subtotal
+        lpo.tax_total = tax_total
+        lpo.grand_total = grand_total
+        lpo.created_by_id = current_user.id # Track who last edited
+
+        # Clear and update items
+        db.query(models.LPOItem).filter(models.LPOItem.lpo_id == lpo.id).delete(synchronize_session=False)
+        items_data = [LPOItemData.parse_obj(item) for item in json.loads(items_json)]
+        for item_data in items_data:
+            lpo_item = models.LPOItem(lpo_id=lpo.id, **item_data.dict())
+            db.add(lpo_item)
+
+        # Clear and update linked MRs
+        lpo.material_requisitions.clear()
+        if material_requisition_ids:
+            mrs_to_link = db.query(models.MaterialRequisition).filter(models.MaterialRequisition.id.in_(material_requisition_ids)).all()
+            lpo.material_requisitions.extend(mrs_to_link)
+
+        # Note: This logic assumes you are re-uploading/re-linking attachments.
+        # For simplicity, we clear old and add new.
+        db.query(models.LPOAttachment).filter(models.LPOAttachment.lpo_id == lpo.id).delete(synchronize_session=False)
+        if attachment_ids:
+            id_list = [int(id_str) for id_str in attachment_ids.split(',') if id_str.isdigit()]
+            db.query(models.LPOAttachment).filter(models.LPOAttachment.id.in_(id_list)).update(
+                {"lpo_id": lpo.id}, synchronize_session=False
+            )
+        
+        db.commit()
+        return {"message": f"LPO {lpo.lpo_number} updated successfully."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+
 @router.post("/attachments", response_class=JSONResponse, tags=["LPO"])
 async def upload_lpo_attachment(file: UploadFile = File(...), db: Session = Depends(deps.get_db)):
     """Uploads an attachment to Azure Blob and creates a temporary record."""
@@ -249,7 +322,8 @@ def get_lpo_details(lpo_id: int, db: Session = Depends(deps.get_db)):
         joinedload(models.LPO.project),
         joinedload(models.LPO.created_by),
         selectinload(models.LPO.items).joinedload(models.LPOItem.material),
-        selectinload(models.LPO.attachments)
+        selectinload(models.LPO.attachments),
+        selectinload(models.LPO.material_requisitions)
     ).filter(models.LPO.id == lpo_id).first()
     if not lpo:
         raise HTTPException(status_code=404, detail="LPO not found")

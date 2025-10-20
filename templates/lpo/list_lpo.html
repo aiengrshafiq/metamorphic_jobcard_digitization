@@ -96,6 +96,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             <button class="btn btn-danger btn-sm approval-btn" data-lpo-id="${lpo.id}" data-action="reject" title="Reject"><i class="bi bi-x-lg"></i></button>
                         `;
                     }
+                    // --- ADD THIS EDIT BUTTON (as a link) ---
+                    // It will only be shown if the LPO is still "Pending"
+                    if (lpo.status === 'Pending') {
+                        actionButtons += `<a href="/lpos/${lpo.id}/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil-fill"></i></a>`;
+                    }
+                    // ----------------------------------------
                     let mrHtml = 'N/A';
                     if (lpo.material_requisitions && lpo.material_requisitions.length > 0) {
                         mrHtml = lpo.material_requisitions.map(mr => 
