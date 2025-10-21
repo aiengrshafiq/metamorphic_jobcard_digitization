@@ -797,5 +797,17 @@ async def my_tasks_v3_page(context=Depends(deps.get_template_context)):
 
 
 
-
+@router.get("/reports/dashboard", response_class=HTMLResponse, tags=["Pages"])
+async def reports_dashboard_page(context: dict = Depends(deps.get_template_context)):
+    if isinstance(context, RedirectResponse): return context
+    
+    context["page_title"] = "Reports Dashboard"
+    # Pass all filter options to the page
+    context["job_card_statuses"] = app_config.get('job_card_statuses', [])
+    context["lpo_statuses"] = app_config.get('lpo_statuses', [])
+    context["mr_statuses"] = app_config.get('mr_statuses', [])
+    context["mr_approval_types"] = app_config.get('mr_approval_types', [])
+    context["mr_approval_statuses"] = app_config.get('mr_approval_statuses', [])
+    
+    return templates.TemplateResponse("reports/dashboard.html", context)
 

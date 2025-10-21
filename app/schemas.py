@@ -1,6 +1,9 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr,ConfigDict
 from datetime import date
 from typing import List, Optional
+
+
+
 
 from .models import UserRole # Import the enum
 
@@ -81,3 +84,57 @@ class NannyLogCreate(BaseModel):
     behavior: Optional[str] = None
     signs_of_illness: Optional[str] = None
     nanny_notes: Optional[str] = None
+
+
+
+
+# --- Base Schemas for nesting ---
+# These are simple versions of your models for API responses
+
+class ProjectSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+
+class UserSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+
+class SupplierSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+
+# --- Schemas for Report Items ---
+
+class JobCardSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    job_card_no: str
+    project: ProjectSchema
+    supervisor_user: Optional[UserSchema] = None
+    date_issued: date
+    status: str
+
+class MaterialRequisitionSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    mr_number: str
+    project: ProjectSchema
+    requested_by: UserSchema
+    request_date: date
+    status: str
+    mr_approval: Optional[str]
+    pm_approval: Optional[str]
+    qs_approval: Optional[str]
+
+class LPOSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    lpo_number: str
+    project: ProjectSchema
+    supplier: SupplierSchema
+    lpo_date: date
+    status: str
+    grand_total: float

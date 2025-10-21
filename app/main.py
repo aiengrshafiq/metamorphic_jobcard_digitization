@@ -115,7 +115,8 @@ from app.api.endpoints.design.tasks_v3 import router as design_v3_tasks_router
 
 app.include_router(design_v3_tasks_router, prefix="/api/design/v3/tasks", tags=["Design V3 Tasks"])
 
-
+from app.api.endpoints.dashboard_reports import router as dashboard_reports_router
+app.include_router(dashboard_reports_router, prefix="/api/reports", tags=["Dashboard Reports"])
 
 
 @app.get("/health", tags=["System"])

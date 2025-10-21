@@ -91,3 +91,35 @@ payment_modes:
   - Cash
   - Credit
   - PDC
+
+# Job Card statuses
+job_card_statuses:
+  - Pending
+  - Processing
+  - Done
+
+# LPO statuses
+lpo_statuses:
+  - Pending
+  - Approved
+  - Rejected
+
+# MR statuses
+mr_statuses:
+  - Draft
+  - Pending
+  - Approved
+  - Rejected
+  - Ordered
+  - Partial
+  - Delivered
+
+# MR Approval statuses (for filtering)
+mr_approval_types:
+  - mr_approval
+  - pm_approval
+  - qs_approval
+mr_approval_statuses:
+  - Pending
+  - Approved
+  - Rejected

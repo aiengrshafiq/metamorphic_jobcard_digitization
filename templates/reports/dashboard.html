@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <ul class="nav nav-tabs" id="reportTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="jc-tab" data-bs-toggle="tab" data-bs-target="#jc-tab-pane" type="button" role="tab">Job Cards</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="mr-tab" data-bs-toggle="tab" data-bs-target="#mr-tab-pane" type="button" role="tab">Material Requisitions</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="lpo-tab" data-bs-toggle="tab" data-bs-target="#lpo-tab-pane" type="button" role="tab">LPOs</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="reportTabsContent">
+        
+        <div class="tab-pane fade show active" id="jc-tab-pane" role="tabpanel">
+            <div class="card shadow-sm border-top-0">
+                <div class="card-body">
+                    <form id="jc-filter-form" class="row g-3 align-items-end mb-3">
+                        <div class="col-md-3"><label class="form-label">From Date</label><input type="date" name="from_date" class="form-control"></div>
+                        <div class="col-md-3"><label class="form-label">To Date</label><input type="date" name="to_date" class="form-control"></div>
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">All Statuses</option>
+                                {% for s in job_card_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3"><button type="submit" class="btn btn-primary w-100">Filter</button></div>
+                    </form>
+                    <div class="row mb-3" id="jc-summary"></div>
+                    <div class="table-responsive"><table class="table table-hover"><thead><tr><th>JC #</th><th>Project</th><th>Supervisor</th><th>Date Issued</th><th>Status</th></tr></thead><tbody id="jc-table-body"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="mr-tab-pane" role="tabpanel">
+            <div class="card shadow-sm border-top-0">
+                <div class="card-body">
+                    <form id="mr-filter-form" class="row g-3 align-items-end mb-3">
+                        <div class="col-md-2"><label class="form-label">From Date</label><input type="date" name="from_date" class="form-control"></div>
+                        <div class="col-md-2"><label class="form-label">To Date</label><input type="date" name="to_date" class="form-control"></div>
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">All Statuses</option>
+                                {% for s in mr_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Approval Type</label>
+                            <select name="approval_type" class="form-select">
+                                <option value="">All</option>
+                                {% for t in mr_approval_types %}<option value="{{ t }}">{{ t.upper() }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Approval Status</label>
+                            <select name="approval_status" class="form-select">
+                                <option value="">All</option>
+                                {% for s in mr_approval_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Filter</button></div>
+                    </form>
+                    <div class="row mb-3" id="mr-summary"></div>
+                    <div class="table-responsive"><table class="table table-hover"><thead><tr><th>MR #</th><th>Project</th><th>Requested By</th><th>Request Date</th><th>Status</th><th>MR</th><th>PM</th><th>QS</th></tr></thead><tbody id="mr-table-body"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="lpo-tab-pane" role="tabpanel">
+            <div class="card shadow-sm border-top-0">
+                <div class="card-body">
+                    <form id="lpo-filter-form" class="row g-3 align-items-end mb-3">
+                        <div class="col-md-3"><label class="form-label">From Date</label><input type="date" name="from_date" class="form-control"></div>
+                        <div class="col-md-3"><label class="form-label">To Date</label><input type="date" name="to_date" class="form-control"></div>
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">All Statuses</option>
+                                {% for s in lpo_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3"><button type="submit" class="btn btn-primary w-100">Filter</button></div>
+                    </form>
+                    <div class="row mb-3" id="lpo-summary"></div>
+                    <div class="table-responsive"><table class="table table-hover"><thead><tr><th>LPO #</th><th>Project</th><th>Supplier</th><th>Date</th><th>Status</th><th class="text-end">Amount</th></tr></thead><tbody id="lpo-table-body"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    
+    // --- Helper Functions ---
+    function showLoading(tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="100%" class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Loading...</td></tr>';
+    }
+    
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function renderApprovalBadge(status) {
+        if (status === 'Approved') return `<span class="badge bg-success">${status}</span>`;
+        if (status === 'Rejected') return `<span class="badge bg-danger">${status}</span>`;
+        return `<span class="badge bg-warning text-dark">${status}</span>`;
+    }
+
+    function buildQueryString(form) {
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        for (const [key, value] of formData.entries()) {
+            if (value) {
+                params.append(key, value);
+            }
+        }
+        return params.toString();
+    }
+
+    // --- Job Card Report ---
+    const jcForm = document.getElementById('jc-filter-form');
+    const jcTableBody = document.getElementById('jc-table-body');
+    const jcSummary = document.getElementById('jc-summary');
+
+    async function loadJobCardReport() {
+        showLoading(jcTableBody);
+        const params = buildQueryString(jcForm);
+        
+        try {
+            const response = await fetchWithAuth(`/api/reports/job-cards?${params}`);
+            if (!response.ok) throw new Error('Failed to fetch report data.');
+            const data = await response.json();
+
+            // Render summary
+            jcSummary.innerHTML = `
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.total_count}</h5><p class="card-text text-muted">Total</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.pending_count}</h5><p class="card-text text-muted">Pending</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.processing_count}</h5><p class="card-text text-muted">Processing</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.done_count}</h5><p class="card-text text-muted">Done</p></div></div></div>
+            `;
+            
+            // Render table
+            jcTableBody.innerHTML = '';
+            data.items.forEach(item => {
+                const row = jcTableBody.insertRow();
+                row.innerHTML = `
+                    <td><a href="/job-card-details/${item.id}" target="_blank">${item.job_card_no}</a></td>
+                    <td>${item.project.name}</td>
+                    <td>${item.supervisor_user?.name || 'N/A'}</td>
+                    <td>${formatDate(item.date_issued)}</td>
+                    <td>${item.status}</td>
+                `;
+            });
+        } catch (error) {
+            jcTableBody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">${error.message}</td></tr>`;
+        }
+    }
+    jcForm.addEventListener('submit', (e) => { e.preventDefault(); loadJobCardReport(); });
+    loadJobCardReport(); // Initial load
+
+    // --- Material Requisition Report ---
+    const mrForm = document.getElementById('mr-filter-form');
+    const mrTableBody = document.getElementById('mr-table-body');
+    const mrSummary = document.getElementById('mr-summary');
+
+    async function loadMRReport() {
+        showLoading(mrTableBody);
+        const params = buildQueryString(mrForm);
+        
+        try {
+            const response = await fetchWithAuth(`/api/reports/material-requisitions?${params}`);
+            if (!response.ok) throw new Error('Failed to fetch report data.');
+            const data = await response.json();
+
+            mrSummary.innerHTML = `
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.total_count}</h5><p class="card-text text-muted">Total</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.pending_count}</h5><p class="card-text text-muted">Pending</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.approved_count}</h5><p class="card-text text-muted">Approved</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.rejected_count}</h5><p class="card-text text-muted">Rejected</p></div></div></div>
+            `;
+            
+            mrTableBody.innerHTML = '';
+            data.items.forEach(item => {
+                const row = mrTableBody.insertRow();
+                row.innerHTML = `
+                    <td><a href="/requisition-details/${item.id}" target="_blank">${item.mr_number}</a></td>
+                    <td>${item.project.name}</td>
+                    <td>${item.requested_by.name}</td>
+                    <td>${formatDate(item.request_date)}</td>
+                    <td>${item.status}</td>
+                    <td>${renderApprovalBadge(item.mr_approval)}</td>
+                    <td>${renderApprovalBadge(item.pm_approval)}</td>
+                    <td>${renderApprovalBadge(item.qs_approval)}</td>
+                `;
+            });
+        } catch (error) {
+            mrTableBody.innerHTML = `<tr><td colspan="8" class="text-danger text-center">${error.message}</td></tr>`;
+        }
+    }
+    mrForm.addEventListener('submit', (e) => { e.preventDefault(); loadMRReport(); });
+
+    // --- LPO Report ---
+    const lpoForm = document.getElementById('lpo-filter-form');
+    const lpoTableBody = document.getElementById('lpo-table-body');
+    const lpoSummary = document.getElementById('lpo-summary');
+
+    async function loadLPOReport() {
+        showLoading(lpoTableBody);
+        const params = buildQueryString(lpoForm);
+        
+        try {
+            const response = await fetchWithAuth(`/api/reports/lpos?${params}`);
+            if (!response.ok) throw new Error('Failed to fetch report data.');
+            const data = await response.json();
+
+            lpoSummary.innerHTML = `
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.total_count}</h5><p class="card-text text-muted">Total</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.pending_count}</h5><p class="card-text text-muted">Pending</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">${data.approved_count}</h5><p class="card-text text-muted">Approved</H5></div></div></div>
+                <div class="col-md-3"><div class="card text-center"><div class="card-body"><h5 class="card-title">AED ${data.total_value_approved.toFixed(2)}</h5><p class="card-text text-muted">Value (Approved)</p></div></div></div>
+            `;
+            
+            lpoTableBody.innerHTML = '';
+            data.items.forEach(item => {
+                const row = lpoTableBody.insertRow();
+                row.innerHTML = `
+                    <td><a href="/lpos/${item.id}" target="_blank">${item.lpo_number}</a></td>
+                    <td>${item.project.name}</td>
+                    <td>${item.supplier.name}</td>
+                    <td>${formatDate(item.lpo_date)}</td>
+                    <td>${renderApprovalBadge(item.status)}</td>
+                    <td class="text-end">${item.grand_total.toFixed(2)}</td>
+                `;
+            });
+        } catch (error) {
+            lpoTableBody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">${error.message}</td></tr>`;
+        }
+    }
+    lpoForm.addEventListener('submit', (e) => { e.preventDefault(); loadLPOReport(); });
+
+    // --- Tab Load Logic ---
+    // Only load the content of a tab when it's shown for the first time
+    document.getElementById('mr-tab').addEventListener('shown.bs.tab', loadMRReport, { once: true });
+    document.getElementById('lpo-tab').addEventListener('shown.bs.tab', loadLPOReport, { once: true });
+});
+</script>
+{% endblock %}
