@@ -98,9 +98,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     // --- ADD THIS EDIT BUTTON (as a link) ---
                     // It will only be shown if the LPO is still "Pending"
-                    if (lpo.status === 'Pending') {
+                    //if (lpo.status === 'Pending') {
                         actionButtons += `<a href="/lpos/${lpo.id}/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil-fill"></i></a>`;
-                    }
+                    //}
                     // ----------------------------------------
                     let mrHtml = 'N/A';
                     if (lpo.material_requisitions && lpo.material_requisitions.length > 0) {
