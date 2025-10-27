@@ -11,6 +11,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 # Import metadata/models
 from app.models import Base
 import app.design_v3_models  # ensure models are imported so metadata is populated
+import app.invoice_models
 
 # ---- Legacy tables to ignore in autogenerate ----
 LEGACY_TABLES = {

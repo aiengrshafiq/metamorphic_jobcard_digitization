@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload, selectinload
 from app.api.endpoints.lpo.lpo import get_next_lpo_number
 from app.design_v3_models import Vendor
+from app import invoice_models
 import yaml
 from pathlib import Path
 import os
@@ -810,4 +811,40 @@ async def reports_dashboard_page(context: dict = Depends(deps.get_template_conte
     context["mr_approval_statuses"] = app_config.get('mr_approval_statuses', [])
     
     return templates.TemplateResponse("reports/dashboard.html", context)
+
+
+
+# Start of Invoice Module Pages
+@router.get("/invoices/new", response_class=HTMLResponse, tags=["Pages"])
+async def create_invoice_page(context: dict = Depends(deps.get_template_context), db: Session = Depends(deps.get_db)):
+    if isinstance(context, RedirectResponse): return context
+    
+    # Fetch all *Approved* LPOs that are not yet invoiced
+    available_lpos = db.query(models.LPO).outerjoin(invoice_models.Invoice).filter(
+        models.LPO.status == 'Approved',
+        invoice_models.Invoice.id == None
+    ).options(joinedload(models.LPO.project)).all()
+    
+    context.update({
+        "page_title": "Create Invoice",
+        "available_lpos": available_lpos,
+        "suppliers": db.query(models.Supplier).order_by(models.Supplier.name).all(),
+        "projects": db.query(models.Project).order_by(models.Project.name).all(),
+        "payment_modes": app_config.get('payment_modes', [])
+    })
+    return templates.TemplateResponse("invoice/create_invoice.html", context)
+
+
+@router.get("/invoices", response_class=HTMLResponse, tags=["Pages"])
+async def list_invoices_page(context: dict = Depends(deps.get_template_context)):
+    if isinstance(context, RedirectResponse): return context
+    context["page_title"] = "Invoices"
+    return templates.TemplateResponse("invoice/invoice_list.html", context)
+
+@router.get("/invoices/{invoice_id}", response_class=HTMLResponse, tags=["Pages"])
+async def view_invoice_page(invoice_id: int, context: dict = Depends(deps.get_template_context)):
+    if isinstance(context, RedirectResponse): return context
+    context["page_title"] = f"Invoice #{invoice_id}"
+    context["invoice_id"] = invoice_id
+    return templates.TemplateResponse("invoice/invoice_detail.html", context)
 

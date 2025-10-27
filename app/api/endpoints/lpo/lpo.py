@@ -330,3 +330,18 @@ def get_lpo_details(lpo_id: int, db: Session = Depends(deps.get_db)):
     for attachment in lpo.attachments:
         attachment.blob_url = generate_sas_url(attachment.blob_url)
     return lpo
+
+
+@router.get("/{lpo_id}/for-invoice", tags=["LPO"])
+def get_lpo_data_for_invoice(lpo_id: int, db: Session = Depends(deps.get_db)):
+    """Fetches LPO data specifically to pre-fill a new invoice."""
+    lpo = db.query(models.LPO).options(
+        joinedload(models.LPO.supplier),
+        joinedload(models.LPO.project),
+        selectinload(models.LPO.items).joinedload(models.LPOItem.material)
+    ).filter(models.LPO.id == lpo_id).first()
+    
+    if not lpo:
+        raise HTTPException(status_code=404, detail="LPO not found")
+    
+    return lpo

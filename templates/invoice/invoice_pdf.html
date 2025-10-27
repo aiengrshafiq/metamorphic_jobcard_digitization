@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice {{ lpo.invoice_number }}</title>
+    <style>
+        @page { size: A4; margin: 1cm; }
+        body { font-family: Arial, sans-serif; font-size: 9pt; color: #333; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 5px; }
+        .header-table { margin-bottom: 20px; }
+        .logo { max-width: 180px; max-height: 70px; margin-bottom: 10px; }
+        .company-address { font-size: 8pt; color: #555; }
+        .lpo-title { font-size: 24pt; font-weight: bold; text-align: right; color: #666; vertical-align: bottom; }
+        .info-table { margin-bottom: 20px; border: 1px solid #ddd; }
+        .info-table th { background-color: #f2f2f2; text-align: left; padding: 6px 8px; font-size: 10pt; }
+        .info-table td { padding: 8px; vertical-align: top; }
+        .items-table { margin-top: 20px; }
+        .items-table thead th { background-color: #333; color: #fff; padding: 8px; border: 1px solid #333; text-align: left; }
+        .items-table tbody td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+        .items-table .text-right { text-align: right; }
+        .totals-section { margin-top: 20px; width: 100%; }
+        .totals-table { width: 45%; float: right; }
+        .totals-table td { padding: 6px 8px; }
+        .totals-table .total-label { font-weight: bold; }
+        .totals-table .grand-total { font-weight: bold; font-size: 11pt; border-top: 2px solid #333; }
+        .footer-notes { margin-top: 30px; font-size: 8pt; color: #555; }
+        .signature-area { margin-top: 40pt; text-align: center; font-style: italic; color: #888; }
+        /* --- NEW CSS FOR CONFIDENTIALITY NOTICE --- */
+        .confidential-note {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #ccc;
+            font-size: 7pt;
+            color: #777;
+            text-align: center;
+        }
+        /* ------------------------------------------- */
+    </style>
+</head>
+<body>
+    <table class="header-table">
+        <tr>
+            <td style="width: 60%; vertical-align: top;">
+                {% if logo_data_uri %}
+                    <img src="{{ logo_data_uri }}" class="logo">
+                {% endif %}
+                <div class="company-address">
+                    <strong>Metamorphic Building Contracting LLC</strong><br>
+                    Office No. 2901 API Trio Tower,<br>
+                    Al Barsha-1, SZR, Dubai, 391351, ARE<br>
+                    +971 4 385 8103 | info@metamorphic.ae
+                </div>
+            </td>
+            <td class="lpo-title">
+                INVOICE
+            </td>
+        </tr>
+    </table>
+
+    <table class="info-table">
+        <thead>
+            <tr>
+                <th style="width: 33%;">SUPPLIER</th>
+                <th style="width: 33%;">SHIP TO</th>
+                <th style="width: 34%;">LPO DETAILS</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <strong>{{ lpo.supplier.name }}</strong>
+                    {% if lpo.supplier.email %}<br>{{ lpo.supplier.email }}{% endif %}
+                    {% if lpo.supplier.phone %}<br>{{ lpo.supplier.phone }}{% endif %}
+                </td>
+                <td>
+                    <strong>{{ lpo.project.name }}</strong><br>
+                    c/o Metamorphic Contracting LLC<br>
+                    Site Location as per Project
+                </td>
+                <td>
+                    <table>
+                        <tr><td style="padding: 0; border: 0;"><strong>DATE:</strong></td><td style="padding: 0; border: 0;">{{ lpo.invoice_date.strftime('%d/%m/%Y') }}</td></tr>
+                        <tr><td style="padding: 0; border: 0;"><strong>DUE DATE:</strong></td><td style="padding: 0; border: 0;">{{ lpo.invoice_due_date.strftime('%d/%m/%Y') }}</td></tr>
+                        <tr><td style="padding: 0; border: 0;"><strong>INVOICE #:</strong></td><td style="padding: 0; border: 0;">{{ lpo.invoice_number }}</td></tr>
+                        <tr><td style="padding: 0; border: 0;"><strong>PROJECT:</strong></td><td style="padding: 0; border: 0;">{{ lpo.project.name }}</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>ITEM</th>
+                <th>DESCRIPTION</th>
+                <th class="text-right">QTY</th>
+                <th class="text-right">RATE (AED)</th>
+                <th class="text-right">AMOUNT (AED)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in lpo.items %}
+            <tr>
+                <td>{{ item.material.name }}</td>
+                <td>{{ item.description }}</td>
+                <td class="text-right">{{ "%.2f"|format(item.quantity) }}</td>
+                <td class="text-right">{{ "%.2f"|format(item.rate) }}</td>
+                <td class="text-right">{{ "%.2f"|format(item.quantity * item.rate) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align: center;">No items found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totals-section">
+        <table class="totals-table">
+            <tbody>
+                <tr><td class="total-label">SUBTOTAL</td><td class="text-right">{{ "%.2f"|format(lpo.subtotal) }} AED</td></tr>
+                <tr><td class="total-label">VAT (5%)</td><td class="text-right">{{ "%.2f"|format(lpo.tax_total) }} AED</td></tr>
+                <tr class="grand-total"><td class="total-label">TOTAL</td><td class="text-right">{{ "%.2f"|format(lpo.grand_total) }} AED</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div style="clear: both;"></div>
+
+    {% if lpo.message_to_supplier %}
+    <div class="footer-notes">
+        <strong>Message to Supplier:</strong>
+        <p>{{ lpo.message_to_supplier }}</p>
+    </div>
+    {% endif %}
+    
+    <div class="footer-notes">
+        <strong>Terms & Conditions:</strong>
+        <p>1. All deliveries to be made to the project site as specified. <br>2. Payment terms are 30 days net from date of invoice.</p>
+    </div>
+
+    <div class="signature-area">
+        <p>This is a system-generated document and does not require a signature.</p>
+    </div>
+    <div class="confidential-note">
+        <p>
+            This document is confidential and intended solely for the use of the individual or entity to whom it is addressed. 
+            <br>
+            If you have received this document in error, please notify the sender immediately.
+        </p>
+    </div>
+
+</body>
+</html>

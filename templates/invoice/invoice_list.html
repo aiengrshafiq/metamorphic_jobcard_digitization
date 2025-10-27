@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h5 class="mb-0">Invoices</h5>
+        <div class="col-12 col-md-4">
+            <input type="search" id="search-input" class="form-control form-control-sm" placeholder="Search by Invoice #, Supplier, Project...">
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Date</th>
+                        <th>Supplier</th>
+                        <th>Project</th>
+                        <th>Status</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="invoice-table-body">
+                    </tbody>
+            </table>
+            <p id="loading-state" class="text-center text-muted mt-3">Loading invoices...</p>
+        </div>
+        <nav id="pagination-container" class="d-flex justify-content-end mt-3"></nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tableBody = document.getElementById('invoice-table-body');
+    const loadingState = document.getElementById('loading-state');
+    const searchInput = document.getElementById('search-input');
+    const paginationContainer = document.getElementById('pagination-container');
+    
+    const ITEMS_PER_PAGE = 20;
+    let currentPage = 1;
+    let currentSearch = "";
+    let searchTimeout;
+
+    function renderStatusBadge(status) {
+        if (status === 'Paid') return `<span class="badge bg-success">${status}</span>`;
+        if (status === 'Rejected') return `<span class="badge bg-danger">${status}</span>`;
+        return `<span class="badge bg-warning text-dark">${status}</span>`;
+    }
+
+    async function fetchInvoices(page = 1, search = "") {
+        currentPage = page;
+        currentSearch = search;
+        loadingState.style.display = 'block';
+        tableBody.innerHTML = '';
+        
+        const skip = (page - 1) * ITEMS_PER_PAGE;
+        const url = `/api/invoices/?skip=${skip}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(search)}`;
+        
+        try {
+            const response = await fetchWithAuth(url);
+            if (!response.ok) throw new Error('Failed to load invoices.');
+            const data = await response.json();
+            
+            if (data.invoices.length === 0) {
+                loadingState.textContent = 'No invoices found.';
+            } else {
+                loadingState.style.display = 'none';
+                data.invoices.forEach(inv => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${inv.invoice_number}</td>
+                        <td>${new Date(inv.invoice_date).toLocaleDateString()}</td>
+                        <td>${inv.supplier.name}</td>
+                        <td>${inv.project.name}</td>
+                        <td>${renderStatusBadge(inv.status)}</td>
+                        <td class="text-end">${parseFloat(inv.grand_total).toFixed(2)}</td>
+                        <td class="text-end">
+                            <a href="/invoices/${inv.id}" class="btn btn-outline-secondary btn-sm" title="View Details">
+                                <i class="bi bi-eye-fill"></i>
+                            </a>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+            // Add pagination logic here if needed
+            renderPagination(data.total_count);
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+    function renderPagination(totalItems) {
+        paginationContainer.innerHTML = '';
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        if (totalPages <= 1) return;
+
+        const ul = document.createElement('ul');
+        ul.className = 'pagination';
+
+        for (let i = 1; i <= totalPages; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+            ul.appendChild(li);
+        }
+        paginationContainer.appendChild(ul);
+    }
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            fetchInvoices(1, searchInput.value);
+        }, 300);
+    });
+
+    paginationContainer.addEventListener('click', e => {
+        e.preventDefault();
+        if (e.target.matches('.page-link')) {
+            const page = parseInt(e.target.dataset.page);
+            if (page !== currentPage) {
+                fetchInvoices(page, currentSearch);
+            }
+        }
+    });
+    
+    fetchInvoices();
+});
+</script>
+{% endblock %}

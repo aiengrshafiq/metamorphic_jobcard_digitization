@@ -159,6 +159,8 @@
                     <ul class="nav flex-column mb-2">
                         <li class="nav-item"><a class="nav-link" href="/lpos"><i class="bi bi-receipt me-2"></i> Purchase Orders</a></li>
                         <li class="nav-item"><a class="nav-link" href="/lpos/new"><i class="bi bi-plus-circle me-2"></i> Create LPO</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/invoices/new"><i class="bi bi-receipt-cutoff me-2"></i> Create Invoice</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/invoices"><i class="bi bi-journal-text me-2"></i> Invoices List</a></li>
                     </ul>
                     {% endif %}
                     {% if is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}
@@ -371,6 +373,8 @@
                     <ul class="nav flex-column mb-2">
                         <li class="nav-item"><a class="nav-link" href="/lpos"><i class="bi bi-receipt me-2"></i> Purchase Orders</a></li>
                         <li class="nav-item"><a class="nav-link" href="/lpos/new"><i class="bi bi-plus-circle me-2"></i> Create LPO</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/invoices/new"><i class="bi bi-receipt-cutoff me-2"></i> Create Invoice</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/invoices"><i class="bi bi-journal-text me-2"></i> Invoices List</a></li>
                     </ul>
                     {% endif %}
                  {% if is_privileged or 'Procurement' in user_roles or 'Supervisor/Site Officer' in user_roles or 'Foreman/Duty Officer' in user_roles %}

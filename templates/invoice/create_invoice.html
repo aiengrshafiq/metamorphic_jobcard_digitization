@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+<style>
+    .choices__inner { background-color: var(--bs-body-bg); }
+    #line-items-body .choices__list--dropdown { max-height: 300px; overflow-y: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form id="invoice-form" novalidate>
+            <input type="hidden" name="items_json" id="items_json">
+            <input type="hidden" name="lpo_id" id="lpo_id">
+            <input type="hidden" name="subtotal" id="hidden_subtotal">
+            <input type="hidden" name="tax_total" id="hidden_tax_total">
+            <input type="hidden" name="grand_total" id="hidden_grand_total">
+
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <label for="lpo_selector" class="form-label">Select LPO to Invoice (Optional)</label>
+                    <select id="lpo_selector" class="form-select">
+                        <option value="">Create a blank invoice...</option>
+                        {% for lpo in available_lpos %}
+                        <option value="{{ lpo.id }}">{{ lpo.lpo_number }} ({{ lpo.project.name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <hr class="my-4">
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="supplier_id" class="form-label">Supplier <span class="text-danger">*</span></label>
+                    <select id="supplier_id" name="supplier_id" required>
+                        <option value="">Select a supplier...</option>
+                        {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="project_id" class="form-label">Project <span class="text-danger">*</span></label>
+                    <select id="project_id" name="project_id" required>
+                         <option value="">Select a project...</option>
+                         {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="invoice_date" class="form-label">Invoice Date</label>
+                    <input type="date" class="form-control" id="invoice_date" name="invoice_date" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="invoice_due_date" class="form-label">Due Date</label>
+                    <input type="date" class="form-control" id="invoice_due_date" name="invoice_due_date" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="payment_mode" class="form-label">Payment Mode</label>
+                    <select id="payment_mode" name="payment_mode" class="form-select">
+                        <option value="">Select mode...</option>
+                        {% for mode in payment_modes %}<option value="{{ mode }}">{{ mode }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <hr class="my-4">
+            
+            <h5 class="mb-3">Item Details</h5>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 20%;">Product/Service</th>
+                            <th style="width: 20%;">Description</th>
+                            <th style="width: 10%;">Class</th>
+                            <th style="width: 15%;">Customer/Project</th>
+                            <th style="width: 8%;">QTY</th>
+                            <th style="width: 8%;">Rate</th>
+                            <th style="width: 8%;">Amount</th>
+                            <th style="width: 10%;">Tax</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="line-items-body"></tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="add-item-btn"><i class="bi bi-plus-circle me-1"></i> Add Line</button>
+            
+            <!-- <div class="row justify-content-end mt-3">
+                <div class="col-md-5" id="totals-container">
+                    </div>
+            </div> -->
+            <div class="row justify-content-end mt-3">
+                <div class="col-md-5">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr><th>Subtotal</th><td class="text-end" id="subtotal">0.00</td></tr>
+                            <tr><th>Tax (5%)</th><td class="text-end" id="tax-total">0.00</td></tr>
+                            <tr class="fw-bold"><th>TOTAL</th><td class="text-end fs-5" id="grand-total">0.00</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <hr class="my-4">
+            
+            <div class="row g-3">
+                <div class="col-md-4"><label class="form-label">Message to Customer</label><textarea name="message_to_customer" class="form-control" rows="4"></textarea></div>
+                <div class="col-md-4"><label class="form-label">Memo</label><textarea name="memo" class="form-control" rows="4"></textarea></div>
+                <div class="col-md-4"><label class="form-label">Attachments</label><input type="file" name="attachments" class="form-control" multiple></div>
+            </div>
+            
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Save Invoice</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    
+    // --- CHOICES.JS INSTANCES ---
+    const choicesConfig = { searchEnabled: true, removeItemButton: false, itemSelectText: '' };
+    const lpoSelector = new Choices('#lpo_selector', choicesConfig);
+    const supplierChoices = new Choices('#supplier_id', choicesConfig);
+    const projectChoices = new Choices('#project_id', choicesConfig);
+    // new Choices('#payment_mode', choicesConfig);
+    const paymentChoices = new Choices('#payment_mode', choicesConfig);
+
+    // --- FORM & DATE FIELDS ---
+    const form = document.getElementById('invoice-form');
+    const invoiceDateInput = document.getElementById('invoice_date');
+    const dueDateInput = document.getElementById('invoice_due_date');
+    const submitBtn = document.getElementById('submit-btn');
+    const toastElement = document.getElementById('responseToast');
+    const toast = new bootstrap.Toast(toastElement);
+    
+    // Set default dates
+    const today = new Date();
+    invoiceDateInput.valueAsDate = today;
+    const in30Days = new Date(today.setDate(today.getDate() + 30));
+    dueDateInput.valueAsDate = in30Days;
+
+    // --- LINE ITEMS & TOTALS ---
+    const lineItemsBody = document.getElementById('line-items-body');
+    const addItemBtn = document.getElementById('add-item-btn');
+    const totalsContainer = document.getElementById('totals-container');
+    let materialsList = []; // Will be fetched from LPO or kept empty
+
+    function calculateTotals() {
+        let subtotal = 0;
+        let taxTotal = 0;
+        document.querySelectorAll('.item-row').forEach(row => {
+            const amountEl = row.querySelector('.item-amount');
+            const taxSelect = row.querySelector('.item-tax');
+            const amount = parseFloat(amountEl.textContent) || 0;
+            subtotal += amount;
+            if (taxSelect.value === '0.05') {
+                taxTotal += amount * 0.05;
+            }
+        });
+        const grandTotal = subtotal + taxTotal;
+        document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+        document.getElementById('tax-total').textContent = taxTotal.toFixed(2);
+        document.getElementById('grand-total').textContent = grandTotal.toFixed(2);
+        // Update hidden inputs for form submission
+        document.getElementById('hidden_subtotal').value = subtotal.toFixed(2);
+        document.getElementById('hidden_tax_total').value = taxTotal.toFixed(2);
+        document.getElementById('hidden_grand_total').value = grandTotal.toFixed(2);
+    }
+    
+    function createItemRow(itemData = null) {
+        const row = document.createElement('tr');
+        row.className = 'item-row';
+        
+        const desc = itemData?.description || '';
+        const qty = itemData?.quantity || 1.00;
+        const rate = itemData?.rate || 0.00;
+        const amount = (qty * rate).toFixed(2);
+        
+        row.innerHTML = `
+            <td><select name="material_id"></select></td>
+            <td><input type="text" class="form-control form-control-sm" name="description" value="${desc}"></td>
+            <td><input type="text" class="form-control form-control-sm" name="item_class"></td>
+            <td><input type="text" class="form-control form-control-sm" name="customer_project"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm item-qty" name="quantity" value="${qty}"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm item-rate" name="rate" value="${rate}"></td>
+            <td class="text-end item-amount align-middle">${amount}</td>
+            <td><select class="form-select form-select-sm item-tax" name="tax_rate"><option value="0.00">ZERO (0%)</option><option value="0.05">VAT (5%)</option></select></td>
+            <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-outline-danger remove-item-btn">&times;</button></td>
+        `;
+        lineItemsBody.appendChild(row);
+
+        const materialSelect = row.querySelector('select[name="material_id"]');
+        const taxSelect = row.querySelector('.item-tax');
+        const choicesInstance = new Choices(materialSelect, { choices: [{ value: '', label: 'Select material...', placeholder: true }, ...materialsList] });
+
+        if (itemData) {
+            choicesInstance.setChoiceByValue(itemData.material.id.toString());
+            taxSelect.value = itemData.tax_rate;
+        }
+    }
+
+    
+    lineItemsBody.addEventListener('input', function(e) {
+        if (e.target.matches('.item-qty, .item-rate')) {
+            const row = e.target.closest('.item-row');
+            const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+            const rate = parseFloat(row.querySelector('.item-rate').value) || 0;
+            row.querySelector('.item-amount').textContent = (qty * rate).toFixed(2);
+            calculateTotals();
+        }
+    });
+
+    lineItemsBody.addEventListener('change', e => { if (e.target.matches('.item-tax')) calculateTotals(); });
+    lineItemsBody.addEventListener('click', e => { if (e.target.matches('.remove-item-btn')) { e.target.closest('.item-row').remove(); calculateTotals(); }});
+    addItemBtn.addEventListener('click', createItemRow);
+
+    // --- AUTO-FILL LOGIC ---
+    lpoSelector.passedElement.element.addEventListener('change', async function() {
+        const lpoId = this.value;
+        document.getElementById('lpo_id').value = lpoId;
+        
+        if (!lpoId) {
+            // Reset form if "blank invoice" is selected
+            supplierChoices.setChoiceByValue('');
+            projectChoices.setChoiceByValue('');
+            lineItemsBody.innerHTML = '';
+            materialsList = []; // No materials to select
+            createItemRow();
+            calculateTotals();
+            return;
+        }
+        
+        try {
+            const response = await fetchWithAuth(`/api/lpos/${lpoId}/for-invoice`);
+            if (!response.ok) throw new Error('Failed to fetch LPO data.');
+            const lpo = await response.json();
+
+            // Populate main fields
+            supplierChoices.setChoiceByValue(lpo.supplier.id.toString());
+            projectChoices.setChoiceByValue(lpo.project.id.toString());
+            
+            // Populate materials list from LPO items
+            materialsList = lpo.items.map(item => ({
+                value: item.material.id.toString(),
+                label: `${item.material.name} (${item.material.unit})`
+            }));
+
+            // Set payment mode
+            if (lpo.payment_mode) {
+                paymentChoices.setChoiceByValue(lpo.payment_mode);
+            } else {
+                paymentChoices.setChoiceByValue(''); // Reset if no value
+            }
+            
+            // Populate line items
+            lineItemsBody.innerHTML = '';
+            lpo.items.forEach(item => createItemRow(item));
+            calculateTotals();
+
+        } catch (error) { alert(error.message); }
+    });
+
+    // --- FORM SUBMISSION ---
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        // ... (validation, spinner logic) ...
+        if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+
+        const spinner = submitBtn.querySelector('.spinner-border');
+        spinner.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        
+        const itemsData = [];
+        document.querySelectorAll('.item-row').forEach(row => {
+            const materialId = row.querySelector('[name="material_id"]').value;
+            const quantity = row.querySelector('[name="quantity"]').value;
+            if (materialId && quantity) {
+                itemsData.push({
+                    material_id: parseInt(materialId),
+                    description: row.querySelector('[name="description"]').value,
+                    quantity: parseFloat(quantity),
+                    rate: parseFloat(row.querySelector('[name="rate"]').value),
+                    tax_rate: parseFloat(row.querySelector('[name="tax_rate"]').value),
+                    item_class: row.querySelector('[name="item_class"]').value,
+                    customer_project: row.querySelector('[name="customer_project"]').value,
+                });
+            }
+        });
+        document.getElementById('items_json').value = JSON.stringify(itemsData);
+
+        try {
+            const response = await fetchWithAuth('/api/invoices/', {
+                method: 'POST',
+                body: new FormData(form)
+            });
+            const result = await response.json();
+            if (!response.ok) { throw new Error(result.detail || 'Submission failed.'); }
+            
+            document.getElementById('toast-title').innerText = 'Success!';
+            document.getElementById('toast-body').innerText = 'Invoice created successfully!';
+            toastElement.className = 'toast bg-success text-white';
+            toast.show();
+            setTimeout(() => { window.location.href = '/invoices'; }, 1500);
+        } catch (error) { 
+            document.getElementById('toast-title').innerText = 'Error!';
+            document.getElementById('toast-body').innerText = error.message;
+            toastElement.className = 'toast bg-danger text-white';
+            toast.show();
+        }
+    });
+});
+</script>
+{% endblock %}

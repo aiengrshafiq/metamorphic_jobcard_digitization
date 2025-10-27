@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="loading-state" class="text-center mt-4">
+    <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+    <p class="mt-2 text-muted">Loading invoice details...</p>
+</div>
+
+<div id="content-container" style="display: none;">
+    <div class="d-flex justify-content-end mb-3">
+        <a id="download-pdf-btn" href="#" class="btn btn-danger" target="_blank">
+            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <div class="row border-bottom pb-3 mb-3">
+                <div class="col-md-6">
+                    <h2 class="mb-0" id="invoice-number"></h2>
+                    <p class="text-muted mb-0" id="invoice-status"></p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <strong>Invoice Date:</strong> <span id="invoice-date"></span><br>
+                    <strong>Due Date:</strong> <span id="invoice-due-date"></span><br>
+                    <strong>Project:</strong> <span id="invoice-project"></span>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6 class="text-muted">SUPPLIER</h6>
+                    <address id="supplier-details"></address>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th><th>Item & Description</th><th>Class</th><th>Customer/Project</th><th class="text-end">QTY</th><th class="text-end">Rate</th><th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="line-items-body"></tbody>
+                </table>
+            </div>
+            <div class="row justify-content-end mt-3"><div class="col-md-5" id="totals-container"></div></div>
+            
+            <div class="row mt-4">
+                <div class="col-lg-7">
+                    <div class="card" id="attachments-card" style="display: none;">
+                        <div class-><h5 class="mb-0">Attachments</h5></div>
+                        <div class="list-group list-group-flush" id="attachments-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const invoiceId = {{ invoice_id }};
+    const loadingState = document.getElementById('loading-state');
+    const contentContainer = document.getElementById('content-container');
+
+    function renderStatusBadge(status) {
+        if (status === 'Paid') return `<span class="badge bg-success fs-6">${status}</span>`;
+        if (status === 'Rejected') return `<span class="badge bg-danger fs-6">${status}</span>`;
+        return `<span class="badge bg-warning text-dark fs-6">${status}</span>`;
+    }
+
+    async function fetchInvoiceDetails() {
+        try {
+            const response = await fetchWithAuth(`/api/invoices/${invoiceId}`);
+            if (!response.ok) throw new Error('Could not load invoice details.');
+            const inv = await response.json();
+
+            document.getElementById('invoice-number').textContent = inv.invoice_number;
+            document.getElementById('invoice-status').innerHTML = renderStatusBadge(inv.status);
+            document.getElementById('invoice-date').textContent = new Date(inv.invoice_date).toLocaleDateString();
+            document.getElementById('invoice-due-date').textContent = new Date(inv.invoice_due_date).toLocaleDateString();
+            document.getElementById('invoice-project').textContent = inv.project.name;
+            document.getElementById('download-pdf-btn').href = `/api/invoices/${inv.id}/pdf`;
+            
+            document.getElementById('supplier-details').innerHTML = `<strong>${inv.supplier.name}</strong><br>${inv.supplier.email || ''}<br>${inv.supplier.phone || ''}`;
+            
+            const itemsBody = document.getElementById('line-items-body');
+            itemsBody.innerHTML = '';
+            inv.items.forEach((item, index) => {
+                const row = itemsBody.insertRow();
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>
+                        <strong>${item.material.name}</strong>
+                        ${item.description ? `<br><small class="text-muted">${item.description}</small>` : ''}
+                    </td>
+                    <td>${item.item_class || ''}</td>
+                    <td>${item.customer_project || ''}</td>
+                    <td class="text-end">${parseFloat(item.quantity).toFixed(2)}</td>
+                    <td class="text-end">${parseFloat(item.rate).toFixed(2)}</td>
+                    <td class="text-end">${(item.quantity * item.rate).toFixed(2)}</td>
+                `;
+            });
+
+            document.getElementById('totals-container').innerHTML = `
+                <table class="table table-sm">
+                    <tbody>
+                        <tr><th>Subtotal:</th><td class="text-end">${parseFloat(inv.subtotal).toFixed(2)}</td></tr>
+                        <tr><th>Tax (5%):</th><td class="text-end">${parseFloat(inv.tax_total).toFixed(2)}</td></tr>
+                        <tr class="fw-bold fs-5"><th>TOTAL:</th><td class="text-end">${parseFloat(inv.grand_total).toFixed(2)}</td></tr>
+                    </tbody>
+                </table>
+            `;
+
+            const attachmentsCard = document.getElementById('attachments-card');
+            const attachmentsList = document.getElementById('attachments-list');
+            if (inv.attachments && inv.attachments.length > 0) {
+                attachmentsList.innerHTML = '';
+                inv.attachments.forEach(att => {
+                    attachmentsList.innerHTML += `<a href="${att.blob_url}" target="_blank" class="list-group-item list-group-item-action"><i class="bi bi-file-earmark-arrow-down me-2"></i>${att.file_name}</a>`;
+                });
+                attachmentsCard.style.display = 'block';
+            }
+
+            loadingState.style.display = 'none';
+            contentContainer.style.display = 'block';
+        } catch (error) {
+            loadingState.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    }
+    
+    fetchInvoiceDetails();
+});
+</script>
+{% endblock %}

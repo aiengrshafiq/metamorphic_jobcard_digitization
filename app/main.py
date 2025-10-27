@@ -118,6 +118,9 @@ app.include_router(design_v3_tasks_router, prefix="/api/design/v3/tasks", tags=[
 from app.api.endpoints.dashboard_reports import router as dashboard_reports_router
 app.include_router(dashboard_reports_router, prefix="/api/reports", tags=["Dashboard Reports"])
 
+from app.api.endpoints.invoice.invoice import router as invoice_router
+app.include_router(invoice_router, prefix="/api/invoices", tags=["Invoices"])
+
 
 @app.get("/health", tags=["System"])
 async def health_check():

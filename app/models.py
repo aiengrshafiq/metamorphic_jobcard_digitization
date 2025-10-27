@@ -31,6 +31,7 @@ class UserRole(str, enum.Enum):
     TECH_ENGINEER = "Technical Engineer"
     LEAD_DESIGNER = "Lead Designer"
     SIP = "Sales In-Charge Person"
+    COMPLIANCE = "Compliance"
     USER = "User"
 
 # Association table for the many-to-many relationship between users and roles
